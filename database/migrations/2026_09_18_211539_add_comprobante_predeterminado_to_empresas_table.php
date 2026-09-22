@@ -17,7 +17,12 @@ return new class extends Migration
             // Empresa::comprobantePredeterminadoEfectivo()), así que un valor que
             // deja de ser válido (ej. cambio de condición fiscal) nunca rompe nada,
             // simplemente cae a 'remito'.
-            $table->string('comprobante_predeterminado')->default('remito')->after('factura_habilitada');
+            // Sin `->after('factura_habilitada')` a propósito: esa columna recién
+            // se crea en una migración posterior (2026_09_18_232635) — en un
+            // `migrate` de una base nueva, de punta a punta, correr en orden por
+            // fecha antes que esa otra tira "Column not found". El orden de
+            // columnas en la tabla es puramente cosmético, no afecta nada.
+            $table->string('comprobante_predeterminado')->default('remito');
         });
     }
 
