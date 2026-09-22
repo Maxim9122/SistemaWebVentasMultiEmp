@@ -47,6 +47,10 @@ class EmpresaController extends Controller
 
     public function aprobar(Empresa $empresa): RedirectResponse
     {
+        if ($error = $this->bloqueadaPorCuitDuplicado($empresa)) {
+            return back()->withErrors(['aprobar' => $error]);
+        }
+
         $empresa->update([
             'estado' => 'activa',
             'motivo_rechazo' => null,
@@ -82,6 +86,10 @@ class EmpresaController extends Controller
 
     public function reactivar(Empresa $empresa): RedirectResponse
     {
+        if ($error = $this->bloqueadaPorCuitDuplicado($empresa)) {
+            return back()->withErrors(['aprobar' => $error]);
+        }
+
         $empresa->update([
             'estado' => 'activa',
             'motivo_rechazo' => null,
@@ -89,5 +97,26 @@ class EmpresaController extends Controller
         ]);
 
         return back()->with('status', 'Empresa reactivada.');
+    }
+
+    /**
+     * Nunca deja que dos empresas con el mismo CUIT queden `activa` al mismo
+     * tiempo — aunque el alta duplicada en sí ya no se bloquea (el
+     * superadmin la ve y decide con criterio, ver `index()`), activar dos a
+     * la vez sí se bloquea siempre: la API de facturación identifica una
+     * empresa por CUIT en varios puntos (ver
+     * `FacturacionOnboardingWebhookController::localizarEmpresa()`), y dos
+     * activas con el mismo CUIT reintroducirían la ambigüedad que ese
+     * webhook fue diseñado para evitar.
+     */
+    private function bloqueadaPorCuitDuplicado(Empresa $empresa): ?string
+    {
+        $otraActiva = $empresa->empresasConMismoCuit()->firstWhere('estado', 'activa');
+
+        if (! $otraActiva) {
+            return null;
+        }
+
+        return "No se puede activar: ya hay otra empresa activa (\"{$otraActiva->razon_social}\") con el mismo CUIT {$empresa->cuit}. Suspendé o rechazá esa otra empresa primero, o confirmá con el dueño que se trata de la misma empresa antes de continuar.";
     }
 }
