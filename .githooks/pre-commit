@@ -1,0 +1,57 @@
+#!/bin/sh
+#
+# Bloquea el commit si algún archivo staged parece contener una clave
+# privada o certificado, o si alguien fuerza un .env con -f pasando por
+# encima del .gitignore. Chequea el CONTENIDO, no solo el nombre del
+# archivo, para que no dependa de que alguien haya usado la extensión
+# "correcta".
+#
+# Instalado automáticamente por `composer install` (ver composer.json,
+# scripts.post-install-cmd). Para forzar la instalación a mano:
+#   git config core.hooksPath .githooks
+
+archivos_staged=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [ -z "$archivos_staged" ]; then
+    exit 0
+fi
+
+encontrados=""
+
+for archivo in $archivos_staged; do
+    base=$(basename "$archivo")
+
+    # El hook se excluye a sí mismo: su propio código menciona los
+    # marcadores que busca, no es contenido de usuario.
+    if [ "$archivo" = ".githooks/pre-commit" ]; then
+        continue
+    fi
+
+    case "$base" in
+        .env|.env.*)
+            if [ "$base" != ".env.example" ]; then
+                encontrados="$encontrados\n  - $archivo (parece un .env real)"
+            fi
+            continue
+            ;;
+    esac
+
+    contenido=$(git show ":$archivo" 2>/dev/null)
+
+    if printf '%s' "$contenido" | grep -qE "BEGIN (RSA |EC |DSA |ENCRYPTED |OPENSSH )?PRIVATE KEY|BEGIN CERTIFICATE"; then
+        encontrados="$encontrados\n  - $archivo (contiene una clave privada o certificado)"
+    fi
+done
+
+if [ -n "$encontrados" ]; then
+    echo "-----------------------------------------------------------------"
+    echo "COMMIT BLOQUEADO: se detectó contenido sensible en archivos staged"
+    echo "-----------------------------------------------------------------"
+    printf "%b\n" "$encontrados"
+    echo ""
+    echo "Si es un falso positivo, revisá el archivo a mano antes de forzar"
+    echo "el commit con --no-verify."
+    exit 1
+fi
+
+exit 0
