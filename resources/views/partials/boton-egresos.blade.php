@@ -151,12 +151,26 @@
         const inputNombre = document.getElementById('beneficiario_nombre');
 
         let resultadosBenef = [];
+        let indiceActivoBenef = -1;
         let beneficiariosDisponibles = proveedores.concat(staff);
 
         function limpiarSeleccionBenef() {
             inputProveedor.value = '';
             inputUsuario.value = '';
             inputNombre.value = '';
+        }
+
+        function seleccionarBenef(b) {
+            inputBenef.value = b.nombre;
+            limpiarSeleccionBenef();
+            if (b.tipo === 'proveedor') {
+                inputProveedor.value = b.id;
+            } else {
+                inputUsuario.value = b.id;
+            }
+            resultadosBenef = [];
+            indiceActivoBenef = -1;
+            renderizarBenef();
         }
 
         function renderizarBenef() {
@@ -167,21 +181,13 @@
                 return;
             }
 
-            resultadosBenef.forEach(function (b) {
+            resultadosBenef.forEach(function (b, indice) {
                 const li = document.createElement('li');
                 li.textContent = b.nombre + (b.tipo === 'proveedor' ? ' (proveedor)' : ' (staff)');
-                li.className = 'px-3 py-2 text-sm cursor-pointer hover:bg-slate-100';
+                li.className = 'px-3 py-2 text-sm cursor-pointer' + (indice === indiceActivoBenef ? ' bg-slate-100' : ' hover:bg-slate-100');
                 li.addEventListener('mousedown', function (evento) {
                     evento.preventDefault();
-                    inputBenef.value = b.nombre;
-                    limpiarSeleccionBenef();
-                    if (b.tipo === 'proveedor') {
-                        inputProveedor.value = b.id;
-                    } else {
-                        inputUsuario.value = b.id;
-                    }
-                    resultadosBenef = [];
-                    renderizarBenef();
+                    seleccionarBenef(b);
                 });
                 listaBenef.appendChild(li);
             });
@@ -192,6 +198,7 @@
         inputBenef.addEventListener('input', function () {
             limpiarSeleccionBenef();
             inputNombre.value = inputBenef.value.trim();
+            indiceActivoBenef = -1;
 
             const texto = inputBenef.value.trim().toLowerCase();
             resultadosBenef = texto === '' ? [] : beneficiariosDisponibles.filter(function (b) {
@@ -199,6 +206,45 @@
             }).slice(0, 8);
 
             renderizarBenef();
+        });
+
+        inputBenef.addEventListener('keydown', function (evento) {
+            if (evento.key === 'Enter') {
+                if (resultadosBenef.length === 0) return;
+
+                // Mientras el desplegable esté abierto, el Enter nunca debe
+                // mandar el <form> (por eso el preventDefault va siempre acá,
+                // no solo cuando hay algo para elegir): si no, un Enter con
+                // resultado ambiguo termina enviando "Registrar egreso" a
+                // medio completar en vez de no hacer nada.
+                evento.preventDefault();
+
+                // Mismo criterio que los demás buscadores del sitio:
+                // resaltado con flechas, o único resultado posible, se
+                // selecciona; si es ambiguo, no hace nada.
+                const elegido = indiceActivoBenef >= 0 ? resultadosBenef[indiceActivoBenef] : (resultadosBenef.length === 1 ? resultadosBenef[0] : null);
+
+                if (elegido) {
+                    seleccionarBenef(elegido);
+                }
+
+                return;
+            }
+
+            if (resultadosBenef.length === 0) return;
+
+            if (evento.key === 'ArrowDown') {
+                evento.preventDefault();
+                indiceActivoBenef = (indiceActivoBenef + 1) % resultadosBenef.length;
+                renderizarBenef();
+            } else if (evento.key === 'ArrowUp') {
+                evento.preventDefault();
+                indiceActivoBenef = (indiceActivoBenef - 1 + resultadosBenef.length) % resultadosBenef.length;
+                renderizarBenef();
+            } else if (evento.key === 'Escape') {
+                resultadosBenef = [];
+                renderizarBenef();
+            }
         });
 
         inputBenef.addEventListener('blur', function () {
@@ -217,7 +263,18 @@
         const inputMontoTransferencia = document.getElementById('monto_transferencia_egreso');
 
         let resultadosProd = [];
+        let indiceActivoProd = -1;
         let productoElegido = null;
+
+        function seleccionarProd(p) {
+            inputProdBuscador.value = p.nombre;
+            inputProductoId.value = p.id;
+            productoElegido = p;
+            resultadosProd = [];
+            indiceActivoProd = -1;
+            renderizarProd();
+            actualizarPreviewValor();
+        }
 
         function precioConDescuentoEmpleado(precioCatalogo) {
             if (descuentoEmpleado === null) return precioCatalogo;
@@ -250,18 +307,13 @@
                 return;
             }
 
-            resultadosProd.forEach(function (p) {
+            resultadosProd.forEach(function (p, indice) {
                 const li = document.createElement('li');
                 li.textContent = p.nombre + (p.codigo ? ' (' + p.codigo + ')' : '');
-                li.className = 'px-3 py-2 text-sm cursor-pointer hover:bg-slate-100';
+                li.className = 'px-3 py-2 text-sm cursor-pointer' + (indice === indiceActivoProd ? ' bg-slate-100' : ' hover:bg-slate-100');
                 li.addEventListener('mousedown', function (evento) {
                     evento.preventDefault();
-                    inputProdBuscador.value = p.nombre;
-                    inputProductoId.value = p.id;
-                    productoElegido = p;
-                    resultadosProd = [];
-                    renderizarProd();
-                    actualizarPreviewValor();
+                    seleccionarProd(p);
                 });
                 listaProd.appendChild(li);
             });
@@ -273,6 +325,7 @@
             inputProductoId.value = '';
             productoElegido = null;
             actualizarPreviewValor();
+            indiceActivoProd = -1;
 
             const texto = inputProdBuscador.value.trim().toLowerCase();
             resultadosProd = texto === '' ? [] : productos.filter(function (p) {
@@ -280,6 +333,40 @@
             }).slice(0, 8);
 
             renderizarProd();
+        });
+
+        inputProdBuscador.addEventListener('keydown', function (evento) {
+            if (evento.key === 'Enter') {
+                if (resultadosProd.length === 0) return;
+
+                // Mismo motivo que en el buscador de beneficiario: el
+                // preventDefault va siempre que haya desplegable abierto,
+                // no solo cuando hay algo para elegir.
+                evento.preventDefault();
+
+                const elegido = indiceActivoProd >= 0 ? resultadosProd[indiceActivoProd] : (resultadosProd.length === 1 ? resultadosProd[0] : null);
+
+                if (elegido) {
+                    seleccionarProd(elegido);
+                }
+
+                return;
+            }
+
+            if (resultadosProd.length === 0) return;
+
+            if (evento.key === 'ArrowDown') {
+                evento.preventDefault();
+                indiceActivoProd = (indiceActivoProd + 1) % resultadosProd.length;
+                renderizarProd();
+            } else if (evento.key === 'ArrowUp') {
+                evento.preventDefault();
+                indiceActivoProd = (indiceActivoProd - 1 + resultadosProd.length) % resultadosProd.length;
+                renderizarProd();
+            } else if (evento.key === 'Escape') {
+                resultadosProd = [];
+                renderizarProd();
+            }
         });
 
         inputProdBuscador.addEventListener('blur', function () {
