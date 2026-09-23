@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\AyudaController;
 use App\Http\Controllers\CajaController;
 use App\Http\Controllers\CajaSesionController;
 use App\Http\Controllers\CarritoController;
@@ -57,6 +58,12 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware(['cuenta.activa', 'sesion.actividad'])->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+        Route::prefix('ayuda')->name('ayuda.')->group(function () {
+            Route::get('/', [AyudaController::class, 'index'])->name('index');
+            Route::get('/{seccion}', [AyudaController::class, 'seccion'])->name('seccion');
+            Route::get('/{seccion}/{tema}', [AyudaController::class, 'tema'])->name('tema');
+        });
 
         Route::prefix('staff')->name('staff.')->middleware('role:admin')->group(function () {
             Route::get('/', [StaffController::class, 'index'])->name('index');
