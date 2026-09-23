@@ -88,9 +88,35 @@ class ReposicionStockController extends Controller
             ->with('status', 'Stock repuesto: '.$reposicion->items()->count().' producto(s) actualizado(s).');
     }
 
+    public function deshacer(Request $request, ReposicionStock $reposicion): RedirectResponse
+    {
+        $this->autorizar($request, $reposicion);
+
+        if ($reposicion->fueRevertida()) {
+            return back()->withErrors(['reposicion' => 'Esta reposición ya fue revertida.']);
+        }
+
+        DB::transaction(function () use ($reposicion) {
+            foreach ($reposicion->items as $item) {
+                if ($item->producto_id) {
+                    // Resta lo agregado, no vuelve a "cantidad_anterior": si
+                    // hubo ventas u otra reposición después de esta, pisar
+                    // el stock actual con el valor viejo borraría esos
+                    // movimientos posteriores. Restar lo agregado deshace
+                    // solo lo que este lote sumó, sea cual sea el stock hoy.
+                    Producto::where('id', $item->producto_id)->decrement('stock', $item->cantidad_agregada);
+                }
+            }
+
+            $reposicion->update(['revertida_at' => now()]);
+        });
+
+        return redirect()->route('productos.reposiciones.index')->with('status', 'Reposición revertida.');
+    }
+
     /**
-     * Reemplaza al viejo "deshacer todo o nada": corrige un lote ya
-     * guardado línea por línea. Cada línea puede venir con una cantidad
+     * Botón "Editar reposición" — corrige un lote ya guardado línea por
+     * línea. Cada línea puede venir con una cantidad
      * nueva (se ajusta el stock por la diferencia, no se vuelve a sumar
      * todo de nuevo) o directamente no venir más en `items` (se borra esa
      * línea y se le resta al stock lo que esa línea había sumado). Si al
