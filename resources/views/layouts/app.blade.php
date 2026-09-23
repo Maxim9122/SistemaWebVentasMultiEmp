@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('titulo', 'Panel') · {{ config('app.name') }}</title>
+    <link rel="icon" href="{{ \App\Models\User::iconoSitioUrlEstatico() ?? asset('favicon.ico') }}">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -13,9 +14,14 @@
                 <div class="text-lg font-semibold text-white">
                     {{ config('app.name') }}<sup class="text-[10px] font-normal text-slate-400 ml-0.5">TM</sup>
                 </div>
-                @if ($logoEmpresa = auth()->user()?->empresa?->logoUrl())
-                    <img src="{{ $logoEmpresa }}" alt="Logo de {{ auth()->user()->empresa->razon_social }}"
-                        class="mt-3 w-12 h-12 object-cover rounded-xl border border-slate-700">
+                @if (auth()->user()?->empresa)
+                    <div class="mt-3 flex items-center gap-2 min-w-0">
+                        @if ($logoEmpresa = auth()->user()->empresa->logoUrl())
+                            <img src="{{ $logoEmpresa }}" alt="Logo de {{ auth()->user()->empresa->razon_social }}"
+                                class="w-12 h-12 object-cover rounded-xl border border-slate-700 shrink-0">
+                        @endif
+                        <span class="text-sm font-medium text-slate-200 truncate">{{ auth()->user()->empresa->razon_social }}</span>
+                    </div>
                 @endif
             </div>
             <nav class="flex-1 px-3 py-4 space-y-1 text-sm">

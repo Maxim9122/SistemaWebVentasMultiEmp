@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('titulo', 'Acceder') · {{ config('app.name') }}</title>
+    <link rel="icon" href="{{ \App\Models\User::iconoSitioUrlEstatico() ?? asset('favicon.ico') }}">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex items-center justify-center py-10">

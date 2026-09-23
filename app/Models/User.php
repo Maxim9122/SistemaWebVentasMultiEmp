@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable
 {
@@ -30,6 +31,7 @@ class User extends Authenticatable
         'role',
         'activo',
         'puede_cambiar_precio_venta',
+        'icono_sitio_path',
     ];
 
     /**
@@ -80,6 +82,22 @@ class User extends Authenticatable
     public function esSuperadmin(): bool
     {
         return $this->role === 'superadmin';
+    }
+
+    public function iconoSitioUrl(): ?string
+    {
+        return $this->icono_sitio_path ? Storage::disk('public')->url($this->icono_sitio_path) : null;
+    }
+
+    /**
+     * El ícono configurable vive en el superadmin (es del sitio entero, no
+     * por empresa) — se resuelve así, en vez de depender de quién está
+     * logueado, para que se vea igual en /login y en cualquier página,
+     * esté quien esté (o nadie) autenticado.
+     */
+    public static function iconoSitioUrlEstatico(): ?string
+    {
+        return static::where('role', 'superadmin')->first()?->iconoSitioUrl();
     }
 
     public function empresaActiva(): bool

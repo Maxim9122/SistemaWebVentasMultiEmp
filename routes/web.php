@@ -252,6 +252,8 @@ Route::middleware('auth')->group(function () {
     Route::prefix('superadmin')->name('superadmin.')->middleware('role:superadmin')->group(function () {
         Route::get('/perfil', [SuperadminPerfilController::class, 'edit'])->name('perfil.edit');
         Route::put('/perfil', [SuperadminPerfilController::class, 'update'])->name('perfil.update');
+        Route::put('/perfil/icono', [SuperadminPerfilController::class, 'actualizarIcono'])->name('perfil.icono.update');
+        Route::delete('/perfil/icono', [SuperadminPerfilController::class, 'eliminarIcono'])->name('perfil.icono.destroy');
 
         Route::get('/empresas', [SuperadminEmpresaController::class, 'index'])->name('empresas.index');
         Route::get('/empresas/{empresa}', [SuperadminEmpresaController::class, 'show'])->name('empresas.show');
