@@ -4,32 +4,70 @@
 
 @section('contenido')
     <div class="mb-4 flex flex-wrap justify-end gap-2">
-        <a href="{{ route('productos.proveedores.index') }}" class="rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+        <a href="{{ route('productos.proveedores.index') }}" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                <rect x="1" y="7" width="13" height="9" rx="1"/>
+                <path d="M14 10h4l3 3v3h-3"/>
+                <circle cx="6" cy="18" r="1.5"/>
+                <circle cx="16.5" cy="18" r="1.5"/>
+            </svg>
             Proveedores
         </a>
-        <a href="{{ route('productos.importaciones.index') }}" class="rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+        <a href="{{ route('productos.importaciones.index') }}" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                <path d="M12 3v10m0 0-3.5-3.5M12 13l3.5-3.5"/>
+                <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+            </svg>
             Importaciones
         </a>
-        <a href="{{ route('productos.reposiciones.index') }}" class="rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+        <a href="{{ route('productos.reposiciones.index') }}" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 7v5l3 3"/>
+            </svg>
             Reposiciones
         </a>
-        <button type="button" id="btn_abrir_reponer_stock" class="rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+        <button type="button" id="btn_abrir_reponer_stock" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                <rect x="3" y="8" width="18" height="12" rx="1"/>
+                <path d="M3 8l2-4h14l2 4"/>
+                <path d="M12 12v4M10 14h4"/>
+            </svg>
             Reponer stock
         </button>
-        <a href="{{ route('productos.grupos.index') }}" class="rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+        <a href="{{ route('productos.grupos.index') }}" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                <path d="M4 4h7l9 9-7 7-9-9V4z"/>
+                <circle cx="8.5" cy="8.5" r="1" fill="currentColor" stroke="none"/>
+            </svg>
             Grupos
         </a>
-        <a href="{{ route('productos.importar.subir') }}" class="rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+        <a href="{{ route('productos.importar.subir') }}" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                <rect x="3" y="4" width="18" height="16" rx="1"/>
+                <path d="M3 9h18M3 14h18M9 4v16M15 4v16"/>
+            </svg>
             Importar desde Excel
         </a>
-        <button type="button" id="btn_exportar_productos" class="rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+        <button type="button" id="btn_exportar_productos" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                <path d="M12 4v10m0 0-3.5-3.5M12 14l3.5-3.5"/>
+                <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+            </svg>
             Descargar Excel
         </button>
-        <button type="button" id="btn_exportar_pdf_productos" class="rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+        <button type="button" id="btn_exportar_pdf_productos" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                <path d="M12 4v10m0 0-3.5-3.5M12 14l3.5-3.5"/>
+                <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+            </svg>
             Descargar PDF
         </button>
-        <a href="{{ route('productos.create') }}" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
-            + Nuevo producto
+        <a href="{{ route('productos.create') }}" class="inline-flex items-center gap-1.5 rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Nuevo producto
         </a>
     </div>
 
@@ -54,7 +92,11 @@
         <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
             <div class="flex items-center justify-between px-6 py-4 border-b">
                 <h2 class="text-lg font-semibold" id="titulo_reponer_stock">Reponer stock</h2>
-                <button type="button" id="btn_cerrar_reponer_stock" class="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
+                <button type="button" id="btn_cerrar_reponer_stock" class="text-slate-400 hover:text-slate-600 p-1" aria-label="Cerrar">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                        <path d="M6 6l12 12M18 6L6 18"/>
+                    </svg>
+                </button>
             </div>
 
             <div class="px-6 py-4 overflow-y-auto flex-1 space-y-4">
@@ -95,10 +137,18 @@
                 class="px-6 py-4 border-t flex items-center justify-end gap-3">
                 @csrf
                 <div id="reponer_stock_inputs_ocultos"></div>
-                <button type="button" id="btn_cancelar_reponer_stock" class="text-sm text-slate-500 hover:underline">Cancelar</button>
+                <button type="button" id="btn_cancelar_reponer_stock" class="inline-flex items-center gap-1 text-sm text-slate-500 hover:underline">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                        <path d="M6 6l12 12M18 6L6 18"/>
+                    </svg>
+                    Cancelar
+                </button>
                 <button type="submit" id="btn_guardar_reponer_stock" disabled
-                    class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed">
-                    Guardar reposición
+                    class="inline-flex items-center gap-1.5 rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                        <path d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <span id="texto_btn_guardar_reponer_stock">Guardar reposición</span>
                 </button>
             </form>
         </div>
@@ -503,6 +553,7 @@
             const listaAgregados = document.getElementById('lista_reponer_stock');
             const filaVacia = document.getElementById('lista_reponer_stock_vacia');
             const btnGuardar = document.getElementById('btn_guardar_reponer_stock');
+            const textoBtnGuardar = document.getElementById('texto_btn_guardar_reponer_stock');
             const form = document.getElementById('form_reponer_stock');
             const inputsOcultos = document.getElementById('reponer_stock_inputs_ocultos');
             const selectProveedor = document.getElementById('reponer_stock_proveedor');
@@ -533,7 +584,7 @@
                 selectProveedor.value = '';
                 inputNota.value = '';
                 titulo.textContent = 'Reponer stock';
-                btnGuardar.textContent = 'Guardar reposición';
+                textoBtnGuardar.textContent = 'Guardar reposición';
                 actualizarBotonGuardar();
             }
 
@@ -541,7 +592,7 @@
                 resetearModal();
                 reposicionEditandoId = datos.id;
                 titulo.textContent = 'Editar reposición';
-                btnGuardar.textContent = 'Guardar cambios';
+                textoBtnGuardar.textContent = 'Guardar cambios';
                 selectProveedor.value = datos.proveedor_id || '';
                 inputNota.value = datos.nota || '';
 

@@ -24,13 +24,22 @@
                     Revertida el {{ $reposicion->revertida_at->format('d/m/Y H:i') }}
                 </span>
             @else
-                <a href="{{ route('productos.index', ['editar_reposicion' => $reposicion->id]) }}" class="text-sm text-slate-600 hover:underline">
+                <a href="{{ route('productos.index', ['editar_reposicion' => $reposicion->id]) }}" class="inline-flex items-center gap-1 text-sm text-slate-600 hover:underline">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                    </svg>
                     Editar reposición
                 </a>
                 <form method="POST" action="{{ route('productos.reposiciones.deshacer', $reposicion) }}"
                     onsubmit="return confirm('¿Deshacer esta reposición entera? Se le va a restar a cada producto la cantidad que se sumó acá. El historial sigue mostrándose, no se borra. Esta acción no se puede deshacer.');">
                     @csrf
-                    <button type="submit" class="text-sm text-red-600 hover:underline">Deshacer reposición</button>
+                    <button type="submit" class="inline-flex items-center gap-1 text-sm text-red-600 hover:underline">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                            <path d="M9 14 4 9l5-5"/>
+                            <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>
+                        </svg>
+                        Deshacer reposición
+                    </button>
                 </form>
             @endif
         </div>
