@@ -9,20 +9,31 @@
 </head>
 <body class="bg-slate-50 text-slate-900">
     <div class="h-screen flex overflow-hidden">
-        <aside class="w-60 shrink-0 bg-slate-900 text-slate-200 flex flex-col overflow-y-auto">
-            <div class="px-5 py-4 border-b border-slate-800">
-                <div class="text-lg font-semibold text-white">
-                    {{ config('app.name') }}<sup class="text-[10px] font-normal text-slate-400 ml-0.5">TM</sup>
-                </div>
-                @if (auth()->user()?->empresa)
-                    <div class="mt-3 flex items-center gap-2 min-w-0">
-                        @if ($logoEmpresa = auth()->user()->empresa->logoUrl())
-                            <img src="{{ $logoEmpresa }}" alt="Logo de {{ auth()->user()->empresa->razon_social }}"
-                                class="w-12 h-12 object-cover rounded-xl border border-slate-700 shrink-0">
-                        @endif
-                        <span class="text-sm font-medium text-slate-200 truncate">{{ auth()->user()->empresa->razon_social }}</span>
+        <div id="fondo_menu" onclick="cerrarMenu()" class="hidden fixed inset-0 bg-black/50 z-30 md:hidden"></div>
+
+        <aside id="menu_lateral" class="w-60 shrink-0 bg-slate-900 text-slate-200 flex flex-col overflow-y-auto
+            fixed inset-y-0 left-0 z-40 -translate-x-full transition-transform duration-200
+            md:static md:translate-x-0 md:z-auto">
+            <div class="px-5 py-4 border-b border-slate-800 flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <div class="text-lg font-semibold text-white">
+                        {{ config('app.name') }}<sup class="text-[10px] font-normal text-slate-400 ml-0.5">TM</sup>
                     </div>
-                @endif
+                    @if (auth()->user()?->empresa)
+                        <div class="mt-3 flex items-center gap-2 min-w-0">
+                            @if ($logoEmpresa = auth()->user()->empresa->logoUrl())
+                                <img src="{{ $logoEmpresa }}" alt="Logo de {{ auth()->user()->empresa->razon_social }}"
+                                    class="w-12 h-12 object-cover rounded-xl border border-slate-700 shrink-0">
+                            @endif
+                            <span class="text-sm font-medium text-slate-200 truncate">{{ auth()->user()->empresa->razon_social }}</span>
+                        </div>
+                    @endif
+                </div>
+                <button type="button" onclick="cerrarMenu()" class="md:hidden shrink-0 text-slate-400 hover:text-white p-1" aria-label="Cerrar menú">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
             <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
                 @if (auth()->user()?->esSuperadmin())
@@ -58,8 +69,15 @@
         </aside>
 
         <div class="flex-1 flex flex-col min-w-0">
-            <header class="shrink-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-                <h1 class="text-xl font-semibold">@yield('titulo', 'Panel')</h1>
+            <header class="shrink-0 bg-white border-b px-4 md:px-6 py-4 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3 min-w-0">
+                    <button type="button" onclick="abrirMenu()" class="md:hidden shrink-0 text-slate-600 hover:text-slate-900 p-1 -ml-1" aria-label="Abrir menú">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    <h1 class="text-xl font-semibold truncate">@yield('titulo', 'Panel')</h1>
+                </div>
                 @auth
                     <div class="flex items-center gap-4">
                         <span class="text-sm text-slate-500">{{ auth()->user()->empresa->razon_social ?? auth()->user()->email }}</span>
@@ -129,5 +147,16 @@
             'productosEgreso' => \App\Models\Producto::where('empresa_id', $empresaEgreso->id)->where('activo', true)->orderBy('nombre')->get(),
         ])
     @endif
+
+    <script>
+        function abrirMenu() {
+            document.getElementById('menu_lateral').classList.remove('-translate-x-full');
+            document.getElementById('fondo_menu').classList.remove('hidden');
+        }
+        function cerrarMenu() {
+            document.getElementById('menu_lateral').classList.add('-translate-x-full');
+            document.getElementById('fondo_menu').classList.add('hidden');
+        }
+    </script>
 </body>
 </html>
