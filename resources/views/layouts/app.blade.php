@@ -41,6 +41,7 @@
                     <a href="{{ route('superadmin.perfil.edit') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('superadmin.perfil.*') ? 'bg-slate-800 text-white' : '' }}">Mi perfil</a>
                 @else
                     <a href="{{ route('dashboard') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('dashboard') ? 'bg-slate-800 text-white' : '' }}">Resumen</a>
+                    <a href="{{ route('ayuda.index') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('ayuda.*') ? 'bg-slate-800 text-white' : '' }}">Ayuda</a>
                     @if (in_array(auth()->user()->role, ['vendedor', 'cajero_vendedor']))
                         <a href="{{ route('carritos.index') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('carritos.*') ? 'bg-slate-800 text-white' : '' }}">Carritos</a>
                     @endif
@@ -125,6 +126,10 @@
             </footer>
         </div>
     </div>
+
+    @if (auth()->user() && ! auth()->user()->esSuperadmin())
+        @include('partials.ayuda-flotante')
+    @endif
 
     @if (session('pedido_comprobante_listo_id') && auth()->user()?->empresa?->mostrar_modal_comprobante)
         @php $pedidoListo = \App\Models\Pedido::with('factura')->find(session('pedido_comprobante_listo_id')); @endphp
