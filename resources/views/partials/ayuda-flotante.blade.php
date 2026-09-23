@@ -9,14 +9,14 @@
     sección/tema.
 --}}
 <button type="button" id="ayuda_flotante_boton" onclick="abrirAyudaFlotante()"
-    class="fixed bottom-5 right-5 z-40 w-12 h-12 rounded-full bg-slate-900 text-white shadow-lg hover:bg-slate-800 flex items-center justify-center"
+    class="fixed bottom-10 right-5 z-40 w-9 h-9 rounded-full bg-slate-900 text-white shadow-lg hover:bg-slate-800 flex items-center justify-center"
     aria-label="Abrir ayuda">
-    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
 </button>
 
-<div id="ayuda_flotante_panel" class="hidden fixed bottom-5 right-5 z-40 w-[90vw] max-w-sm h-[30rem] max-h-[70vh] bg-white rounded-lg shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
+<div id="ayuda_flotante_panel" class="hidden fixed bottom-10 right-5 z-40 w-[90vw] max-w-sm h-[30rem] max-h-[70vh] bg-white rounded-lg shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
     <div class="shrink-0 flex items-center justify-between px-3 py-2 bg-slate-900 text-white">
         <span class="text-sm font-medium">Ayuda</span>
         <button type="button" onclick="cerrarAyudaFlotante()" class="text-slate-300 hover:text-white p-1" aria-label="Cerrar ayuda">
