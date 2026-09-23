@@ -53,7 +53,7 @@
     <div id="modal_reponer_stock" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40 p-4">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
             <div class="flex items-center justify-between px-6 py-4 border-b">
-                <h2 class="text-lg font-semibold">Reponer stock</h2>
+                <h2 class="text-lg font-semibold" id="titulo_reponer_stock">Reponer stock</h2>
                 <button type="button" id="btn_cerrar_reponer_stock" class="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
             </div>
 
@@ -89,7 +89,10 @@
                 </div>
             </div>
 
-            <form method="POST" action="{{ route('productos.reposiciones.store') }}" id="form_reponer_stock" class="px-6 py-4 border-t flex items-center justify-end gap-3">
+            <form method="POST" action="{{ route('productos.reposiciones.store') }}" id="form_reponer_stock"
+                data-url-store="{{ route('productos.reposiciones.store') }}"
+                data-url-update-template="{{ route('productos.reposiciones.update', ['reposicion' => '__ID__']) }}"
+                class="px-6 py-4 border-t flex items-center justify-end gap-3">
                 @csrf
                 <div id="reponer_stock_inputs_ocultos"></div>
                 <button type="button" id="btn_cancelar_reponer_stock" class="text-sm text-slate-500 hover:underline">Cancelar</button>
@@ -488,9 +491,11 @@
 
         (function () {
             const productos = @json($productosParaReponer);
+            const reposicionParaEditar = @json($reposicionParaEditar);
 
             const boton = document.getElementById('btn_abrir_reponer_stock');
             const modal = document.getElementById('modal_reponer_stock');
+            const titulo = document.getElementById('titulo_reponer_stock');
             const btnCerrar = document.getElementById('btn_cerrar_reponer_stock');
             const btnCancelar = document.getElementById('btn_cancelar_reponer_stock');
             const input = document.getElementById('buscador_reponer_stock');
@@ -500,9 +505,12 @@
             const btnGuardar = document.getElementById('btn_guardar_reponer_stock');
             const form = document.getElementById('form_reponer_stock');
             const inputsOcultos = document.getElementById('reponer_stock_inputs_ocultos');
+            const selectProveedor = document.getElementById('reponer_stock_proveedor');
+            const inputNota = document.getElementById('reponer_stock_nota');
 
             let resultados = [];
             let indiceActivo = -1;
+            let reposicionEditandoId = null; // null = creando una reposición nueva
             const agregados = new Map(); // producto_id -> { inputCantidad }
 
             function abrirModal() {
@@ -514,11 +522,56 @@
             function cerrarModal() {
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
+                resetearModal();
+            }
+
+            function resetearModal() {
+                reposicionEditandoId = null;
+                agregados.clear();
+                listaAgregados.querySelectorAll('div.flex').forEach(function (fila) { fila.remove(); });
+                filaVacia.classList.remove('hidden');
+                selectProveedor.value = '';
+                inputNota.value = '';
+                titulo.textContent = 'Reponer stock';
+                btnGuardar.textContent = 'Guardar reposición';
+                actualizarBotonGuardar();
+            }
+
+            function entrarModoEdicion(datos) {
+                resetearModal();
+                reposicionEditandoId = datos.id;
+                titulo.textContent = 'Editar reposición';
+                btnGuardar.textContent = 'Guardar cambios';
+                selectProveedor.value = datos.proveedor_id || '';
+                inputNota.value = datos.nota || '';
+
+                datos.items.forEach(function (item) {
+                    const productoConocido = productos.find(function (p) { return p.id === item.producto_id; });
+                    agregarProducto({
+                        id: item.producto_id,
+                        nombre: item.nombre,
+                        codigo: productoConocido ? productoConocido.codigo : null,
+                        stock: productoConocido ? productoConocido.stock : null,
+                    }, item.cantidad);
+                });
+
+                actualizarBotonGuardar();
+                abrirModal();
             }
 
             boton.addEventListener('click', abrirModal);
             btnCerrar.addEventListener('click', cerrarModal);
             btnCancelar.addEventListener('click', cerrarModal);
+
+            if (reposicionParaEditar) {
+                entrarModoEdicion(reposicionParaEditar);
+
+                // Sacar el ?editar_reposicion=… de la URL una vez abierto,
+                // para que un F5 no reabra el modal de nuevo solo.
+                const url = new URL(window.location.href);
+                url.searchParams.delete('editar_reposicion');
+                window.history.replaceState({}, '', url);
+            }
 
             function renderizarResultados() {
                 lista.innerHTML = '';
@@ -543,6 +596,14 @@
             }
 
             function actualizarBotonGuardar() {
+                // Editando, se puede guardar igual con la lista en cero (es
+                // sacar todas las líneas una por una = deshacer completo).
+                // Creando, hace falta al menos una cantidad cargada.
+                if (reposicionEditandoId !== null) {
+                    btnGuardar.disabled = false;
+                    return;
+                }
+
                 let hayAlgunaCantidad = false;
 
                 agregados.forEach(function (entrada) {
@@ -552,7 +613,7 @@
                 btnGuardar.disabled = !hayAlgunaCantidad;
             }
 
-            function agregarProducto(producto) {
+            function agregarProducto(producto, cantidadInicial) {
                 input.value = '';
                 resultados = [];
                 indiceActivo = -1;
@@ -575,12 +636,13 @@
                 const info = document.createElement('div');
                 info.className = 'flex-1 text-sm';
                 info.innerHTML = '<p class="font-medium">' + producto.nombre + '</p>'
-                    + '<p class="text-slate-500 text-xs">Stock actual: ' + producto.stock + '</p>';
+                    + '<p class="text-slate-500 text-xs">Stock actual: ' + (producto.stock !== null && producto.stock !== undefined ? producto.stock : '—') + '</p>';
 
                 const inputCantidad = document.createElement('input');
                 inputCantidad.type = 'number';
                 inputCantidad.min = '1';
                 inputCantidad.placeholder = 'Cantidad que llegó';
+                if (cantidadInicial) inputCantidad.value = cantidadInicial;
                 inputCantidad.className = 'w-40 rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500';
                 inputCantidad.addEventListener('input', actualizarBotonGuardar);
 
@@ -655,7 +717,20 @@
             form.addEventListener('submit', function (evento) {
                 inputsOcultos.innerHTML = '';
 
-                const proveedorId = document.getElementById('reponer_stock_proveedor').value;
+                const editando = reposicionEditandoId !== null;
+                form.action = editando
+                    ? form.dataset.urlUpdateTemplate.replace('__ID__', reposicionEditandoId)
+                    : form.dataset.urlStore;
+
+                if (editando) {
+                    const inputMetodo = document.createElement('input');
+                    inputMetodo.type = 'hidden';
+                    inputMetodo.name = '_method';
+                    inputMetodo.value = 'PUT';
+                    inputsOcultos.appendChild(inputMetodo);
+                }
+
+                const proveedorId = selectProveedor.value;
                 if (proveedorId) {
                     const inputProveedor = document.createElement('input');
                     inputProveedor.type = 'hidden';
@@ -664,13 +739,13 @@
                     inputsOcultos.appendChild(inputProveedor);
                 }
 
-                const nota = document.getElementById('reponer_stock_nota').value.trim();
+                const nota = inputNota.value.trim();
                 if (nota) {
-                    const inputNota = document.createElement('input');
-                    inputNota.type = 'hidden';
-                    inputNota.name = 'nota';
-                    inputNota.value = nota;
-                    inputsOcultos.appendChild(inputNota);
+                    const inputNotaOculto = document.createElement('input');
+                    inputNotaOculto.type = 'hidden';
+                    inputNotaOculto.name = 'nota';
+                    inputNotaOculto.value = nota;
+                    inputsOcultos.appendChild(inputNotaOculto);
                 }
 
                 let indice = 0;
@@ -694,7 +769,11 @@
                     indice++;
                 });
 
-                if (indice === 0) {
+                // Al crear, hace falta al menos un producto. Al editar, dejar
+                // la lista en cero es válido (equivale a "deshacer" línea por
+                // línea hasta no dejar nada) — el backend lo interpreta como
+                // la reposición revertida entera.
+                if (indice === 0 && !editando) {
                     evento.preventDefault();
                     alert('Cargá alguna cantidad antes de guardar.');
                 }

@@ -140,6 +140,7 @@ Route::middleware('auth')->group(function () {
                 Route::get('/', [ReposicionStockController::class, 'index'])->name('index');
                 Route::post('/', [ReposicionStockController::class, 'store'])->name('store');
                 Route::get('/{reposicion}', [ReposicionStockController::class, 'show'])->name('show');
+                Route::put('/{reposicion}', [ReposicionStockController::class, 'update'])->name('update');
                 Route::post('/{reposicion}/deshacer', [ReposicionStockController::class, 'deshacer'])->name('deshacer');
             });
 

@@ -18,14 +18,17 @@
             <p class="text-sm text-slate-500">Nota: {{ $reposicion->nota }}</p>
         @endif
 
-        <div class="mt-3">
+        <div class="mt-3 flex items-center gap-4">
             @if ($reposicion->fueRevertida())
                 <span class="text-xs font-medium rounded px-2 py-1 bg-slate-200 text-slate-700">
                     Revertida el {{ $reposicion->revertida_at->format('d/m/Y H:i') }}
                 </span>
             @else
+                <a href="{{ route('productos.index', ['editar_reposicion' => $reposicion->id]) }}" class="text-sm text-slate-600 hover:underline">
+                    Editar reposición
+                </a>
                 <form method="POST" action="{{ route('productos.reposiciones.deshacer', $reposicion) }}"
-                    onsubmit="return confirm('¿Deshacer esta reposición? Se le va a restar a cada producto la cantidad que se sumó acá. Esta acción no se puede deshacer.');">
+                    onsubmit="return confirm('¿Deshacer esta reposición entera? Se le va a restar a cada producto la cantidad que se sumó acá. El historial sigue mostrándose, no se borra. Esta acción no se puede deshacer.');">
                     @csrf
                     <button type="submit" class="text-sm text-red-600 hover:underline">Deshacer reposición</button>
                 </form>

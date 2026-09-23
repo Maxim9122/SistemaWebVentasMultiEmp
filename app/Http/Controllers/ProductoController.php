@@ -6,6 +6,7 @@ use App\Http\Requests\GuardarProductoRequest;
 use App\Models\GrupoProducto;
 use App\Models\Producto;
 use App\Models\Proveedor;
+use App\Models\ReposicionStock;
 use App\Services\ExportadorProductosExcel;
 use App\Services\ReportePdfService;
 use Illuminate\Database\Eloquent\Builder;
@@ -68,7 +69,38 @@ class ProductoController extends Controller
                 ->where('activo', true)
                 ->orderBy('nombre')
                 ->get(['id', 'nombre', 'codigo', 'stock']),
+            // Si se viene desde "Editar reposición" (botón en
+            // productos.reposiciones.show), el modal de reponer stock se
+            // abre solo, ya cargado con las líneas de ese lote.
+            'reposicionParaEditar' => $this->reposicionParaEditar($request, $empresaId),
         ]);
+    }
+
+    private function reposicionParaEditar(Request $request, int $empresaId): ?array
+    {
+        if (! $request->filled('editar_reposicion')) {
+            return null;
+        }
+
+        $reposicion = ReposicionStock::where('id', $request->input('editar_reposicion'))
+            ->where('empresa_id', $empresaId)
+            ->with('items')
+            ->first();
+
+        if (! $reposicion || $reposicion->fueRevertida()) {
+            return null;
+        }
+
+        return [
+            'id' => $reposicion->id,
+            'proveedor_id' => $reposicion->proveedor_id,
+            'nota' => $reposicion->nota,
+            'items' => $reposicion->items->map(fn ($item) => [
+                'producto_id' => $item->producto_id,
+                'nombre' => $item->nombre_producto,
+                'cantidad' => $item->cantidad_agregada,
+            ]),
+        ];
     }
 
     public function exportar(Request $request): StreamedResponse
