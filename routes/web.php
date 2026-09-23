@@ -24,6 +24,7 @@ use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ProductoImportController;
 use App\Http\Controllers\PromocionController;
 use App\Http\Controllers\ProveedorController;
+use App\Http\Controllers\ReposicionStockController;
 use App\Http\Controllers\RegistroEmpresaController;
 use App\Http\Controllers\ReporteProductoController;
 use App\Http\Controllers\SeguridadAccesoController;
@@ -133,6 +134,13 @@ Route::middleware('auth')->group(function () {
             Route::prefix('importaciones')->name('importaciones.')->group(function () {
                 Route::get('/', [ImportacionProductoController::class, 'index'])->name('index');
                 Route::post('/{importacion}/deshacer', [ImportacionProductoController::class, 'deshacer'])->name('deshacer');
+            });
+
+            Route::prefix('reposiciones')->name('reposiciones.')->group(function () {
+                Route::get('/', [ReposicionStockController::class, 'index'])->name('index');
+                Route::post('/', [ReposicionStockController::class, 'store'])->name('store');
+                Route::get('/{reposicion}', [ReposicionStockController::class, 'show'])->name('show');
+                Route::post('/{reposicion}/deshacer', [ReposicionStockController::class, 'deshacer'])->name('deshacer');
             });
 
             Route::prefix('promociones')->name('promociones.')->group(function () {

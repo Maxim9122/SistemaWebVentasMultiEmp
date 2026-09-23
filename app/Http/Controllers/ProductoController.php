@@ -60,6 +60,14 @@ class ProductoController extends Controller
             'marcasDisponibles' => Producto::where('empresa_id', $empresaId)->whereNotNull('marca')->where('marca', '!=', '')->distinct()->orderBy('marca')->pluck('marca'),
             'categoriasDisponibles' => Producto::where('empresa_id', $empresaId)->whereNotNull('categoria')->where('categoria', '!=', '')->distinct()->orderBy('categoria')->pluck('categoria'),
             'proveedoresDisponibles' => Proveedor::where('empresa_id', $empresaId)->orderBy('nombre')->get(['id', 'nombre']),
+            // Lista completa (no paginada) para el buscador del modal de
+            // "Reponer stock" — a diferencia de $productos de arriba, acá
+            // hace falta poder encontrar cualquier producto sin importar en
+            // qué página/filtro esté parado el listado.
+            'productosParaReponer' => Producto::where('empresa_id', $empresaId)
+                ->where('activo', true)
+                ->orderBy('nombre')
+                ->get(['id', 'nombre', 'codigo', 'stock']),
         ]);
     }
 
