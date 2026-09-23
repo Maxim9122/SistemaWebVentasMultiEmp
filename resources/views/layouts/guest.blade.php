@@ -53,5 +53,7 @@
             @endif
         @endif
     </footer>
+
+    @include('partials.evitar-doble-envio')
 </body>
 </html>

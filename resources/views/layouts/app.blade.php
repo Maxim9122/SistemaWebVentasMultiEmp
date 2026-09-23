@@ -158,5 +158,6 @@
             document.getElementById('fondo_menu').classList.add('hidden');
         }
     </script>
+    @include('partials.evitar-doble-envio')
 </body>
 </html>
