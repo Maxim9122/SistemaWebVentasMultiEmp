@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TieneTelefonoWhatsapp;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Cliente extends Model
 {
-    use HasFactory;
+    use HasFactory, TieneTelefonoWhatsapp;
 
     protected $fillable = [
         'empresa_id',
@@ -69,24 +70,6 @@ class Cliente extends Model
     public function saldoPendiente(): float
     {
         return round($this->totalFiado() - $this->totalPagadoCredito(), 2);
-    }
-
-    /**
-     * Los 10 dígitos "de WhatsApp" (área + número, sin 0 ni 15 ni el 54/9 de
-     * país) para precargar el campo de envío por WhatsApp — sea cual sea el
-     * formato en que se haya cargado `telefono` (con o sin código de país,
-     * con espacios/guiones), alcanza con quedarse con los últimos 10 dígitos.
-     * Devuelve null si no hay teléfono cargado.
-     */
-    public function telefonoSoloDigitos(): ?string
-    {
-        if (blank($this->telefono)) {
-            return null;
-        }
-
-        $digitos = preg_replace('/\D+/', '', $this->telefono);
-
-        return $digitos !== '' ? substr($digitos, -10) : null;
     }
 
     /**

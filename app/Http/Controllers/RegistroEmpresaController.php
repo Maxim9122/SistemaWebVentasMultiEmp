@@ -17,7 +17,7 @@ class RegistroEmpresaController extends Controller
 
     public function store(RegistrarEmpresaRequest $request): View
     {
-        DB::transaction(function () use ($request): void {
+        $empresa = DB::transaction(function () use ($request): Empresa {
             $empresa = Empresa::create([
                 'razon_social' => $request->validated('razon_social'),
                 'cuit' => $request->validated('cuit'),
@@ -35,8 +35,13 @@ class RegistroEmpresaController extends Controller
                 'email' => $request->validated('admin_email'),
                 'password' => $request->validated('admin_password'),
             ]);
+
+            return $empresa;
         });
 
-        return view('empresas.registro-enviado');
+        return view('empresas.registro-enviado', [
+            'empresa' => $empresa,
+            'superadmin' => User::where('role', 'superadmin')->first(),
+        ]);
     }
 }
