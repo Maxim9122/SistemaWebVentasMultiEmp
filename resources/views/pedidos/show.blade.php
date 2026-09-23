@@ -46,7 +46,8 @@
                     Pasar a caja
                 </button>
             </form>
-            <form method="POST" action="{{ route('pedidos.cancelar', $pedido) }}">
+            <form method="POST" action="{{ route('pedidos.cancelar', $pedido) }}"
+                onsubmit="return confirm('¿Cancelar este pedido programado? No se puede deshacer.');">
                 @csrf
                 <button type="submit" class="rounded px-4 py-2 text-sm font-medium text-red-600 hover:underline">
                     Cancelar

@@ -63,7 +63,8 @@
                         @csrf
                         <button type="submit" class="text-sm text-slate-600 hover:underline">Pasar a caja</button>
                     </form>
-                    <form method="POST" action="{{ route('pedidos.cancelar', $pedido) }}">
+                    <form method="POST" action="{{ route('pedidos.cancelar', $pedido) }}"
+                        onsubmit="return confirm('¿Cancelar este pedido programado? No se puede deshacer.');">
                         @csrf
                         <button type="submit" class="text-sm text-red-600 hover:underline">Cancelar</button>
                     </form>
