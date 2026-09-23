@@ -28,7 +28,11 @@
                     class="rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
             </div>
             <input type="hidden" name="por_pagina" value="{{ $porPagina }}">
-            <button type="submit" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
+            <button type="submit" class="inline-flex items-center gap-1.5 rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                    <circle cx="11" cy="11" r="7"/>
+                    <path d="m20 20-3.5-3.5"/>
+                </svg>
                 Buscar
             </button>
             @if ($productoId || $fechaFiltradaManualmente)

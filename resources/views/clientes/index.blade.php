@@ -10,7 +10,11 @@
         <a href="{{ route('clientes.importar.subir') }}" class="rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
             Importar desde Excel
         </a>
-        <button type="button" id="btn_exportar_clientes" class="rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+        <button type="button" id="btn_exportar_clientes" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                <path d="M12 4v10m0 0-3.5-3.5M12 14l3.5-3.5"/>
+                <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+            </svg>
             Descargar Excel
         </button>
         <a href="{{ route('clientes.create') }}" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
@@ -31,7 +35,11 @@
         <form method="GET" action="{{ route('clientes.index') }}" class="flex items-center gap-2">
             <input type="text" name="buscar" value="{{ $buscar }}" placeholder="Buscar por nombre, CUIT, teléfono o email..."
                 class="w-72 rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
-            <button type="submit" class="rounded px-3 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+            <button type="submit" class="inline-flex items-center gap-1.5 rounded px-3 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                    <circle cx="11" cy="11" r="7"/>
+                    <path d="m20 20-3.5-3.5"/>
+                </svg>
                 Buscar
             </button>
             @if ($buscar !== '')

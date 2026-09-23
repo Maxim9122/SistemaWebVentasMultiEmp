@@ -6,7 +6,13 @@
     <div class="mb-4 flex items-center justify-between">
         <a href="{{ route('productos.grupos.index') }}" class="text-sm text-slate-500 hover:underline">&larr; Volver a Grupos</a>
         <div class="flex items-center gap-4">
-            <button type="button" id="btn_exportar_grupo" class="text-sm text-slate-600 hover:underline">Descargar Excel</button>
+            <button type="button" id="btn_exportar_grupo" class="inline-flex items-center gap-1 text-sm text-slate-600 hover:underline">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                    <path d="M12 4v10m0 0-3.5-3.5M12 14l3.5-3.5"/>
+                    <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+                </svg>
+                Descargar Excel
+            </button>
             <form method="POST" action="{{ route('productos.grupos.destroy', $grupo) }}" id="form_eliminar_grupo">
                 @csrf
                 @method('DELETE')
