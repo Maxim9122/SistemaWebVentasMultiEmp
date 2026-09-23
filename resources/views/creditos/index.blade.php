@@ -266,6 +266,7 @@
                 const lista = document.getElementById(listaId);
                 const hidden = document.getElementById(hiddenId);
                 let resultados = [];
+                let indiceActivo = -1;
 
                 function renderizar() {
                     lista.innerHTML = '';
@@ -275,16 +276,13 @@
                         return;
                     }
 
-                    resultados.forEach(function (c) {
+                    resultados.forEach(function (c, indice) {
                         const li = document.createElement('li');
                         li.textContent = c.nombre + (c.cuit ? ' (' + c.cuit + ')' : '');
-                        li.className = 'px-3 py-2 text-sm cursor-pointer hover:bg-slate-100';
+                        li.className = 'px-3 py-2 text-sm cursor-pointer' + (indice === indiceActivo ? ' bg-slate-100' : ' hover:bg-slate-100');
                         li.addEventListener('mousedown', function (evento) {
                             evento.preventDefault();
-                            input.value = c.nombre + (c.cuit ? ' (' + c.cuit + ')' : '');
-                            hidden.value = c.id;
-                            resultados = [];
-                            renderizar();
+                            seleccionar(c);
                         });
                         lista.appendChild(li);
                     });
@@ -292,13 +290,52 @@
                     lista.classList.remove('hidden');
                 }
 
+                function seleccionar(c) {
+                    input.value = c.nombre + (c.cuit ? ' (' + c.cuit + ')' : '');
+                    hidden.value = c.id;
+                    resultados = [];
+                    indiceActivo = -1;
+                    renderizar();
+                }
+
                 input.addEventListener('input', function () {
                     hidden.value = '';
                     const texto = input.value.trim().toLowerCase();
+                    indiceActivo = -1;
                     resultados = texto === '' ? [] : clientes.filter(function (c) {
                         return c.nombre.toLowerCase().includes(texto) || (c.cuit && c.cuit.toLowerCase().includes(texto));
                     }).slice(0, 8);
                     renderizar();
+                });
+
+                input.addEventListener('keydown', function (evento) {
+                    if (evento.key === 'Enter') {
+                        // Mismo criterio que el buscador de productos: resaltado
+                        // con flechas, o único resultado posible, se selecciona.
+                        const elegido = indiceActivo >= 0 ? resultados[indiceActivo] : (resultados.length === 1 ? resultados[0] : null);
+
+                        evento.preventDefault();
+
+                        if (elegido) {
+                            seleccionar(elegido);
+                        }
+
+                        return;
+                    }
+
+                    if (resultados.length === 0) {
+                        return;
+                    }
+
+                    if (evento.key === 'ArrowDown') {
+                        evento.preventDefault();
+                        indiceActivo = (indiceActivo + 1) % resultados.length;
+                        renderizar();
+                    } else if (evento.key === 'ArrowUp') {
+                        evento.preventDefault();
+                        indiceActivo = (indiceActivo - 1 + resultados.length) % resultados.length;
+                        renderizar();
+                    }
                 });
 
                 input.addEventListener('blur', function () {
