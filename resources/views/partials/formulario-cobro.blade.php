@@ -355,6 +355,23 @@
             });
 
             inputCliente.addEventListener('keydown', function (evento) {
+                if (evento.key === 'Enter') {
+                    // Mismo criterio que el buscador de productos: resaltado
+                    // con flechas, o único resultado posible, se selecciona.
+                    // Ambiguo (0 o 2+ sin resaltar) no hace nada.
+                    const elegido = indiceActivoCliente >= 0
+                        ? resultadosCliente[indiceActivoCliente]
+                        : (resultadosCliente.length === 1 ? resultadosCliente[0] : null);
+
+                    evento.preventDefault();
+
+                    if (elegido) {
+                        seleccionarCliente(elegido);
+                    }
+
+                    return;
+                }
+
                 if (resultadosCliente.length === 0) {
                     return;
                 }
@@ -367,9 +384,6 @@
                     evento.preventDefault();
                     indiceActivoCliente = (indiceActivoCliente - 1 + resultadosCliente.length) % resultadosCliente.length;
                     renderizarClientes();
-                } else if (evento.key === 'Enter' && indiceActivoCliente >= 0) {
-                    evento.preventDefault();
-                    seleccionarCliente(resultadosCliente[indiceActivoCliente]);
                 }
             });
 

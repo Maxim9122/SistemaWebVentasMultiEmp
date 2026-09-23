@@ -401,6 +401,24 @@
             });
 
             input.addEventListener('keydown', function (evento) {
+                if (evento.key === 'Enter') {
+                    // Mismo criterio que el buscador de productos: si hay uno
+                    // resaltado con las flechas, o si el texto tipeado dejó un
+                    // único resultado posible, Enter lo selecciona. Si es
+                    // ambiguo (0 o 2+ sin resaltar), no hace nada — nunca deja
+                    // pasar el Enter para que dispare el submit nativo del
+                    // formulario con un cliente sin elegir.
+                    const elegido = indiceActivo >= 0 ? resultados[indiceActivo] : (resultados.length === 1 ? resultados[0] : null);
+
+                    evento.preventDefault();
+
+                    if (elegido) {
+                        seleccionar(elegido);
+                    }
+
+                    return;
+                }
+
                 if (resultados.length === 0) {
                     return;
                 }
@@ -413,9 +431,9 @@
                     evento.preventDefault();
                     indiceActivo = (indiceActivo - 1 + resultados.length) % resultados.length;
                     renderizar();
-                } else if (evento.key === 'Enter' && indiceActivo >= 0) {
-                    evento.preventDefault();
-                    seleccionar(resultados[indiceActivo]);
+                } else if (evento.key === 'Escape') {
+                    resultados = [];
+                    renderizar();
                 }
             });
 
@@ -424,6 +442,24 @@
                     resultados = [];
                     renderizar();
                 }, 100);
+            });
+
+            // Igual que el buscador de productos: si se llega a colar un
+            // submit (ej. Enter en otro campo del form) sin haber elegido un
+            // cliente existente NI estar cargando uno nuevo, se frena acá.
+            // Antes de esto, ese caso mandaba el form vacío y el servidor
+            // respondía "Cliente actualizado" sin haber asignado ninguno.
+            formCliente.addEventListener('submit', function (evento) {
+                const cargandoNuevo = !formNuevo.classList.contains('hidden');
+
+                if (cargandoNuevo) {
+                    return;
+                }
+
+                if (!hidden.value) {
+                    evento.preventDefault();
+                    input.focus();
+                }
             });
 
             toggleNuevo.addEventListener('click', function () {

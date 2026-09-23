@@ -222,6 +222,21 @@
             });
 
             input.addEventListener('keydown', function (evento) {
+                if (evento.key === 'Enter') {
+                    // Mismo criterio que el buscador de productos del carrito:
+                    // resaltado con flechas, o único resultado posible, se
+                    // selecciona. Ambiguo (0 o 2+ sin resaltar) no hace nada.
+                    const elegido = indiceActivo >= 0 ? resultados[indiceActivo] : (resultados.length === 1 ? resultados[0] : null);
+
+                    evento.preventDefault();
+
+                    if (elegido) {
+                        seleccionar(elegido);
+                    }
+
+                    return;
+                }
+
                 if (resultados.length === 0) {
                     return;
                 }
@@ -234,9 +249,6 @@
                     evento.preventDefault();
                     indiceActivo = (indiceActivo - 1 + resultados.length) % resultados.length;
                     renderizar();
-                } else if (evento.key === 'Enter' && indiceActivo >= 0) {
-                    evento.preventDefault();
-                    seleccionar(resultados[indiceActivo]);
                 }
             });
 
