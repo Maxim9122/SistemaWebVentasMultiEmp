@@ -17,7 +17,7 @@
         </span>
     </header>
 
-    <main class="flex-1 flex items-center justify-center py-10">
+    <main class="flex justify-center py-8">
         <div class="w-full @yield('ancho', 'max-w-sm') px-4">
             <div class="bg-white rounded-lg shadow p-6">
                 @if (session('status'))
