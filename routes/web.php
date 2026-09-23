@@ -32,6 +32,7 @@ use App\Http\Controllers\Superadmin\EmpresaController as SuperadminEmpresaContro
 use App\Http\Controllers\Superadmin\PerfilController as SuperadminPerfilController;
 use App\Http\Controllers\TicketPublicoController;
 use App\Http\Controllers\VentaController;
+use App\Http\Controllers\VentaReactController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -200,6 +201,19 @@ Route::middleware('auth')->group(function () {
             Route::delete('/{pedido}/items/{item}', [CarritoController::class, 'quitarItem'])->name('items.destroy');
             Route::post('/{pedido}/cerrar', [CarritoController::class, 'cerrar'])->name('cerrar');
             Route::post('/{pedido}/cancelar', [CarritoController::class, 'cancelar'])->name('cancelar');
+        });
+
+        // Experimento (rama experimento/venta-react, nunca en producción):
+        // mismo flujo de carritos.*, servido como JSON para un front en
+        // React. Ver App\Http\Controllers\VentaReactController.
+        Route::prefix('venta-react')->name('ventaReact.')->middleware('role:vendedor,cajero_vendedor')->group(function () {
+            Route::get('/', [VentaReactController::class, 'index'])->name('index');
+            Route::get('/estado', [VentaReactController::class, 'estado'])->name('estado');
+            Route::post('/items', [VentaReactController::class, 'agregarItem'])->name('items.store');
+            Route::put('/items/{item}', [VentaReactController::class, 'actualizarItem'])->name('items.update');
+            Route::delete('/items/{item}', [VentaReactController::class, 'quitarItem'])->name('items.destroy');
+            Route::put('/cliente', [VentaReactController::class, 'renombrarCliente'])->name('cliente.update');
+            Route::post('/cerrar', [VentaReactController::class, 'cerrar'])->name('cerrar');
         });
 
         Route::prefix('caja')->name('caja.')->middleware('role:cajero,cajero_vendedor')->group(function () {
