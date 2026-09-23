@@ -127,6 +127,10 @@
         </div>
     </div>
 
+    @if (auth()->user() && ! auth()->user()->esSuperadmin())
+        @include('partials.ayuda-flotante')
+    @endif
+
     @if (session('pedido_comprobante_listo_id') && auth()->user()?->empresa?->mostrar_modal_comprobante)
         @php $pedidoListo = \App\Models\Pedido::with('factura')->find(session('pedido_comprobante_listo_id')); @endphp
         @if ($pedidoListo && ($pedidoListo->tipo_comprobante === 'remito' || $pedidoListo->factura?->cae))

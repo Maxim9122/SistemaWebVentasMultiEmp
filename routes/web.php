@@ -65,6 +65,17 @@ Route::middleware('auth')->group(function () {
             Route::get('/{seccion}/{tema}', [AyudaController::class, 'tema'])->name('tema');
         });
 
+        // Prefijo aparte (no "ayuda/widget") a propósito: si fuera un
+        // sub-path de /ayuda, colisionaría con la ruta comodín
+        // /ayuda/{seccion} ("widget" matchearía ahí primero). Estas 3 rutas
+        // devuelven el mismo contenido con un layout mínimo, para el
+        // <iframe> del globo flotante — ver partials.ayuda-flotante.
+        Route::prefix('ayuda-widget')->name('ayuda.widget.')->group(function () {
+            Route::get('/', [AyudaController::class, 'indexWidget'])->name('index');
+            Route::get('/{seccion}', [AyudaController::class, 'seccionWidget'])->name('seccion');
+            Route::get('/{seccion}/{tema}', [AyudaController::class, 'temaWidget'])->name('tema');
+        });
+
         Route::prefix('staff')->name('staff.')->middleware('role:admin')->group(function () {
             Route::get('/', [StaffController::class, 'index'])->name('index');
             Route::get('/nuevo', [StaffController::class, 'create'])->name('create');
