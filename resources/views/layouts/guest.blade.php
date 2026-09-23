@@ -8,7 +8,7 @@
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex items-center justify-center py-10">
     <div class="w-full @yield('ancho', 'max-w-sm') px-4">
-        <p class="text-center text-lg font-semibold mb-6">{{ config('app.name') }}</p>
+        <p class="text-center text-lg font-semibold mb-6">{{ config('app.name') }}<sup class="text-[10px] font-normal text-slate-400 ml-0.5">TM</sup></p>
         <div class="bg-white rounded-lg shadow p-6">
             @if (session('status'))
                 <div class="mb-4 rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">

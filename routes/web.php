@@ -149,6 +149,8 @@ Route::middleware('auth')->group(function () {
             Route::get('/configuracion', [ConfiguracionEmpresaController::class, 'edit'])->name('configuracion.edit');
             Route::put('/configuracion', [ConfiguracionEmpresaController::class, 'update'])->name('configuracion.update');
             Route::put('/configuracion/datos-empresa', [ConfiguracionEmpresaController::class, 'actualizarDatos'])->name('configuracion.datos.update');
+            Route::put('/configuracion/logo', [ConfiguracionEmpresaController::class, 'actualizarLogo'])->name('configuracion.logo.update');
+            Route::delete('/configuracion/logo', [ConfiguracionEmpresaController::class, 'eliminarLogo'])->name('configuracion.logo.destroy');
 
             Route::post('/configuracion/facturacion-electronica', [FacturacionElectronicaController::class, 'iniciar'])
                 ->name('configuracion.facturacion.iniciar');

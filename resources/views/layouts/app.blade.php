@@ -9,8 +9,14 @@
 <body class="bg-slate-50 text-slate-900">
     <div class="h-screen flex overflow-hidden">
         <aside class="w-60 shrink-0 bg-slate-900 text-slate-200 flex flex-col overflow-y-auto">
-            <div class="px-5 py-4 text-lg font-semibold text-white border-b border-slate-800">
-                {{ config('app.name') }}
+            <div class="px-5 py-4 border-b border-slate-800">
+                <div class="text-lg font-semibold text-white">
+                    {{ config('app.name') }}<sup class="text-[10px] font-normal text-slate-400 ml-0.5">TM</sup>
+                </div>
+                @if ($logoEmpresa = auth()->user()?->empresa?->logoUrl())
+                    <img src="{{ $logoEmpresa }}" alt="Logo de {{ auth()->user()->empresa->razon_social }}"
+                        class="mt-3 w-12 h-12 object-cover rounded-xl border border-slate-700">
+                @endif
             </div>
             <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
                 @if (auth()->user()?->esSuperadmin())

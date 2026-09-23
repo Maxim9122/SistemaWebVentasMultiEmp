@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Storage;
 
 class Empresa extends Model
 {
@@ -39,6 +40,7 @@ class Empresa extends Model
         'descuento_precio_empleado_porcentaje',
         'horario_laboral_habilitado',
         'permite_fiado',
+        'logo_path',
     ];
 
     public const CONDICION_RESPONSABLE_INSCRIPTO = 'responsable_inscripto';
@@ -172,6 +174,11 @@ class Empresa extends Model
     public function empresasConMismoCuit()
     {
         return static::where('cuit', $this->cuit)->where('id', '!=', $this->id)->get();
+    }
+
+    public function logoUrl(): ?string
+    {
+        return $this->logo_path ? Storage::disk('public')->url($this->logo_path) : null;
     }
 
     public function puedeFacturar(): bool

@@ -8,6 +8,7 @@ use App\Services\Facturacion\Exceptions\CuitYaRegistradoException;
 use App\Services\Facturacion\OnboardingFacturacionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -92,5 +93,42 @@ class ConfiguracionEmpresaController extends Controller
         $empresa->update($datos);
 
         return redirect()->route('configuracion.edit')->with('status', 'Datos de la empresa guardados.');
+    }
+
+    /**
+     * Se valida solo jpeg/png/webp a propósito — nunca svg: un SVG puede
+     * traer <script> adentro y Laravel no lo sanitiza al servirlo, así que
+     * dejarlo entrar sería aceptar HTML/JS subido por cualquier admin de
+     * empresa. 2MB alcanza de sobra para un logo chico en el sidebar.
+     */
+    public function actualizarLogo(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'logo' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:2048'],
+        ]);
+
+        $empresa = $request->user()->empresa;
+
+        if ($empresa->logo_path) {
+            Storage::disk('public')->delete($empresa->logo_path);
+        }
+
+        $path = $request->file('logo')->store("logos/{$empresa->id}", 'public');
+
+        $empresa->update(['logo_path' => $path]);
+
+        return redirect()->route('configuracion.edit')->with('status', 'Logo actualizado.');
+    }
+
+    public function eliminarLogo(Request $request): RedirectResponse
+    {
+        $empresa = $request->user()->empresa;
+
+        if ($empresa->logo_path) {
+            Storage::disk('public')->delete($empresa->logo_path);
+            $empresa->update(['logo_path' => null]);
+        }
+
+        return redirect()->route('configuracion.edit')->with('status', 'Logo eliminado.');
     }
 }

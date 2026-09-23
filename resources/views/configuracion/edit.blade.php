@@ -70,6 +70,45 @@
         'textoConfirmar' => 'Guardar datos',
     ])
 
+    <div class="max-w-2xl bg-white rounded-lg shadow p-6 mb-4">
+        <p class="font-medium text-slate-900 mb-1">Logo de la empresa</p>
+        <p class="text-sm text-slate-500 mb-3">Se muestra en el panel, abajo del nombre del sistema. Ideal: imagen cuadrada.</p>
+
+        @if ($errors->has('logo'))
+            <div class="mb-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                {{ $errors->first('logo') }}
+            </div>
+        @endif
+
+        <div class="flex items-center gap-4">
+            @if ($empresa->logoUrl())
+                <img src="{{ $empresa->logoUrl() }}" alt="Logo de {{ $empresa->razon_social }}" class="w-16 h-16 object-cover rounded-2xl border border-slate-200">
+            @else
+                <div class="w-16 h-16 rounded-2xl border border-dashed border-slate-300 flex items-center justify-center text-xs text-slate-400 text-center px-1">
+                    Sin logo
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('configuracion.logo.update') }}" enctype="multipart/form-data" class="flex items-center gap-2">
+                @csrf
+                @method('PUT')
+                <input type="file" name="logo" accept="image/png,image/jpeg,image/webp" required
+                    class="text-sm text-slate-600 file:mr-3 file:rounded file:border-0 file:bg-slate-900 file:text-white file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-slate-800">
+                <button type="submit" class="rounded bg-slate-900 text-white px-3 py-1.5 text-sm font-medium hover:bg-slate-800">
+                    {{ $empresa->logoUrl() ? 'Cambiar' : 'Subir' }}
+                </button>
+            </form>
+
+            @if ($empresa->logoUrl())
+                <form method="POST" action="{{ route('configuracion.logo.destroy') }}" onsubmit="return confirm('¿Quitar el logo de la empresa?');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="text-sm text-slate-500 hover:text-red-600 hover:underline">Quitar</button>
+                </form>
+            @endif
+        </div>
+    </div>
+
     <div class="max-w-2xl bg-white rounded-lg shadow p-6">
         <form method="POST" action="{{ route('configuracion.update') }}" class="space-y-5">
             @csrf
