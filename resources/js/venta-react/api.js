@@ -29,26 +29,38 @@ async function llamar(url, opciones = {}) {
     return datos;
 }
 
-export function obtenerEstado() {
-    return llamar('/venta-react/estado');
+export function obtenerCatalogo() {
+    return llamar('/venta-react/catalogo');
 }
 
-export function agregarItem(body) {
-    return llamar('/venta-react/items', { method: 'POST', body: JSON.stringify(body) });
+export function listarCarritos() {
+    return llamar('/venta-react/carritos');
 }
 
-export function actualizarItem(itemId, body) {
-    return llamar(`/venta-react/items/${itemId}`, { method: 'PUT', body: JSON.stringify(body) });
+export function crearCarrito() {
+    return llamar('/venta-react/carritos', { method: 'POST' });
 }
 
-export function quitarItem(itemId) {
-    return llamar(`/venta-react/items/${itemId}`, { method: 'DELETE' });
+export function obtenerEstado(pedidoId) {
+    return llamar(`/venta-react/carritos/${pedidoId}`);
 }
 
-export function renombrarCliente(clienteNombre) {
-    return llamar('/venta-react/cliente', { method: 'PUT', body: JSON.stringify({ cliente_nombre: clienteNombre }) });
+export function agregarItem(pedidoId, body) {
+    return llamar(`/venta-react/carritos/${pedidoId}/items`, { method: 'POST', body: JSON.stringify(body) });
 }
 
-export function cerrarCarrito(body) {
-    return llamar('/venta-react/cerrar', { method: 'POST', body: JSON.stringify(body) });
+export function actualizarItem(pedidoId, itemId, body) {
+    return llamar(`/venta-react/carritos/${pedidoId}/items/${itemId}`, { method: 'PUT', body: JSON.stringify(body) });
+}
+
+export function quitarItem(pedidoId, itemId) {
+    return llamar(`/venta-react/carritos/${pedidoId}/items/${itemId}`, { method: 'DELETE' });
+}
+
+export function renombrarCliente(pedidoId, clienteNombre) {
+    return llamar(`/venta-react/carritos/${pedidoId}/cliente`, { method: 'PUT', body: JSON.stringify({ cliente_nombre: clienteNombre }) });
+}
+
+export function cerrarCarrito(pedidoId, body) {
+    return llamar(`/venta-react/carritos/${pedidoId}/cerrar`, { method: 'POST', body: JSON.stringify(body) });
 }

@@ -9,7 +9,6 @@ use App\Models\Factura;
 use App\Models\Pedido;
 use App\Models\PedidoItem;
 use App\Models\Producto;
-use App\Models\User;
 use App\Services\Facturacion\EmisionComprobanteService;
 use App\Services\ProcesadorDeCobro;
 use Illuminate\Http\JsonResponse;
@@ -27,8 +26,10 @@ use Illuminate\View\View;
  * se termina llevando a serio, ahí sí vale la pena extraer un servicio
  * compartido.
  *
- * Siempre opera sobre "mi carrito activo ahora" (nunca pide un {pedido} en
- * la URL) — más simple para un front que solo necesita una pantalla fija.
+ * A diferencia de la primera versión de este experimento, ahora SÍ opera
+ * sobre un {pedido} explícito en la URL (igual que carritos.*) — hace
+ * falta para soportar varios carritos abiertos en simultáneo del mismo
+ * vendedor (permite_multiples_carritos), que la primera versión no cubría.
  */
 class VentaReactController extends Controller
 {
@@ -37,14 +38,12 @@ class VentaReactController extends Controller
         return view('venta-react.shell');
     }
 
-    public function estado(Request $request): JsonResponse
+    /** Catálogo + config: se pide una sola vez, no cambia al cambiar de carrito. */
+    public function catalogo(Request $request): JsonResponse
     {
         $usuario = $request->user();
-        $pedido = $this->carritoActivo($usuario);
 
         return response()->json([
-            'pedido' => $this->serializarPedido($pedido),
-            'items' => $this->serializarItems($pedido),
             'productos' => Producto::where('empresa_id', $usuario->empresa_id)
                 ->where('activo', true)
                 ->orderBy('nombre')
@@ -57,6 +56,7 @@ class VentaReactController extends Controller
                 'rol' => $usuario->role,
                 'puedeCambiarPrecio' => $usuario->puedeCambiarPrecioVenta(),
                 'permiteFiado' => (bool) $usuario->empresa->permite_fiado,
+                'permiteMultiplesCarritos' => (bool) $usuario->empresa->permite_multiples_carritos,
                 'ajustes' => [
                     'efectivo' => (float) $usuario->empresa->ajuste_efectivo_porcentaje,
                     'tarjeta' => (float) $usuario->empresa->ajuste_tarjeta_porcentaje,
@@ -66,10 +66,64 @@ class VentaReactController extends Controller
         ]);
     }
 
-    public function agregarItem(AgregarItemCarritoRequest $request): JsonResponse
+    /** Lista de carritos abiertos del vendedor logueado, para los "chips" de arriba. */
+    public function carritos(Request $request): JsonResponse
+    {
+        $carritos = Pedido::query()
+            ->where('vendedor_id', $request->user()->id)
+            ->where('estado', Pedido::ESTADO_CARRITO)
+            ->orderBy('id')
+            ->withCount('items')
+            ->get()
+            ->map(fn (Pedido $p) => [
+                'id' => $p->id,
+                'cliente_nombre' => $p->cliente_nombre,
+                'total' => (float) $p->total,
+                'items_count' => $p->items_count,
+            ]);
+
+        return response()->json(['carritos' => $carritos]);
+    }
+
+    /**
+     * Mismo criterio que CarritoController::store(): si la empresa NO
+     * permite varios carritos, "nuevo" no crea nada, devuelve el que ya
+     * estaba abierto — el front lo trata igual (cambia a ese id) sin
+     * necesitar saber por qué.
+     */
+    public function crearCarrito(Request $request): JsonResponse
     {
         $usuario = $request->user();
-        $pedido = $this->carritoActivo($usuario);
+
+        if (! $usuario->empresa->permite_multiples_carritos) {
+            $existente = Pedido::where('vendedor_id', $usuario->id)->where('estado', Pedido::ESTADO_CARRITO)->latest()->first();
+
+            if ($existente) {
+                return response()->json(['pedidoId' => $existente->id, 'reutilizado' => true]);
+            }
+        }
+
+        $pedido = Pedido::create([
+            'empresa_id' => $usuario->empresa_id,
+            'vendedor_id' => $usuario->id,
+            'cliente_nombre' => Pedido::CLIENTE_POR_DEFECTO,
+            'estado' => Pedido::ESTADO_CARRITO,
+        ]);
+
+        return response()->json(['pedidoId' => $pedido->id, 'reutilizado' => false]);
+    }
+
+    public function estado(Request $request, Pedido $pedido): JsonResponse
+    {
+        $this->autorizar($request, $pedido);
+
+        return response()->json($this->cuerpoCarrito($pedido));
+    }
+
+    public function agregarItem(AgregarItemCarritoRequest $request, Pedido $pedido): JsonResponse
+    {
+        $this->autorizar($request, $pedido);
+        $this->asegurarEsCarrito($pedido);
 
         $producto = Producto::findOrFail($request->validated('producto_id'));
         $cantidad = (int) $request->validated('cantidad');
@@ -102,13 +156,13 @@ class VentaReactController extends Controller
 
         $pedido->recalcularTotal();
 
-        return $this->respuestaCarrito($pedido);
+        return response()->json($this->cuerpoCarrito($pedido));
     }
 
-    public function actualizarItem(AgregarItemCarritoRequest $request, PedidoItem $item): JsonResponse
+    public function actualizarItem(AgregarItemCarritoRequest $request, Pedido $pedido, PedidoItem $item): JsonResponse
     {
-        $usuario = $request->user();
-        $pedido = $this->carritoActivo($usuario);
+        $this->autorizar($request, $pedido);
+        $this->asegurarEsCarrito($pedido);
         abort_if($item->pedido_id !== $pedido->id, 404);
 
         $cantidad = (int) $request->validated('cantidad');
@@ -123,38 +177,43 @@ class VentaReactController extends Controller
 
         $pedido->recalcularTotal();
 
-        return $this->respuestaCarrito($pedido);
+        return response()->json($this->cuerpoCarrito($pedido));
     }
 
-    public function quitarItem(Request $request, PedidoItem $item): JsonResponse
+    public function quitarItem(Request $request, Pedido $pedido, PedidoItem $item): JsonResponse
     {
-        $pedido = $this->carritoActivo($request->user());
+        $this->autorizar($request, $pedido);
+        $this->asegurarEsCarrito($pedido);
         abort_if($item->pedido_id !== $pedido->id, 404);
 
         $item->delete();
         $pedido->recalcularTotal();
 
-        return $this->respuestaCarrito($pedido);
+        return response()->json($this->cuerpoCarrito($pedido));
     }
 
-    public function renombrarCliente(Request $request): JsonResponse
+    public function renombrarCliente(Request $request, Pedido $pedido): JsonResponse
     {
+        $this->autorizar($request, $pedido);
+        $this->asegurarEsCarrito($pedido);
         $request->validate(['cliente_nombre' => ['nullable', 'string', 'max:255']]);
 
-        $pedido = $this->carritoActivo($request->user());
         $nombre = trim((string) $request->input('cliente_nombre'));
         $pedido->update(['cliente_nombre' => $nombre !== '' ? $nombre : Pedido::CLIENTE_POR_DEFECTO]);
 
-        return response()->json(['pedido' => $this->serializarPedido($pedido)]);
+        return response()->json($this->cuerpoCarrito($pedido));
     }
 
     public function cerrar(
         CerrarCarritoRequest $request,
+        Pedido $pedido,
         ProcesadorDeCobro $procesador,
         EmisionComprobanteService $emisor,
     ): JsonResponse {
+        $this->autorizar($request, $pedido);
+        $this->asegurarEsCarrito($pedido);
+
         $usuario = $request->user();
-        $pedido = $this->carritoActivo($usuario);
         $destino = $request->validated('destino');
 
         if ($destino === 'inmediato' && $usuario->role === 'cajero_vendedor') {
@@ -199,12 +258,12 @@ class VentaReactController extends Controller
         return response()->json(['ok' => true, 'redirect' => route('carritos.index')]);
     }
 
-    private function respuestaCarrito(Pedido $pedido): JsonResponse
+    private function cuerpoCarrito(Pedido $pedido): array
     {
-        return response()->json([
+        return [
             'pedido' => $this->serializarPedido($pedido),
             'items' => $this->serializarItems($pedido),
-        ]);
+        ];
     }
 
     private function serializarPedido(Pedido $pedido): array
@@ -252,20 +311,17 @@ class VentaReactController extends Controller
         return ['precio' => $producto->precioParaCantidad($cantidad)['precio'], 'manual' => false];
     }
 
-    /** Mismo criterio que CarritoController::carritoAbierto()/crearCarrito(). */
-    private function carritoActivo(User $usuario): Pedido
+    private function autorizar(Request $request, Pedido $pedido): void
     {
-        $pedido = Pedido::query()
-            ->where('vendedor_id', $usuario->id)
-            ->where('estado', Pedido::ESTADO_CARRITO)
-            ->latest()
-            ->first();
+        if ($pedido->vendedor_id !== $request->user()->id) {
+            abort(404);
+        }
+    }
 
-        return $pedido ?? Pedido::create([
-            'empresa_id' => $usuario->empresa_id,
-            'vendedor_id' => $usuario->id,
-            'cliente_nombre' => Pedido::CLIENTE_POR_DEFECTO,
-            'estado' => Pedido::ESTADO_CARRITO,
-        ]);
+    private function asegurarEsCarrito(Pedido $pedido): void
+    {
+        if (! $pedido->esCarrito()) {
+            abort(404);
+        }
     }
 }

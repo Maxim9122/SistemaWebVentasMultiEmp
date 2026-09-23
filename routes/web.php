@@ -208,12 +208,15 @@ Route::middleware('auth')->group(function () {
         // React. Ver App\Http\Controllers\VentaReactController.
         Route::prefix('venta-react')->name('ventaReact.')->middleware('role:vendedor,cajero_vendedor')->group(function () {
             Route::get('/', [VentaReactController::class, 'index'])->name('index');
-            Route::get('/estado', [VentaReactController::class, 'estado'])->name('estado');
-            Route::post('/items', [VentaReactController::class, 'agregarItem'])->name('items.store');
-            Route::put('/items/{item}', [VentaReactController::class, 'actualizarItem'])->name('items.update');
-            Route::delete('/items/{item}', [VentaReactController::class, 'quitarItem'])->name('items.destroy');
-            Route::put('/cliente', [VentaReactController::class, 'renombrarCliente'])->name('cliente.update');
-            Route::post('/cerrar', [VentaReactController::class, 'cerrar'])->name('cerrar');
+            Route::get('/catalogo', [VentaReactController::class, 'catalogo'])->name('catalogo');
+            Route::get('/carritos', [VentaReactController::class, 'carritos'])->name('carritos.index');
+            Route::post('/carritos', [VentaReactController::class, 'crearCarrito'])->name('carritos.store');
+            Route::get('/carritos/{pedido}', [VentaReactController::class, 'estado'])->name('estado');
+            Route::put('/carritos/{pedido}/cliente', [VentaReactController::class, 'renombrarCliente'])->name('cliente.update');
+            Route::post('/carritos/{pedido}/items', [VentaReactController::class, 'agregarItem'])->name('items.store');
+            Route::put('/carritos/{pedido}/items/{item}', [VentaReactController::class, 'actualizarItem'])->name('items.update');
+            Route::delete('/carritos/{pedido}/items/{item}', [VentaReactController::class, 'quitarItem'])->name('items.destroy');
+            Route::post('/carritos/{pedido}/cerrar', [VentaReactController::class, 'cerrar'])->name('cerrar');
         });
 
         Route::prefix('caja')->name('caja.')->middleware('role:cajero,cajero_vendedor')->group(function () {
