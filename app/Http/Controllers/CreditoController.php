@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Cliente;
 use App\Models\PagoCredito;
 use App\Models\Pedido;
+use App\Services\Facturacion\ComprobantePdfService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -48,12 +50,40 @@ class CreditoController extends Controller
             'ventasFiadas' => $ventasFiadas,
             'cliente' => $cliente,
             'pagosCliente' => $pagosCliente,
+            'totalesGenerales' => $cliente ? null : $this->totalesGenerales($empresaId),
             'clientesParaBuscador' => Cliente::where('empresa_id', $empresaId)->orderBy('nombre')->get(['id', 'nombre', 'cuit']),
             'porPagina' => $porPagina,
             'fechaDesde' => $fechaDesde,
             'fechaHasta' => $fechaHasta,
             'fechaFiltradaManualmente' => $fechaFiltradaManualmente,
         ]);
+    }
+
+    /**
+     * Igual que Cliente::totalFiado()/totalPagadoCredito()/saldoPendiente()
+     * pero sumado entre TODOS los clientes de la empresa — histórico, sin
+     * filtrar por fecha (mismo criterio que esos métodos: el filtro de
+     * fecha de esta pantalla es solo para la tabla de ventas fiadas, no
+     * para estos totales). Se muestra únicamente cuando no hay un cliente
+     * puntual filtrado (ahí ya está el desglose individual).
+     *
+     * @return array{totalFiado: float, totalPagado: float, saldoPendiente: float}
+     */
+    private function totalesGenerales(int $empresaId): array
+    {
+        $totalFiado = (float) Pedido::where('empresa_id', $empresaId)
+            ->where('monto_fiado', '>', 0)
+            ->sum('monto_fiado');
+
+        $totalPagado = (float) PagoCredito::where('empresa_id', $empresaId)
+            ->selectRaw('COALESCE(SUM(monto_efectivo + monto_tarjeta + monto_transferencia), 0) as total')
+            ->value('total');
+
+        return [
+            'totalFiado' => $totalFiado,
+            'totalPagado' => $totalPagado,
+            'saldoPendiente' => round($totalFiado - $totalPagado, 2),
+        ];
     }
 
     /**
@@ -126,7 +156,7 @@ class CreditoController extends Controller
             return back()->withErrors(['monto_efectivo' => 'Cargá al menos un monto (efectivo, tarjeta o transferencia).'])->withInput();
         }
 
-        PagoCredito::create([
+        $pago = PagoCredito::create([
             'empresa_id' => $empresaId,
             'cliente_id' => $datos['cliente_id'],
             'user_id' => $request->user()->id,
@@ -140,6 +170,30 @@ class CreditoController extends Controller
             'monto_transferencia' => $montoTransferencia,
         ]);
 
+        // Mismo patrón que después de cobrar una venta (pedido_comprobante_listo_id
+        // en layouts.app): ofrece descargar el comprobante del pago recién hecho,
+        // gateado por el mismo interruptor `mostrar_modal_comprobante`.
+        session()->flash('pago_credito_comprobante_id', $pago->id);
+
         return redirect()->route('creditos.index', ['cliente_id' => $datos['cliente_id']])->with('status', 'Pago registrado.');
+    }
+
+    public function comprobantePagoPdf(Request $request, PagoCredito $pago, ComprobantePdfService $pdf): Response
+    {
+        $this->autorizarPago($request, $pago);
+
+        $pago->load(['cliente', 'usuario']);
+
+        return response($pdf->generarPagoCredito($pago), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$pdf->nombreArchivoPagoCredito($pago).'"',
+        ]);
+    }
+
+    private function autorizarPago(Request $request, PagoCredito $pago): void
+    {
+        if ($pago->empresa_id !== $request->user()->empresa_id) {
+            abort(404);
+        }
     }
 }

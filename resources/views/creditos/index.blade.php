@@ -56,6 +56,28 @@
         </div>
     </div>
 
+    @if (! $cliente && $totalesGenerales)
+        <div class="bg-white rounded-lg shadow p-6 mb-4">
+            <p class="text-sm text-slate-500 mb-3">Total de todos los clientes (histórico, sin filtrar por fecha)</p>
+            <div class="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                    <p class="text-slate-500">Total fiado</p>
+                    <p class="font-medium">${{ number_format($totalesGenerales['totalFiado'], 2, ',', '.') }}</p>
+                </div>
+                <div>
+                    <p class="text-slate-500">Total pagado</p>
+                    <p class="font-medium text-emerald-600">${{ number_format($totalesGenerales['totalPagado'], 2, ',', '.') }}</p>
+                </div>
+                <div>
+                    <p class="text-slate-500">Saldo pendiente</p>
+                    <p class="font-medium text-lg @class(['text-orange-600' => $totalesGenerales['saldoPendiente'] > 0])">
+                        ${{ number_format($totalesGenerales['saldoPendiente'], 2, ',', '.') }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    @endif
+
     @if ($cliente)
         <div class="bg-white rounded-lg shadow p-6 mb-4">
             <div class="flex items-start justify-between gap-4 mb-4">
@@ -94,6 +116,7 @@
                     <button type="button" id="btn_cerrar_pagos_cliente" class="text-slate-400 hover:text-slate-600">&times;</button>
                 </div>
 
+                <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead class="bg-slate-50 text-slate-500 text-left">
                         <tr>
@@ -103,6 +126,7 @@
                             <th class="px-4 py-2 font-medium text-right">Tarjeta</th>
                             <th class="px-4 py-2 font-medium text-right">Transferencia</th>
                             <th class="px-4 py-2 font-medium text-right">Total</th>
+                            <th class="px-4 py-2 font-medium"></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y">
@@ -114,14 +138,20 @@
                                 <td class="px-4 py-2 text-right">{{ $pago->monto_tarjeta > 0 ? '$'.number_format($pago->monto_tarjeta, 2, ',', '.') : '—' }}</td>
                                 <td class="px-4 py-2 text-right">{{ $pago->monto_transferencia > 0 ? '$'.number_format($pago->monto_transferencia, 2, ',', '.') : '—' }}</td>
                                 <td class="px-4 py-2 text-right font-medium">${{ number_format($pago->total(), 2, ',', '.') }}</td>
+                                <td class="px-4 py-2 text-right whitespace-nowrap">
+                                    <a href="{{ route('creditos.pagos.comprobantePdf', $pago) }}" target="_blank" class="text-xs text-slate-500 hover:underline">
+                                        Comprobante
+                                    </a>
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-4 py-6 text-center text-slate-500">Este cliente todavía no hizo ningún pago parcial.</td>
+                                <td colspan="7" class="px-4 py-6 text-center text-slate-500">Este cliente todavía no hizo ningún pago parcial.</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     @endif

@@ -231,6 +231,7 @@ Route::middleware('auth')->group(function () {
         Route::prefix('creditos')->name('creditos.')->middleware('role:admin,cajero,cajero_vendedor')->group(function () {
             Route::get('/', [CreditoController::class, 'index'])->name('index');
             Route::post('/pagos', [CreditoController::class, 'registrarPago'])->name('pagos.store');
+            Route::get('/pagos/{pago}/comprobante.pdf', [CreditoController::class, 'comprobantePagoPdf'])->name('pagos.comprobantePdf');
             Route::put('/clientes/{cliente}/promesa-pago', [CreditoController::class, 'actualizarPromesaPago'])->name('clientes.promesaPago.update');
             Route::post('/promesa-pago-masiva', [CreditoController::class, 'actualizarPromesaPagoMasiva'])->name('promesaPagoMasiva');
         });

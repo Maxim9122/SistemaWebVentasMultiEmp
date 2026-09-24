@@ -5,6 +5,7 @@ namespace App\Services\Facturacion;
 use App\Models\Empresa;
 use App\Models\Factura;
 use App\Models\NotaCredito;
+use App\Models\PagoCredito;
 use App\Models\Pedido;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -93,6 +94,25 @@ class ComprobantePdfService
         ])->render();
 
         return $this->renderizar($html, $pedido->items->count(), 0, $empresa->usaFormatoA4());
+    }
+
+    /**
+     * Comprobante de un pago parcial de un crédito (venta fiada) — no es un
+     * comprobante fiscal (como el remito, no lleva CUIT), solo constancia de
+     * cuánto pagó el cliente y por qué medio. El saldo que muestra es el
+     * saldo pendiente ACTUAL del cliente (al momento de generar el PDF, no
+     * necesariamente al momento del pago si hubo pagos posteriores) —
+     * aclarado así en la plantilla para no insinuar una precisión que no es.
+     */
+    public function generarPagoCredito(PagoCredito $pago): string
+    {
+        $empresa = $pago->empresa;
+        $html = view($this->vista($empresa, 'pago-credito-pdf'), [
+            'empresa' => $empresa,
+            'pago' => $pago,
+        ])->render();
+
+        return $this->renderizar($html, 0, 0, $empresa->usaFormatoA4());
     }
 
     private function generar(
@@ -258,6 +278,11 @@ class ComprobantePdfService
         $cliente = $pedido->cliente?->nombre ?? $pedido->cliente_nombre;
 
         return "presupuesto{$pedido->numero_presupuesto}_{$this->sanitizarNombreArchivo($cliente)}.pdf";
+    }
+
+    public function nombreArchivoPagoCredito(PagoCredito $pago): string
+    {
+        return "pago-credito{$pago->id}_{$this->sanitizarNombreArchivo($pago->cliente->nombre)}.pdf";
     }
 
     /**

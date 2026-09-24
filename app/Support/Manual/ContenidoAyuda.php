@@ -110,7 +110,8 @@ class ContenidoAyuda
                     'ver-deuda' => [
                         'titulo' => 'Ver cuánto debe cada cliente',
                         'resumen' => '
-                            <p>En <strong>Créditos</strong> aparece cada venta fiada con el total adeudado menos lo ya pagado. Lo que falta pagar se muestra en <strong>naranja</strong>. Hay un botón para ver el detalle de todos los pagos parciales hechos hasta ahora.</p>
+                            <p>En <strong>Créditos</strong> aparece cada venta fiada con el total adeudado menos lo ya pagado. Lo que falta pagar se muestra en <strong>naranja</strong>.</p>
+                            <p>Sin filtrar por cliente, arriba de la tabla aparece el <strong>total general</strong>: cuánto fiaron entre todos los clientes, cuánto pagaron y cuánto falta — histórico, de toda la empresa. Filtrando por un cliente puntual, ese total general se reemplaza por el desglose de ese cliente (fiado/pagado/pendiente) más un botón para ver el detalle de todos sus pagos parciales.</p>
                         ',
                     ],
                     'promesa-de-pago' => [
@@ -122,7 +123,8 @@ class ContenidoAyuda
                     'registrar-pago' => [
                         'titulo' => 'Registrar un pago parcial',
                         'resumen' => '
-                            <p>Desde Créditos, se carga el monto que el cliente pagó (puede ser parcial, no hace falta saldar todo de una vez). Queda en el historial de esa venta fiada y el saldo pendiente se recalcula solo.</p>
+                            <p>Desde Créditos, se carga el monto que el cliente pagó (puede ser parcial, no hace falta saldar todo de una vez) — efectivo, tarjeta y/o transferencia, se puede repartir entre varios medios. Queda en el historial de ese cliente y el saldo pendiente se recalcula solo.</p>
+                            <p>Al guardar el pago aparece un cartel para descargar el <strong>comprobante en PDF</strong> (mismo formato Ticket/A4 elegido en Configuración). Si en ese momento no lo descargás, después lo podés volver a bajar desde "Ver detalle de pagos" — cada pago de la lista tiene su propio link de comprobante.</p>
                         ',
                     ],
                 ],

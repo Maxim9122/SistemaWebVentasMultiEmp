@@ -138,6 +138,13 @@
         @endif
     @endif
 
+    @if (session('pago_credito_comprobante_id') && auth()->user()?->empresa?->mostrar_modal_comprobante)
+        @php $pagoListo = \App\Models\PagoCredito::with('cliente')->find(session('pago_credito_comprobante_id')); @endphp
+        @if ($pagoListo)
+            @include('partials.modal-comprobante-pago-listo', ['pagoListo' => $pagoListo])
+        @endif
+    @endif
+
     @php $cajaAbiertaEgreso = auth()->check() && in_array(auth()->user()->role, ['cajero', 'cajero_vendedor']) ? auth()->user()->cajaAbierta() : null; @endphp
     @if ($cajaAbiertaEgreso)
         @php
