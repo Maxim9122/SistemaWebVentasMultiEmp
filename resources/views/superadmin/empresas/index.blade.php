@@ -19,7 +19,7 @@
                     <a href="{{ route('superadmin.empresas.show', $empresa) }}" class="font-medium hover:underline">
                         {{ $empresa->razon_social }}
                     </a>
-                    <p class="text-sm text-slate-500">CUIT {{ $empresa->cuit }} · {{ $empresa->rubro ?? 'Sin rubro' }}</p>
+                    <p class="text-sm text-slate-500">{{ $empresa->cuit ? 'CUIT '.$empresa->cuit : 'Sin CUIT' }} · {{ $empresa->rubro ?? 'Sin rubro' }}</p>
                     @if ($cuitsDuplicados->contains($empresa->cuit))
                         <p class="text-xs font-medium text-amber-700 mt-1">⚠ Este CUIT se repite con otra empresa — revisar antes de aprobar</p>
                     @endif

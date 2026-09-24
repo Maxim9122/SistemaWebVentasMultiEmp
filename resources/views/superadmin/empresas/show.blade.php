@@ -29,7 +29,7 @@
                 <dt class="text-slate-500">Razón social</dt>
                 <dd>{{ $empresa->razon_social }}</dd>
                 <dt class="text-slate-500">CUIT</dt>
-                <dd>{{ $empresa->cuit }}</dd>
+                <dd>{{ $empresa->cuit ?? '—' }}</dd>
                 <dt class="text-slate-500">Rubro</dt>
                 <dd>{{ $empresa->rubro ?? '—' }}</dd>
                 <dt class="text-slate-500">Email de contacto</dt>

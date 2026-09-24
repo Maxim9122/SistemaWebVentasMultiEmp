@@ -22,7 +22,11 @@ class EmpresaController extends Controller
         // Para el cartel de "CUIT repetido" en la lista, sin un query por
         // fila: agrupa TODOS los cuits de la tabla (no solo los de esta
         // página filtrada) y se queda con los que aparecen más de una vez.
+        // whereNotNull a propósito: el CUIT ahora es opcional, y MySQL
+        // agrupa todos los NULL juntos — sin este filtro, dos empresas
+        // sin CUIT cargado se marcarían como "duplicadas" entre sí.
         $cuitsDuplicados = Empresa::query()
+            ->whereNotNull('cuit')
             ->select('cuit')
             ->groupBy('cuit')
             ->havingRaw('COUNT(*) > 1')

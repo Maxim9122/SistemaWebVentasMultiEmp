@@ -28,13 +28,15 @@
 
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label for="cuit" class="block text-sm font-medium mb-1">CUIT</label>
-                    <input id="cuit" name="cuit" type="text" value="{{ old('cuit', $empresa->cuit) }}" required
+                    <label for="cuit" class="block text-sm font-medium mb-1">CUIT <span class="text-slate-400 font-normal">(opcional)</span></label>
+                    <input id="cuit" name="cuit" type="text" value="{{ old('cuit', $empresa->cuit) }}"
                         class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
                     @if ($empresa->credencialFacturacion?->estaActiva())
                         <p class="text-xs text-amber-600 mt-1">Esta empresa ya tiene un certificado AFIP validado — si cambiás razón social/CUIT/email, la API de facturación va a rechazarlo.</p>
                     @elseif ($empresa->credencialFacturacion)
                         <p class="text-xs text-amber-600 mt-1">Si cambiás razón social/CUIT/email, se corrige automáticamente en la API de facturación (todavía no se completó el onboarding).</p>
+                    @else
+                        <p class="text-xs text-slate-400 mt-1">Solo hace falta si vas a facturar — es obligatorio recién al configurar la condición fiscal, más abajo.</p>
                     @endif
                 </div>
                 <div>
@@ -245,6 +247,12 @@
             <div class="border-t pt-5">
                 <label for="condicion_fiscal" class="block font-medium text-slate-900 mb-1">Condición fiscal de la empresa</label>
                 <p class="text-slate-500 text-sm mb-3">Necesaria para poder facturar (define si emitís factura A/B o C). Mientras no la configures, en Caja solo se puede hacer Remito.</p>
+                @if (! $empresa->cuit)
+                    <p class="text-xs text-amber-600 mb-2">Para elegir una condición fiscal primero necesitás cargar el CUIT de la empresa, arriba en "Datos de la empresa".</p>
+                @endif
+                @error('condicion_fiscal')
+                    <p class="text-xs text-red-600 mb-2">{{ $message }}</p>
+                @enderror
                 <select id="condicion_fiscal" name="condicion_fiscal" class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
                     <option value="">Sin configurar</option>
                     <option value="responsable_inscripto" @selected(old('condicion_fiscal', $empresa->condicion_fiscal) === 'responsable_inscripto')>Responsable Inscripto</option>
@@ -266,6 +274,18 @@
                     @elseif ($condicionFiscalActual === 'monotributista')
                         <option value="C" @selected($comprobantePredeterminadoActual === 'C')>Factura C</option>
                     @endif
+                </select>
+            </div>
+
+            <div class="border-t pt-5">
+                <label for="formato_comprobante" class="block font-medium text-slate-900 mb-1">Formato de impresión de comprobantes</label>
+                <p class="text-slate-500 text-sm mb-3">
+                    Aplica a todo lo que se descarga o imprime: ventas (remito o factura), presupuestos y comprobantes fiados.
+                    <strong>Ticket</strong> es angosto, para impresora térmica de 80mm. <strong>A4</strong> es hoja entera, para impresora común.
+                </p>
+                <select id="formato_comprobante" name="formato_comprobante" class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                    <option value="ticket" @selected(old('formato_comprobante', $empresa->formato_comprobante) === 'ticket')>Ticket (80mm)</option>
+                    <option value="a4" @selected(old('formato_comprobante', $empresa->formato_comprobante) === 'a4')>A4 (hoja entera)</option>
                 </select>
             </div>
 
@@ -337,7 +357,7 @@
             const confirmar = document.getElementById('modal_datos_empresa_confirmar');
             const form = document.getElementById('form_datos_empresa');
 
-            const cuitOriginal = @json($empresa->cuit);
+            const cuitOriginal = @json($empresa->cuit ?? '');
             const razonSocialOriginal = @json($empresa->razon_social);
             const emailOriginal = @json($empresa->email_contacto);
 

@@ -18,9 +18,10 @@
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label for="cuit" class="block text-sm font-medium mb-1">CUIT</label>
-                        <input id="cuit" name="cuit" type="text" value="{{ old('cuit') }}" required
+                        <label for="cuit" class="block text-sm font-medium mb-1">CUIT <span class="text-slate-400 font-normal">(opcional)</span></label>
+                        <input id="cuit" name="cuit" type="text" value="{{ old('cuit') }}"
                             class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                        <p class="text-xs text-slate-400 mt-1">Solo hace falta si vas a facturar — lo podés cargar más adelante en Configuración.</p>
                     </div>
                     <div>
                         <label for="rubro" class="block text-sm font-medium mb-1">Rubro</label>

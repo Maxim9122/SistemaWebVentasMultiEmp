@@ -30,6 +30,7 @@ class Empresa extends Model
         'condicion_fiscal',
         'factura_habilitada',
         'comprobante_predeterminado',
+        'formato_comprobante',
         'mostrar_modal_comprobante',
         'ajuste_efectivo_porcentaje',
         'ajuste_tarjeta_porcentaje',
@@ -48,6 +49,10 @@ class Empresa extends Model
     public const CONDICION_MONOTRIBUTISTA = 'monotributista';
 
     public const COMPROBANTE_REMITO = 'remito';
+
+    public const FORMATO_COMPROBANTE_TICKET = 'ticket';
+
+    public const FORMATO_COMPROBANTE_A4 = 'a4';
 
     protected function casts(): array
     {
@@ -173,6 +178,13 @@ class Empresa extends Model
      */
     public function empresasConMismoCuit()
     {
+        // Sin CUIT cargado no hay nada que comparar — ->where('cuit', null)
+        // traduciría a "IS NULL" y matchearía cualquier otra empresa que
+        // tampoco tenga CUIT todavía, marcándolas como "duplicadas" sin serlo.
+        if (! $this->cuit) {
+            return $this->newCollection();
+        }
+
         return static::where('cuit', $this->cuit)->where('id', '!=', $this->id)->get();
     }
 
@@ -221,6 +233,11 @@ class Empresa extends Model
         }
 
         return self::COMPROBANTE_REMITO;
+    }
+
+    public function usaFormatoA4(): bool
+    {
+        return $this->formato_comprobante === self::FORMATO_COMPROBANTE_A4;
     }
 
     public function esResponsableInscripto(): bool

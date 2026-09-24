@@ -21,14 +21,30 @@ class ConfiguracionEmpresaController extends Controller
 
     public function update(Request $request): RedirectResponse
     {
+        $empresa = $request->user()->empresa;
+
         $datos = $request->validate([
             'condicion_fiscal' => [
                 'nullable',
                 Rule::in([Empresa::CONDICION_RESPONSABLE_INSCRIPTO, Empresa::CONDICION_MONOTRIBUTISTA]),
+                // El CUIT no se pide más al registrar la empresa (solo hace
+                // falta para facturar) — así que se exige recién acá, en el
+                // único momento en que realmente se necesita: al elegir una
+                // condición fiscal. $empresa->cuit (no un campo de este
+                // form) porque el CUIT se carga en "Datos de la empresa".
+                function ($attribute, $value, $fail) use ($empresa) {
+                    if ($value && ! $empresa->cuit) {
+                        $fail('Para configurar la condición fiscal primero necesitás cargar el CUIT de la empresa, en "Datos de la empresa".');
+                    }
+                },
             ],
             'comprobante_predeterminado' => [
                 'required',
                 Rule::in([Empresa::COMPROBANTE_REMITO, 'A', 'B', 'C']),
+            ],
+            'formato_comprobante' => [
+                'required',
+                Rule::in([Empresa::FORMATO_COMPROBANTE_TICKET, Empresa::FORMATO_COMPROBANTE_A4]),
             ],
             'ajuste_efectivo_porcentaje' => ['required', 'numeric', 'between:-100,100'],
             'ajuste_tarjeta_porcentaje' => ['required', 'numeric', 'between:-100,100'],
@@ -36,7 +52,7 @@ class ConfiguracionEmpresaController extends Controller
             'descuento_precio_empleado_porcentaje' => ['nullable', 'numeric', 'between:0,100'],
         ]);
 
-        $request->user()->empresa->update([
+        $empresa->update([
             ...$datos,
             'permite_multiples_carritos' => $request->boolean('permite_multiples_carritos'),
             'permite_cambiar_precio_venta' => $request->boolean('permite_cambiar_precio_venta'),
@@ -57,11 +73,25 @@ class ConfiguracionEmpresaController extends Controller
 
         $datos = $request->validate([
             'razon_social' => ['required', 'string', 'max:255'],
-            'cuit' => ['required', 'string', 'max:20', Rule::unique('empresas', 'cuit')->ignore($empresa->id)],
+            'cuit' => ['nullable', 'string', 'max:20', Rule::unique('empresas', 'cuit')->ignore($empresa->id)],
             'email_contacto' => ['required', 'email', 'max:255'],
             'telefono' => ['nullable', 'string', 'max:50'],
             'direccion' => ['nullable', 'string', 'max:255'],
         ]);
+
+        // No se puede vaciar el CUIT si la empresa ya tiene una condición
+        // fiscal configurada (facturando o a punto de facturar) — quedaría
+        // en un estado inconsistente. Primero hay que volver "Condición
+        // fiscal" a "Sin configurar". Va aparte de la regla `nullable` de
+        // arriba a propósito: `nullable` salta el resto de las reglas del
+        // campo justo cuando está vacío, que es el único caso que este
+        // chequeo necesita evaluar — con la regla como closure nunca llegaba
+        // a ejecutarse.
+        if (! $datos['cuit'] && $empresa->puedeFacturar()) {
+            return back()
+                ->withErrors(['cuit' => 'No podés dejar el CUIT vacío mientras la empresa tenga una condición fiscal configurada. Cambiala a "Sin configurar" primero, en la sección de abajo.'])
+                ->withInput();
+        }
 
         // razon_social/cuit/email_contacto son los únicos que la API de facturación
         // conoce (se mandaron en el alta) — si cambiaron y ya hay un registro del

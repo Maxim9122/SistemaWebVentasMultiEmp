@@ -12,7 +12,8 @@
 
         @if ($telefonoSuperadmin = $superadmin?->telefonoSoloDigitos())
             @php
-                $mensaje = "Hola! Acabo de registrar mi empresa \"{$empresa->razon_social}\" (CUIT {$empresa->cuit}) en ".config('app.name').". ¿Me la podés dar de alta?";
+                $datoCuit = $empresa->cuit ? " (CUIT {$empresa->cuit})" : '';
+                $mensaje = "Hola! Acabo de registrar mi empresa \"{$empresa->razon_social}\"{$datoCuit} en ".config('app.name').". ¿Me la podés dar de alta?";
                 $urlWhatsapp = 'https://wa.me/549'.$telefonoSuperadmin.'?text='.rawurlencode($mensaje);
             @endphp
             <a href="{{ $urlWhatsapp }}" target="_blank" rel="noopener"

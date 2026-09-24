@@ -33,7 +33,11 @@ class RegistrarEmpresaRequest extends FormRequest
             // la misma persona dando de alta un segundo local, o alguien
             // usando datos ajenos) en vez de que el sistema decida solo y en
             // silencio, sin que quede ningún rastro de que pasó.
-            'cuit' => ['required', 'string', 'max:20'],
+            // Opcional a propósito: el CUIT solo hace falta si la empresa va
+            // a facturar, y eso se configura (y se exige recién ahí) después
+            // de aprobada, desde Configuración — no todos los negocios que
+            // usan el sistema facturan (muchos solo hacen remito).
+            'cuit' => ['nullable', 'string', 'max:20'],
             'rubro' => ['nullable', 'string', 'max:255'],
             'email_contacto' => ['required', 'email', 'max:255'],
             'telefono' => ['nullable', 'string', 'max:50'],
