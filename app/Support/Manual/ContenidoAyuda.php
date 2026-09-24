@@ -169,6 +169,17 @@ class ContenidoAyuda
                             <p>Desde <strong>Productos → Importar</strong>, subís el archivo y mapeás qué columna corresponde a cada campo. Antes de confirmar se muestra una vista previa. Queda un historial de importaciones que se puede <strong>deshacer</strong> si algo salió mal.</p>
                         ',
                     ],
+                    'reponer-stock' => [
+                        'titulo' => 'Reponer stock (cuando llega mercadería)',
+                        'resumen' => '
+                            <p>Botón <strong>Reponer stock</strong> en Productos: se abre un modal donde vas buscando productos (escribís y aparecen las coincidencias, con flechas del teclado y Enter también se puede elegir) y les cargás la cantidad que llegó de cada uno. Se pueden agregar varios productos distintos antes de guardar, con proveedor y nota opcionales.</p>
+                            <p>Cada reposición guardada queda en el historial (<strong>Reposiciones</strong>, en el menú de Productos), y desde ahí hay dos acciones distintas:</p>
+                            <ul>
+                                <li><strong>Editar reposición</strong>: reabre el mismo modal con las líneas ya cargadas, por si algo se escribió mal — se puede corregir una cantidad, sacar una línea o agregar una nueva, y al guardar solo se ajusta la diferencia en el stock (no se vuelve a sumar todo de nuevo).</li>
+                                <li><strong>Deshacer reposición</strong>: revierte todo el lote de una — le resta a cada producto exactamente lo que esa reposición le había sumado. El historial sigue mostrándose igual, no se borra, solo queda marcado como revertido.</li>
+                            </ul>
+                        ',
+                    ],
                     'grupos-y-promociones' => [
                         'titulo' => 'Grupos de productos y promociones',
                         'resumen' => '
