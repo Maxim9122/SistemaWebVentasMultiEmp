@@ -247,6 +247,7 @@ class ContenidoAyuda
                         'titulo' => 'Datos de la empresa y logo',
                         'resumen' => '
                             <p>Razón social, CUIT, contacto — y el <strong>logo</strong> que se ve en el panel, al lado del nombre de la empresa. Se sube en formato JPG/PNG/WEBP.</p>
+                            <p>El <strong>CUIT es opcional</strong>: solo hace falta cargarlo si la empresa va a facturar — recién se vuelve obligatorio al elegir una condición fiscal (Responsable Inscripto o Monotributista), más abajo en esta misma sección. Si la empresa nunca factura (solo remitos), no hace falta cargarlo.</p>
                         ',
                     ],
                     'ajustes-pago' => [
@@ -265,6 +266,17 @@ class ContenidoAyuda
                         'titulo' => 'Habilitar venta fiada',
                         'resumen' => '
                             <p>Interruptor simple: si está apagado, nadie puede cargar un monto fiado al cobrar, sin importar el rol.</p>
+                        ',
+                    ],
+                    'formato-comprobante' => [
+                        'titulo' => 'Formato de impresión: Ticket o A4',
+                        'resumen' => '
+                            <p>Elegís cómo se imprimen/descargan todos los comprobantes: ventas (remito o factura), presupuestos y comprobantes de ventas fiadas. Por defecto viene en <strong>Ticket</strong>.</p>
+                            <ul>
+                                <li><strong>Ticket</strong>: angosto, pensado para impresora térmica de 80mm (la típica de mostrador).</li>
+                                <li><strong>A4</strong>: hoja entera, para imprimir en una impresora común de oficina.</li>
+                            </ul>
+                            <p>Cambia el diseño de todos los documentos de una — no hay que elegir formato por cada venta.</p>
                         ',
                     ],
                 ],

@@ -24,7 +24,9 @@
         <h5>No válido como factura ni remito</h5>
 
         <h1>{{ $empresa->razon_social }}</h1>
-        <p>CUIT: {{ \App\Models\Empresa::formatearCuit($empresa->cuit) }}</p>
+        @if ($empresa->cuit)
+            <p>CUIT: {{ \App\Models\Empresa::formatearCuit($empresa->cuit) }}</p>
+        @endif
         @if ($empresa->direccion)
             <p>Domicilio: {{ $empresa->direccion }}</p>
         @endif

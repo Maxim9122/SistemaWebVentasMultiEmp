@@ -75,22 +75,24 @@ class ComprobantePdfService
 
     public function generarRemito(Pedido $pedido): string
     {
-        $html = view('facturacion.remito-pdf', [
-            'empresa' => $pedido->empresa,
+        $empresa = $pedido->empresa;
+        $html = view($this->vista($empresa, 'remito-pdf'), [
+            'empresa' => $empresa,
             'pedido' => $pedido,
         ])->render();
 
-        return $this->renderizar($html, $pedido->items->count());
+        return $this->renderizar($html, $pedido->items->count(), 0, $empresa->usaFormatoA4());
     }
 
     public function generarPresupuesto(Pedido $pedido): string
     {
-        $html = view('facturacion.presupuesto-pdf', [
-            'empresa' => $pedido->empresa,
+        $empresa = $pedido->empresa;
+        $html = view($this->vista($empresa, 'presupuesto-pdf'), [
+            'empresa' => $empresa,
             'pedido' => $pedido,
         ])->render();
 
-        return $this->renderizar($html, $pedido->items->count());
+        return $this->renderizar($html, $pedido->items->count(), 0, $empresa->usaFormatoA4());
     }
 
     private function generar(
@@ -116,7 +118,7 @@ class ComprobantePdfService
             ? $this->qrAfip($empresa, (int) $codigoAfip, $puntoVenta, $numeroComprobante, $cae, $fechaEmision, $importe, $clienteCuit)
             : null;
 
-        $html = view('facturacion.comprobante-pdf', [
+        $html = view($this->vista($empresa, 'comprobante-pdf'), [
             'empresa' => $empresa,
             'pedido' => $pedido,
             'letra' => $letra,
@@ -134,9 +136,19 @@ class ComprobantePdfService
         ])->render();
 
         // +14 por la línea nueva "Venta N°:", +140 si hay QR (imagen 110px + margen + separador).
+        // Solo importa para el formato ticket — en A4 la página tiene alto fijo.
         $alturaExtra = 14 + ($qr ? 140 : 0);
 
-        return $this->renderizar($html, $pedido->items->count(), $alturaExtra);
+        return $this->renderizar($html, $pedido->items->count(), $alturaExtra, $empresa->usaFormatoA4());
+    }
+
+    /**
+     * `formato_comprobante` de la empresa (ticket/a4) decide qué vista
+     * Blade usar — mismos datos, layout distinto. Ver Empresa::usaFormatoA4().
+     */
+    private function vista(Empresa $empresa, string $nombreBase): string
+    {
+        return 'facturacion.'.$nombreBase.($empresa->usaFormatoA4() ? '-a4' : '');
     }
 
     /**
@@ -193,21 +205,30 @@ class ComprobantePdfService
         return (int) end($partes);
     }
 
-    private function renderizar(string $html, int $cantidadItems, int $alturaExtra = 0): string
+    private function renderizar(string $html, int $cantidadItems, int $alturaExtra = 0, bool $a4 = false): string
     {
         $options = new Options;
         $options->set('isRemoteEnabled', false);
         $options->set('defaultFont', 'DejaVu Sans');
 
-        // Alto variable: el ticket no tiene una cantidad fija de líneas (depende
-        // de cuántos ítems tenga la venta). Una altura base cubre encabezado +
-        // totales + footer (+20 por el pie "Desarrollado por" que va en los tres
-        // tipos de ticket), y se suma una línea más por cada ítem del detalle.
-        $alto = 500 + $cantidadItems * 16 + $alturaExtra;
-
         $dompdf = new Dompdf($options);
         $dompdf->loadHtml($html);
-        $dompdf->setPaper([0, 0, 226.772, $alto], 'portrait');
+
+        if ($a4) {
+            // Hoja A4 de alto fijo — a diferencia del ticket, el contenido
+            // fluye normal dentro de la página (y a una página siguiente si
+            // llegara a no entrar), no hace falta calcular el alto.
+            $dompdf->setPaper('A4', 'portrait');
+        } else {
+            // Alto variable: el ticket no tiene una cantidad fija de líneas
+            // (depende de cuántos ítems tenga la venta). Una altura base cubre
+            // encabezado + totales + footer (+20 por el pie "Desarrollado por"
+            // que va en los tres tipos de ticket), y se suma una línea más por
+            // cada ítem del detalle.
+            $alto = 500 + $cantidadItems * 16 + $alturaExtra;
+            $dompdf->setPaper([0, 0, 226.772, $alto], 'portrait');
+        }
+
         $dompdf->render();
 
         return $dompdf->output();
