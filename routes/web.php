@@ -17,7 +17,9 @@ use App\Http\Controllers\HistorialCajasController;
 use App\Http\Controllers\HistorialSesionesController;
 use App\Http\Controllers\ImportacionClienteController;
 use App\Http\Controllers\ImportacionProductoController;
+use App\Http\Controllers\MercadoPagoController;
 use App\Http\Controllers\MotivoEgresoController;
+use App\Http\Controllers\PagoQrController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\PresupuestoController;
 use App\Http\Controllers\ProductoController;
@@ -182,6 +184,11 @@ Route::middleware('auth')->group(function () {
             Route::post('/configuracion/facturacion-electronica', [FacturacionElectronicaController::class, 'iniciar'])
                 ->name('configuracion.facturacion.iniciar');
 
+            Route::get('/configuracion/mercadopago/conectar', [MercadoPagoController::class, 'conectar'])
+                ->name('configuracion.mercadopago.conectar');
+            Route::get('/configuracion/mercadopago/callback', [MercadoPagoController::class, 'callback'])
+                ->name('configuracion.mercadopago.callback');
+
             Route::get('/egresos', [EgresoController::class, 'index'])->name('egresos.index');
 
             Route::prefix('cajas')->name('cajas.')->group(function () {
@@ -227,6 +234,12 @@ Route::middleware('auth')->group(function () {
         });
 
         Route::post('/egresos', [EgresoController::class, 'store'])->name('egresos.store')->middleware('role:cajero,cajero_vendedor');
+
+        Route::prefix('pagos-qr')->name('pagosQr.')->middleware('role:admin,cajero,cajero_vendedor')->group(function () {
+            Route::post('/{pedido}', [PagoQrController::class, 'crear'])->name('crear');
+            Route::get('/{intento}/estado', [PagoQrController::class, 'estado'])->name('estado');
+            Route::post('/{intento}/cancelar', [PagoQrController::class, 'cancelar'])->name('cancelar');
+        });
 
         Route::prefix('creditos')->name('creditos.')->middleware('role:admin,cajero,cajero_vendedor')->group(function () {
             Route::get('/', [CreditoController::class, 'index'])->name('index');

@@ -74,6 +74,11 @@ class Caja extends Model
         return (float) $this->ventas()->sum('monto_transferencia');
     }
 
+    public function totalVentasMercadopago(): float
+    {
+        return (float) $this->ventas()->sum('monto_mercadopago');
+    }
+
     public function totalEgresosEfectivo(): float
     {
         return (float) $this->egresos()->sum('monto_efectivo');

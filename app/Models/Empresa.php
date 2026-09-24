@@ -41,6 +41,8 @@ class Empresa extends Model
         'descuento_precio_empleado_porcentaje',
         'horario_laboral_habilitado',
         'permite_fiado',
+        'permite_pago_qr',
+        'ajuste_mercadopago_porcentaje',
         'logo_path',
     ];
 
@@ -66,9 +68,11 @@ class Empresa extends Model
             'mostrar_modal_comprobante' => 'boolean',
             'horario_laboral_habilitado' => 'boolean',
             'permite_fiado' => 'boolean',
+            'permite_pago_qr' => 'boolean',
             'ajuste_efectivo_porcentaje' => 'decimal:2',
             'ajuste_tarjeta_porcentaje' => 'decimal:2',
             'ajuste_transferencia_porcentaje' => 'decimal:2',
+            'ajuste_mercadopago_porcentaje' => 'decimal:2',
             'descuento_precio_empleado_porcentaje' => 'decimal:2',
         ];
     }
@@ -109,6 +113,11 @@ class Empresa extends Model
     public function credencialFacturacion(): HasOne
     {
         return $this->hasOne(CredencialFacturacion::class);
+    }
+
+    public function credencialMercadoPago(): HasOne
+    {
+        return $this->hasOne(CredencialMercadoPago::class);
     }
 
     public function turnosLaborales(): HasMany
@@ -212,6 +221,17 @@ class Empresa extends Model
     }
 
     /**
+     * Mismo split de dos niveles que facturacionHabilitada(): permite_pago_qr
+     * es el interruptor operativo (el admin lo prende/apaga), y necesita
+     * además que la cuenta de Mercado Pago esté conectada de verdad — sin
+     * las dos cosas, la opción "Mercado Pago (QR)" no aparece al cobrar.
+     */
+    public function pagoQrHabilitado(): bool
+    {
+        return $this->permite_pago_qr && ($this->credencialMercadoPago?->estaActiva() ?? false);
+    }
+
+    /**
      * Qué comprobante viene preseleccionado al cobrar (`comprobante_predeterminado`
      * lo elige el admin en Configuración), pero siempre validado contra el
      * estado actual de la empresa — así un valor guardado que dejó de ser
@@ -251,6 +271,7 @@ class Empresa extends Model
             'efectivo' => $this->ajuste_efectivo_porcentaje,
             'tarjeta' => $this->ajuste_tarjeta_porcentaje,
             'transferencia' => $this->ajuste_transferencia_porcentaje,
+            'mercadopago' => $this->ajuste_mercadopago_porcentaje,
             default => 0,
         };
     }
