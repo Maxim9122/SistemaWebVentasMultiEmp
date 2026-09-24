@@ -184,6 +184,17 @@
 
             <div>
                 <label class="flex items-start gap-2 text-sm">
+                    <input type="checkbox" name="permite_pago_qr" value="1"
+                        @checked(old('permite_pago_qr', $empresa->permite_pago_qr)) class="rounded border border-slate-300 mt-0.5">
+                    <span>
+                        <span class="font-medium text-slate-900">Permitir cobro con QR (Mercado Pago)</span><br>
+                        <span class="text-slate-500">Si lo activás, al cobrar aparece "Mercado Pago (QR)" como medio de pago — necesita además tener la cuenta de Mercado Pago conectada, más abajo.</span>
+                    </span>
+                </label>
+            </div>
+
+            <div>
+                <label class="flex items-start gap-2 text-sm">
                     <input type="checkbox" name="factura_habilitada" value="1"
                         @checked(old('factura_habilitada', $empresa->factura_habilitada)) class="rounded border border-slate-300 mt-0.5">
                     <span>
@@ -207,7 +218,7 @@
             <div class="border-t pt-5">
                 <p class="font-medium text-slate-900 mb-1">Descuento / recargo por medio de pago</p>
                 <p class="text-slate-500 text-sm mb-3">Un número negativo es descuento, positivo es recargo. Dejá 0 si ese medio no ajusta el precio.</p>
-                <div class="grid grid-cols-3 gap-4">
+                <div class="grid grid-cols-4 gap-4">
                     <div>
                         <label for="ajuste_efectivo_porcentaje" class="block text-sm font-medium mb-1">Efectivo %</label>
                         <input id="ajuste_efectivo_porcentaje" name="ajuste_efectivo_porcentaje" type="number" step="0.01"
@@ -224,6 +235,12 @@
                         <label for="ajuste_transferencia_porcentaje" class="block text-sm font-medium mb-1">Transferencia %</label>
                         <input id="ajuste_transferencia_porcentaje" name="ajuste_transferencia_porcentaje" type="number" step="0.01"
                             value="{{ old('ajuste_transferencia_porcentaje', $empresa->ajuste_transferencia_porcentaje) }}"
+                            class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                    </div>
+                    <div>
+                        <label for="ajuste_mercadopago_porcentaje" class="block text-sm font-medium mb-1">Mercado Pago %</label>
+                        <input id="ajuste_mercadopago_porcentaje" name="ajuste_mercadopago_porcentaje" type="number" step="0.01"
+                            value="{{ old('ajuste_mercadopago_porcentaje', $empresa->ajuste_mercadopago_porcentaje) }}"
                             class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
                     </div>
                 </div>
@@ -347,6 +364,29 @@
                 @enderror
             </div>
         @endif
+
+        <div class="border-t mt-5 pt-5">
+            <p class="font-medium text-slate-900 mb-1">Cobro con QR (Mercado Pago)</p>
+
+            @if ($empresa->credencialMercadoPago?->estaActiva())
+                <p class="text-sm text-emerald-700 mb-3">Cuenta de Mercado Pago conectada.</p>
+                <a href="{{ route('configuracion.mercadopago.conectar') }}" class="inline-block rounded bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 text-sm font-medium">
+                    Reconectar otra cuenta
+                </a>
+            @else
+                <p class="text-slate-500 text-sm mb-3">
+                    Conectá tu cuenta de Mercado Pago para poder cobrar con QR — al pagar, la venta se cobra sola y, si tenés
+                    facturación configurada, el comprobante se emite automático, igual que con los otros medios de pago.
+                </p>
+                <a href="{{ route('configuracion.mercadopago.conectar') }}" class="inline-block rounded bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 text-sm font-medium">
+                    Conectar Mercado Pago
+                </a>
+            @endif
+
+            @error('mercadopago')
+                <p class="text-sm text-red-600 mt-2">{{ $message }}</p>
+            @enderror
+        </div>
     </div>
 
     <script>

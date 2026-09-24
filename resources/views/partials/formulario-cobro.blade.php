@@ -1,11 +1,17 @@
 @php
     $soloMedioPago = $soloMedioPago ?? false;
     $fiadoHabilitado = $empresa->permite_fiado && ! $soloMedioPago;
+    // El QR de Mercado Pago cubre siempre el total completo (no se combina
+    // con otros medios en la misma venta — evita sostener un pago parcial
+    // "a medias" mientras se espera la confirmación asincrónica), así que
+    // tampoco tiene sentido en "reabrir cobro" (soloMedioPago).
+    $mpHabilitado = $empresa->pagoQrHabilitado() && ! $soloMedioPago;
     $clientesParaBuscador = $clientes->map(fn ($c) => ['id' => $c->id, 'nombre' => $c->nombre, 'cuit' => $c->cuit])->values();
     $ajustes = [
         'efectivo' => (float) $empresa->ajuste_efectivo_porcentaje,
         'tarjeta' => (float) $empresa->ajuste_tarjeta_porcentaje,
         'transferencia' => (float) $empresa->ajuste_transferencia_porcentaje,
+        'mercadopago' => (float) $empresa->ajuste_mercadopago_porcentaje,
     ];
     $idUnico = uniqid('cobro_');
     $comprobantePredeterminado = $empresa->comprobantePredeterminadoEfectivo();
@@ -24,6 +30,9 @@
             <option value="transferencia">Transferencia</option>
             @if ($fiadoHabilitado)
                 <option value="fiado">Fiado (a crédito)</option>
+            @endif
+            @if ($mpHabilitado)
+                <option value="mercadopago">Mercado Pago (QR)</option>
             @endif
         </select>
     </div>
@@ -60,6 +69,7 @@
     <input type="hidden" name="monto_tarjeta" id="{{ $idUnico }}_monto_tarjeta">
     <input type="hidden" name="monto_transferencia" id="{{ $idUnico }}_monto_transferencia">
     <input type="hidden" name="monto_fiado" id="{{ $idUnico }}_monto_fiado">
+    <input type="hidden" name="monto_mercadopago" id="{{ $idUnico }}_monto_mercadopago">
 
     <div id="{{ $idUnico }}_desglose" class="mt-2 text-sm text-slate-600"></div>
 </div>
@@ -133,10 +143,46 @@
     @endif
 @endunless
 
+@if ($mpHabilitado)
+    {{-- Modal: QR de Mercado Pago. El navegador nunca habla con Mercado
+    Pago directo — el QR es una imagen data: generada en el servidor (ver
+    PagoQrService::generarQr()), y la confirmación llega por polling a
+    nuestro propio endpoint. --}}
+    <div id="{{ $idUnico }}_modal_pago_qr" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/50 p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 text-center">
+            <h2 class="text-lg font-semibold mb-3">Cobrar con Mercado Pago</h2>
+
+            <div id="{{ $idUnico }}_qr_cargando" class="py-10 text-sm text-slate-500">
+                Generando QR...
+            </div>
+
+            <div id="{{ $idUnico }}_qr_listo" class="hidden">
+                <img id="{{ $idUnico }}_qr_imagen" src="" alt="QR de Mercado Pago" class="mx-auto w-56 h-56 rounded border border-slate-200">
+                <p class="mt-3 text-sm text-slate-600">Escaneá el código con la app de Mercado Pago</p>
+                <p id="{{ $idUnico }}_qr_esperando" class="mt-1 text-sm font-medium text-slate-500">Esperando confirmación del pago...</p>
+            </div>
+
+            <div id="{{ $idUnico }}_qr_error" class="hidden py-6">
+                <p class="text-sm text-red-600 mb-3" id="{{ $idUnico }}_qr_error_texto"></p>
+                <button type="button" id="{{ $idUnico }}_qr_reintentar" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
+                    Reintentar
+                </button>
+            </div>
+
+            <button type="button" id="{{ $idUnico }}_qr_cancelar" class="mt-4 text-sm text-slate-500 hover:underline">
+                Cancelar
+            </button>
+        </div>
+    </div>
+@endif
+
 <script>
     (function () {
         const prefijo = {{ Js::from($idUnico) }};
         const total = {{ (float) $pedido->total }};
+        const pedidoId = {{ (int) $pedido->id }};
+        const mpHabilitado = @json($mpHabilitado);
+        const urlPagoQrCrear = mpHabilitado ? {{ Js::from(route('pagosQr.crear', $pedido)) }} : null;
         const ajustes = @json($ajustes);
         const clientes = @json($clientesParaBuscador);
         const fiadoHabilitado = @json($fiadoHabilitado);
@@ -165,6 +211,7 @@
         const hiddenTarjeta = $('_monto_tarjeta');
         const hiddenTransferencia = $('_monto_transferencia');
         const hiddenFiado = $('_monto_fiado');
+        const hiddenMercadopago = $('_monto_mercadopago');
         const textoRestante = $('_texto_restante');
         const desglose = $('_desglose');
 
@@ -176,13 +223,16 @@
             hiddenTarjeta.value = medio === 'tarjeta' ? total.toFixed(2) : '';
             hiddenTransferencia.value = medio === 'transferencia' ? total.toFixed(2) : '';
             hiddenFiado.value = medio === 'fiado' ? total.toFixed(2) : '';
+            hiddenMercadopago.value = medio === 'mercadopago' ? total.toFixed(2) : '';
 
             const ajustado = calcularAjustado(total, medio);
             const pct = ajustes[medio];
             const detalle = pct ? ' (' + (pct > 0 ? '+' : '') + pct + '%)' : '';
             desglose.textContent = medio === 'fiado'
                 ? 'Queda fiado: ' + formatearMoneda(total) + ' — no se cobra ahora'
-                : 'Total a cobrar: ' + formatearMoneda(ajustado) + detalle;
+                : medio === 'mercadopago'
+                    ? 'Se va a generar un QR por ' + formatearMoneda(ajustado) + detalle
+                    : 'Total a cobrar: ' + formatearMoneda(ajustado) + detalle;
 
             actualizarVisibilidadCliente();
         }
@@ -406,6 +456,160 @@
                     inputCliente.value = '';
                 }
             });
+        }
+
+        // --- QR de Mercado Pago: bloque aparte, no toca nada de lo de arriba ---
+        if (mpHabilitado) {
+            const urlPagosQrBase = {{ Js::from(url('/pagos-qr')) }};
+            const modalQr = $('_modal_pago_qr');
+            const qrCargando = $('_qr_cargando');
+            const qrListo = $('_qr_listo');
+            const qrImagen = $('_qr_imagen');
+            const qrError = $('_qr_error');
+            const qrErrorTexto = $('_qr_error_texto');
+            const btnReintentar = $('_qr_reintentar');
+            const btnCancelarQr = $('_qr_cancelar');
+            const form = selectSimple.closest('form');
+
+            let intentoActualId = null;
+            let pollTimer = null;
+
+            function obtenerToken() {
+                const input = form.querySelector('input[name="_token"]');
+                return input ? input.value : '';
+            }
+
+            function abrirModalQr() {
+                modalQr.classList.remove('hidden');
+                modalQr.classList.add('flex');
+            }
+
+            function cerrarModalQr() {
+                modalQr.classList.add('hidden');
+                modalQr.classList.remove('flex');
+                detenerPolling();
+            }
+
+            function mostrarCargando() {
+                qrCargando.classList.remove('hidden');
+                qrListo.classList.add('hidden');
+                qrError.classList.add('hidden');
+            }
+
+            function mostrarQr(dataUri) {
+                qrImagen.src = dataUri;
+                qrCargando.classList.add('hidden');
+                qrListo.classList.remove('hidden');
+                qrError.classList.add('hidden');
+            }
+
+            function mostrarErrorQr(mensaje) {
+                qrErrorTexto.textContent = mensaje;
+                qrCargando.classList.add('hidden');
+                qrListo.classList.add('hidden');
+                qrError.classList.remove('hidden');
+            }
+
+            function detenerPolling() {
+                if (pollTimer) {
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+                }
+            }
+
+            function iniciarPolling(intentoId) {
+                detenerPolling();
+                pollTimer = setInterval(function () {
+                    fetch(urlPagosQrBase + '/' + intentoId + '/estado', { headers: { 'Accept': 'application/json' } })
+                        .then(function (resp) { return resp.json(); })
+                        .then(function (datos) {
+                            if (datos.pagado) {
+                                detenerPolling();
+                                window.location.href = datos.redirect;
+                            } else if (datos.estado === 'rechazado' || datos.estado === 'expirado') {
+                                detenerPolling();
+                                mostrarErrorQr(datos.estado === 'expirado'
+                                    ? 'El QR venció sin que se complete el pago.'
+                                    : 'El pago no se pudo completar.');
+                            }
+                        })
+                        // Conexión inestable: se reintenta solo en el próximo
+                        // tick, un error suelto no corta el polling.
+                        .catch(function () {});
+                }, 3000);
+            }
+
+            function valorTipoFactura() {
+                const radio = form.querySelector('input[name="tipo_factura"]:checked');
+                if (radio) return radio.value;
+                const oculto = form.querySelector('input[type="hidden"][name="tipo_factura"]');
+                return oculto ? oculto.value : null;
+            }
+
+            function generarQr() {
+                mostrarCargando();
+                abrirModalQr();
+
+                const inputClienteNombre = $('_cliente_nombre');
+                const inputClienteCuit = $('_cliente_cuit');
+                const inputClienteTelefono = $('_cliente_telefono');
+
+                const body = {
+                    tipo_comprobante: selectComprobante ? selectComprobante.value : 'remito',
+                    cliente_id: hiddenCliente && hiddenCliente.value ? hiddenCliente.value : null,
+                    cliente_nombre: inputClienteNombre ? inputClienteNombre.value : null,
+                    cliente_cuit: inputClienteCuit ? inputClienteCuit.value : null,
+                    cliente_telefono: inputClienteTelefono ? inputClienteTelefono.value : null,
+                    tipo_factura: valorTipoFactura(),
+                };
+
+                fetch(urlPagoQrCrear, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': obtenerToken(),
+                    },
+                    body: JSON.stringify(body),
+                })
+                    .then(function (resp) {
+                        if (! resp.ok) {
+                            return resp.json().then(function (datos) {
+                                throw new Error(datos.mensaje || 'No se pudo generar el QR.');
+                            });
+                        }
+
+                        return resp.json();
+                    })
+                    .then(function (datos) {
+                        intentoActualId = datos.intento_id;
+                        mostrarQr(datos.qr);
+                        iniciarPolling(datos.intento_id);
+                    })
+                    .catch(function (error) {
+                        mostrarErrorQr(error.message || 'No se pudo generar el QR. Probá de nuevo.');
+                    });
+            }
+
+            form.addEventListener('submit', function (evento) {
+                if (selectSimple.value === 'mercadopago') {
+                    evento.preventDefault();
+                    generarQr();
+                }
+            });
+
+            btnCancelarQr.addEventListener('click', function () {
+                cerrarModalQr();
+
+                if (intentoActualId) {
+                    fetch(urlPagosQrBase + '/' + intentoActualId + '/cancelar', {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': obtenerToken(), 'Accept': 'application/json' },
+                    }).catch(function () {});
+                }
+            });
+
+            btnReintentar.addEventListener('click', generarQr);
         }
     })();
 </script>

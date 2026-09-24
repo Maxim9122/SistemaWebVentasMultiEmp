@@ -42,6 +42,10 @@
             <p class="font-medium">${{ number_format($caja->totalVentasTransferencia(), 2, ',', '.') }}</p>
         </div>
         <div>
+            <p class="text-slate-500">Ventas con Mercado Pago</p>
+            <p class="font-medium">${{ number_format($caja->totalVentasMercadopago(), 2, ',', '.') }}</p>
+        </div>
+        <div>
             <p class="text-slate-500">Egresos en efectivo</p>
             <p class="font-medium text-red-600">-${{ number_format($caja->totalEgresosEfectivo(), 2, ',', '.') }}</p>
         </div>

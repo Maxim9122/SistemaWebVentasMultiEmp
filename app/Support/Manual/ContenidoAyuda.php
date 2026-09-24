@@ -255,7 +255,7 @@ class ContenidoAyuda
                     'ajustes-pago' => [
                         'titulo' => 'Recargos/descuentos por medio de pago',
                         'resumen' => '
-                            <p>Se puede configurar un porcentaje de ajuste (recargo o descuento) para efectivo, tarjeta y transferencia — se aplica automáticamente al calcular el total según cómo pague el cliente.</p>
+                            <p>Se puede configurar un porcentaje de ajuste (recargo o descuento) para efectivo, tarjeta, transferencia y Mercado Pago — se aplica automáticamente al calcular el total según cómo pague el cliente. El de Mercado Pago sirve para reflejar la comisión que cobra la plataforma, sin mezclarla con una transferencia bancaria normal.</p>
                         ',
                     ],
                     'facturacion-electronica' => [
@@ -279,6 +279,14 @@ class ContenidoAyuda
                                 <li><strong>A4</strong>: hoja entera, para imprimir en una impresora común de oficina.</li>
                             </ul>
                             <p>Cambia el diseño de todos los documentos de una — no hay que elegir formato por cada venta.</p>
+                        ',
+                    ],
+                    'cobro-qr-mercadopago' => [
+                        'titulo' => 'Cobrar con QR de Mercado Pago',
+                        'resumen' => '
+                            <p>Para habilitarlo hacen falta dos cosas, las dos en esta pantalla: conectar la cuenta de Mercado Pago de la empresa (botón "Conectar Mercado Pago") y activar el interruptor "Permitir cobro con QR".</p>
+                            <p>Una vez activo, aparece <strong>"Mercado Pago (QR)"</strong> como medio de pago al cobrar (Caja o el cobro directo del cajero_vendedor). Se genera un QR por el total de la venta — el cliente lo escanea desde su celular y paga. La venta queda esperando mientras tanto; apenas Mercado Pago confirma el pago, se cobra sola y, si la empresa ya tiene facturación configurada, el comprobante se emite automático, igual que con cualquier otro medio.</p>
+                            <p>El QR con Mercado Pago cubre siempre el <strong>total completo</strong> de la venta — no se puede combinar con otro medio en la misma venta (por ejemplo, mitad efectivo y mitad QR).</p>
                         ',
                     ],
                 ],

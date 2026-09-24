@@ -260,6 +260,9 @@
             @if ($pedido->monto_transferencia)
                 <p>Transferencia: ${{ number_format($pedido->monto_transferencia, 2, ',', '.') }} ({{ $pedido->ajuste_transferencia_porcentaje > 0 ? '+' : '' }}{{ $pedido->ajuste_transferencia_porcentaje }}%)</p>
             @endif
+            @if ($pedido->monto_mercadopago)
+                <p>Mercado Pago: ${{ number_format($pedido->monto_mercadopago, 2, ',', '.') }} ({{ $pedido->ajuste_mercadopago_porcentaje > 0 ? '+' : '' }}{{ $pedido->ajuste_mercadopago_porcentaje }}%)</p>
+            @endif
         </div>
         <div class="border-t mt-3 pt-3 flex justify-between text-sm">
             <span class="text-slate-500">Total productos</span>
