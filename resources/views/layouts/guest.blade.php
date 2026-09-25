@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('titulo', 'Acceder') · {{ config('app.name') }}</title>
     <link rel="icon" href="{{ \App\Models\User::iconoSitioUrlEstatico() ?? asset('favicon.ico') }}">
+    <link rel="manifest" href="{{ asset('manifest.json') }}">
+    <link rel="apple-touch-icon" href="{{ asset('icons/icon-192.png') }}">
+    <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col">
@@ -55,5 +58,6 @@
     </footer>
 
     @include('partials.evitar-doble-envio')
+    @include('partials.registro-service-worker')
 </body>
 </html>

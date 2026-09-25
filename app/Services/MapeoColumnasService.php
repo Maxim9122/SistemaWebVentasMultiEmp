@@ -63,6 +63,19 @@ class MapeoColumnasService
         return $sugerencias;
     }
 
+    /**
+     * Expone el diccionario de sinónimos tal cual (solo lectura) para
+     * mostrarlo como referencia en pantalla (ver "Guía rápida" en
+     * productos/importar/subir.blade.php) — evita mantener una copia
+     * duplicada del diccionario en la vista que se pueda desincronizar.
+     *
+     * @return array<string, list<string>>
+     */
+    public static function sinonimosPorCampo(): array
+    {
+        return static::SINONIMOS;
+    }
+
     public function normalizar(string $texto): string
     {
         $texto = mb_strtolower(trim($texto));
