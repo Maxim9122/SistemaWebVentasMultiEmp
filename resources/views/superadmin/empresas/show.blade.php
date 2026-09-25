@@ -58,6 +58,69 @@
             @endforeach
         </div>
 
+        @if ($empresa->estado === 'activa')
+            <div class="border-t pt-4">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-sm font-semibold text-slate-700">Abono mensual</h2>
+                    @if ($empresa->abonoVencido())
+                        <span class="text-xs font-medium rounded px-2 py-1 bg-red-100 text-red-800">
+                            Vencido hace {{ $empresa->diasVencidoAbono() }} día(s)
+                        </span>
+                    @else
+                        <span class="text-xs font-medium rounded px-2 py-1 bg-emerald-100 text-emerald-800">
+                            Vigente hasta el {{ $empresa->vigenciaAbonoHasta()->format('d/m/Y') }}
+                        </span>
+                    @endif
+                </div>
+
+                <form method="POST" action="{{ route('superadmin.empresas.pagos.store', $empresa) }}" class="flex flex-wrap items-end gap-2 mb-4">
+                    @csrf
+                    <div>
+                        <label for="fecha_pago" class="block text-xs text-slate-500 mb-1">Fecha del pago</label>
+                        <input id="fecha_pago" name="fecha_pago" type="date" value="{{ old('fecha_pago', now()->format('Y-m-d')) }}" required
+                            class="rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                    </div>
+                    <div>
+                        <label for="monto" class="block text-xs text-slate-500 mb-1">Monto pagado</label>
+                        <input id="monto" name="monto" type="number" step="0.01" min="0.01" value="{{ old('monto') }}" required
+                            class="w-32 rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                    </div>
+                    <button type="submit" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
+                        Registrar pago
+                    </button>
+                </form>
+
+                @if ($empresa->pagosAbono->isNotEmpty())
+                    <table class="w-full text-sm">
+                        <thead class="text-slate-500 text-left">
+                            <tr>
+                                <th class="py-1 font-medium">Fecha</th>
+                                <th class="py-1 font-medium">Monto</th>
+                                <th class="py-1 font-medium"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            @foreach ($empresa->pagosAbono->sortByDesc('fecha_pago') as $pago)
+                                <tr>
+                                    <td class="py-1.5">{{ $pago->fecha_pago->format('d/m/Y') }}</td>
+                                    <td class="py-1.5">${{ number_format($pago->monto, 2, ',', '.') }}</td>
+                                    <td class="py-1.5 text-right">
+                                        <form method="POST" action="{{ route('superadmin.empresas.pagos.destroy', [$empresa, $pago]) }}" onsubmit="return confirm('¿Eliminar este pago? Esto puede volver a marcar la empresa como vencida.');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-xs text-red-600 hover:underline">Eliminar</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                @else
+                    <p class="text-sm text-slate-500">Todavía no se registró ningún pago — vigente en período de gracia hasta el {{ $empresa->vigenciaAbonoHasta()->format('d/m/Y') }}.</p>
+                @endif
+            </div>
+        @endif
+
         <div class="flex gap-2 pt-2 border-t">
             @if ($empresa->estado === 'pendiente')
                 <form method="POST" action="{{ route('superadmin.empresas.aprobar', $empresa) }}">

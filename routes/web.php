@@ -31,6 +31,7 @@ use App\Http\Controllers\SeguridadAccesoController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\Superadmin\EmpresaController as SuperadminEmpresaController;
 use App\Http\Controllers\Superadmin\PerfilController as SuperadminPerfilController;
+use App\Http\Controllers\Superadmin\VencimientoController as SuperadminVencimientoController;
 use App\Http\Controllers\TicketPublicoController;
 use App\Http\Controllers\VentaController;
 use Illuminate\Support\Facades\Route;
@@ -289,5 +290,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/empresas/{empresa}/rechazar', [SuperadminEmpresaController::class, 'rechazar'])->name('empresas.rechazar');
         Route::post('/empresas/{empresa}/suspender', [SuperadminEmpresaController::class, 'suspender'])->name('empresas.suspender');
         Route::post('/empresas/{empresa}/reactivar', [SuperadminEmpresaController::class, 'reactivar'])->name('empresas.reactivar');
+        Route::post('/empresas/{empresa}/pagos', [SuperadminEmpresaController::class, 'registrarPago'])->name('empresas.pagos.store');
+        Route::delete('/empresas/{empresa}/pagos/{pago}', [SuperadminEmpresaController::class, 'eliminarPago'])->name('empresas.pagos.destroy');
+
+        Route::get('/vencimientos', [SuperadminVencimientoController::class, 'index'])->name('vencimientos.index');
     });
 });

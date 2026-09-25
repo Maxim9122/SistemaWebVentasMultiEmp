@@ -41,6 +41,13 @@
             <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
                 @if (auth()->user()?->esSuperadmin())
                     <a href="{{ route('superadmin.empresas.index') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('superadmin.empresas.*') ? 'bg-slate-800 text-white' : '' }}">Empresas</a>
+                    <a href="{{ route('superadmin.vencimientos.index') }}" class="flex items-center justify-between rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('superadmin.vencimientos.*') ? 'bg-slate-800 text-white' : '' }}">
+                        <span>Vencimientos</span>
+                        @php $cantidadVencidas = \App\Models\Empresa::cantidadConAbonoVencido(); @endphp
+                        @if ($cantidadVencidas > 0)
+                            <span class="text-xs font-semibold rounded-full px-2 py-0.5 bg-emerald-500 text-white">{{ $cantidadVencidas }}</span>
+                        @endif
+                    </a>
                     <a href="{{ route('superadmin.perfil.edit') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('superadmin.perfil.*') ? 'bg-slate-800 text-white' : '' }}">Mi perfil</a>
                 @else
                     <a href="{{ route('dashboard') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('dashboard') ? 'bg-slate-800 text-white' : '' }}">Resumen</a>

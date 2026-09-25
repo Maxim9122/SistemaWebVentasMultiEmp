@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Superadmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Empresa;
+use App\Models\PagoAbono;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -101,6 +102,32 @@ class EmpresaController extends Controller
         ]);
 
         return back()->with('status', 'Empresa reactivada.');
+    }
+
+    public function registrarPago(Request $request, Empresa $empresa): RedirectResponse
+    {
+        $datos = $request->validate([
+            'fecha_pago' => ['required', 'date'],
+            'monto' => ['required', 'numeric', 'min:0.01'],
+        ]);
+
+        $empresa->pagosAbono()->create([
+            ...$datos,
+            'registrado_por_id' => $request->user()->id,
+        ]);
+
+        return back()->with('status', 'Pago registrado.');
+    }
+
+    public function eliminarPago(Empresa $empresa, PagoAbono $pago): RedirectResponse
+    {
+        if ($pago->empresa_id !== $empresa->id) {
+            abort(404);
+        }
+
+        $pago->delete();
+
+        return back()->with('status', 'Pago eliminado.');
     }
 
     /**

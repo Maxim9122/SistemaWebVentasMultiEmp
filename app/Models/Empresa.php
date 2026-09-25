@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TieneTelefonoWhatsapp;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
 class Empresa extends Model
 {
-    use HasFactory;
+    use HasFactory, TieneTelefonoWhatsapp;
 
     protected $fillable = [
         'razon_social',
@@ -129,6 +131,69 @@ class Empresa extends Model
     public function motivosEgreso(): HasMany
     {
         return $this->hasMany(MotivoEgreso::class);
+    }
+
+    public function pagosAbono(): HasMany
+    {
+        return $this->hasMany(PagoAbono::class)->orderBy('fecha_pago');
+    }
+
+    /**
+     * Hasta cuándo está cubierto el abono mensual de esta empresa. Cada pago
+     * suma 30 días — si se registran 2 pagos seguidos (pagó 2 meses de una),
+     * el segundo extiende la vigencia otros 30 días más a partir de donde
+     * quedó el primero, en vez de "pisarlo" — así 2 pagos cubren 60 días, no
+     * 30 (pedido explícito del usuario: "que cuente 30 días por cada pago").
+     * Sin ningún pago todavía, se da 30 días de gracia desde el alta.
+     */
+    public function vigenciaAbonoHasta(): Carbon
+    {
+        $pagos = $this->pagosAbono;
+
+        if ($pagos->isEmpty()) {
+            return $this->created_at->copy()->startOfDay()->addDays(30);
+        }
+
+        $vigencia = $this->created_at->copy()->startOfDay();
+
+        foreach ($pagos as $pago) {
+            $fechaPago = $pago->fecha_pago->copy()->startOfDay();
+            $base = $fechaPago->gt($vigencia) ? $fechaPago : $vigencia;
+            $vigencia = $base->copy()->addDays(30);
+        }
+
+        return $vigencia;
+    }
+
+    /**
+     * Cuántos días pasaron desde que venció el abono (0 si todavía está
+     * vigente o vence hoy mismo).
+     */
+    public function diasVencidoAbono(): int
+    {
+        $vigencia = $this->vigenciaAbonoHasta();
+        $hoy = now()->startOfDay();
+
+        return $hoy->gt($vigencia) ? (int) $vigencia->diffInDays($hoy) : 0;
+    }
+
+    public function abonoVencido(): bool
+    {
+        return $this->diasVencidoAbono() > 0;
+    }
+
+    /**
+     * Para el numerito del menú lateral del superadmin — se llama en cada
+     * página (ver layouts/app.blade.php), por eso se mantiene liviano: solo
+     * trae empresas activas con sus pagos, nada más.
+     */
+    public static function cantidadConAbonoVencido(): int
+    {
+        return static::where('estado', 'activa')
+            ->with('pagosAbono')
+            ->get()
+            ->filter(fn (Empresa $empresa) => $empresa->abonoVencido())
+            ->count();
     }
 
     /**
