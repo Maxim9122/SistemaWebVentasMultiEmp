@@ -120,11 +120,11 @@ class ProcesadorDeCobro
                 throw new \RuntimeException('Para fiar una venta hace falta elegir o cargar un cliente.');
             }
 
+            $cliente = $clienteIdFinal ? Cliente::find($clienteIdFinal) : null;
+
             $factura = null;
 
             if ($tipoComprobante === 'factura') {
-                $cliente = $clienteIdFinal ? Cliente::find($clienteIdFinal) : null;
-
                 $factura = Factura::create([
                     'empresa_id' => $pedidoActual->empresa_id,
                     'pedido_id' => $pedidoActual->id,
@@ -142,6 +142,11 @@ class ProcesadorDeCobro
                 'tipo_comprobante' => $tipoComprobante,
                 'factura_id' => $factura?->id,
                 'cliente_id' => $clienteIdFinal,
+                // Si se eligió/cargó un cliente real (típico en fiado o
+                // factura), el ticket tiene que mostrar su nombre — antes
+                // quedaba el "Consumidor Final" del carrito porque acá nunca
+                // se actualizaba, solo se guardaba en la Factura.
+                'cliente_nombre' => $cliente->nombre ?? $pedidoActual->cliente_nombre,
                 'monto_fiado' => $montoFiado > 0 ? $montoFiado : null,
                 'total_cobrado' => round($totalCobrado, 2),
                 'cobrado_por' => $cajero->id,
