@@ -194,6 +194,18 @@ class ContenidoAyuda
                             <p>En <strong>Productos</strong>, filtrá por marca, categoría o proveedor (o seleccioná productos puntuales de la lista) y usá <strong>Descargar PDF</strong> para un listado imprimible.</p>
                         ',
                     ],
+                    'ajustar-precio-busqueda' => [
+                        'titulo' => 'Ajustar precio por % a un grupo de productos',
+                        'resumen' => '
+                            <p>En <strong>Productos</strong>, arriba de la tabla hay un campo para cargar un porcentaje (positivo para aumentar, negativo — con el signo "-" — para descontar). Hay dos formas de aplicarlo:</p>
+                            <ul>
+                                <li><strong>A toda la búsqueda</strong>: filtrá primero por nombre, marca, categoría y/o proveedor, y usá el botón "Aplicar a TODOS estos N producto(s)" — pega únicamente en lo que ese filtro está mostrando en ese momento, nunca en el resto del catálogo.</li>
+                                <li><strong>A mano</strong>: tildá los productos puntuales en la tabla (o usá el check del encabezado para tildar todos los de la página), y usá el botón "Aplicar % (de arriba) a estos seleccionados" que aparece en el panel de selección.</li>
+                            </ul>
+                            <p>En los dos casos se pide confirmación antes de aplicar, mostrando el % y la cantidad exacta de productos afectados. Las promociones quedan siempre afuera (su precio es un valor final armado a mano, no un precio de catálogo).</p>
+                            <p>Queda un <strong>Historial de ajustes de precio</strong> (link junto a "Importaciones"), con la fecha, el % aplicado, el detalle de qué se filtró/seleccionó, y un botón <strong>Deshacer</strong> por si se aplicó algo mal — devuelve cada producto a su precio anterior (salvo que ya se haya vuelto a editar después, en cuyo caso ese cambio más reciente no se pisa).</p>
+                        ',
+                    ],
                 ],
             ],
 

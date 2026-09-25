@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AjustePrecioBusquedaController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\AyudaController;
 use App\Http\Controllers\CajaController;
@@ -105,6 +106,12 @@ Route::middleware('auth')->group(function () {
             Route::post('/', [ProductoController::class, 'store'])->name('store');
             Route::get('/{producto}/editar', [ProductoController::class, 'edit'])->name('edit');
             Route::put('/{producto}', [ProductoController::class, 'update'])->name('update');
+            Route::post('/ajustar-precio-busqueda', [ProductoController::class, 'ajustarPrecioBusqueda'])->name('ajustarPrecioBusqueda');
+
+            Route::prefix('ajustes-precio')->name('ajustesPrecio.')->group(function () {
+                Route::get('/', [AjustePrecioBusquedaController::class, 'index'])->name('index');
+                Route::post('/{ajuste}/deshacer', [AjustePrecioBusquedaController::class, 'deshacer'])->name('deshacer');
+            });
             Route::post('/{producto}/activar', [ProductoController::class, 'activar'])->name('activar');
             Route::post('/{producto}/desactivar', [ProductoController::class, 'desactivar'])->name('desactivar');
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\GuardarProductoRequest;
+use App\Models\AjustePrecioBusqueda;
 use App\Models\GrupoProducto;
 use App\Models\Producto;
 use App\Models\Proveedor;
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -73,7 +76,96 @@ class ProductoController extends Controller
             // productos.reposiciones.show), el modal de reponer stock se
             // abre solo, ya cargado con las líneas de ese lote.
             'reposicionParaEditar' => $this->reposicionParaEditar($request, $empresaId),
+            'descripcionFiltro' => $this->descripcionFiltroProductos($buscar, $marca, $categoria, $proveedorId),
+            // Cuenta aparte (no $productos->total()) porque el ajuste de
+            // precio por búsqueda excluye promos — así el número del botón
+            // coincide exactamente con lo que realmente se va a tocar.
+            'cantidadAjustablePorBusqueda' => $this->productosFiltrados($request, $buscar, $marca, $categoria, $proveedorId)
+                ->where('es_promocion', false)
+                ->count(),
         ]);
+    }
+
+    /**
+     * Ajuste de precio por % aplicado únicamente a lo que la búsqueda/filtro
+     * actual está mostrando (no a "todos", no a una selección por checkbox
+     * como en Grupos) — vuelve a correr exactamente el mismo filtro que armó
+     * el listado (`productosFiltrados()`, tomado del request, nunca de una
+     * lista de ids que mande el navegador) para garantizar que el ajuste
+     * pegue solo en lo que la búsqueda mostró, ni un producto más.
+     *
+     * Dos alcances posibles (mismo criterio que ya usa
+     * GrupoProductoController::ajustarPrecio): "busqueda" (todos los que
+     * coinciden con el filtro actual) o "seleccionados" (solo los que se
+     * tildaron a mano). En los dos casos la base es la MISMA query filtrada
+     * — en "seleccionados" se le suma un whereIn sobre esa query ya
+     * filtrada, nunca sobre productos sueltos, así que aunque queden ids
+     * viejos tildados de una búsqueda anterior (la selección persiste en
+     * localStorage entre búsquedas), solo pasan los que además siguen
+     * coincidiendo con el filtro de ahora.
+     */
+    public function ajustarPrecioBusqueda(Request $request): RedirectResponse
+    {
+        $datos = $request->validate([
+            'porcentaje' => ['required', 'numeric', 'between:-100,1000'],
+            'alcance' => ['required', Rule::in(['busqueda', 'seleccionados'])],
+            'productos_ids' => ['required_if:alcance,seleccionados', 'array'],
+            'productos_ids.*' => ['integer'],
+        ]);
+
+        $buscar = trim((string) $request->input('buscar', ''));
+        $marca = trim((string) $request->input('marca', ''));
+        $categoria = trim((string) $request->input('categoria', ''));
+        $proveedorId = $request->filled('proveedor_id') ? (int) $request->input('proveedor_id') : null;
+
+        // Las promos quedan afuera a propósito — su precio es un valor final
+        // armado a mano por el admin (no un precio de catálogo), mismo
+        // criterio que ya las excluye de entrar a un grupo.
+        $query = $this->productosFiltrados($request, $buscar, $marca, $categoria, $proveedorId)
+            ->where('es_promocion', false);
+
+        if ($datos['alcance'] === 'seleccionados') {
+            $idsSolicitados = array_map('intval', $datos['productos_ids'] ?? []);
+            $query->whereIn('productos.id', $idsSolicitados);
+        }
+
+        $productos = $query->get();
+
+        if ($productos->isEmpty()) {
+            return back()->withErrors(['porcentaje' => 'No hay productos para ajustar — revisá la búsqueda o la selección.']);
+        }
+
+        $descripcionFiltro = $this->descripcionFiltroProductos($buscar, $marca, $categoria, $proveedorId);
+
+        if ($datos['alcance'] === 'seleccionados') {
+            $descripcionFiltro = 'seleccionados a mano dentro de '.$descripcionFiltro;
+        }
+
+        DB::transaction(function () use ($productos, $datos, $request, $descripcionFiltro) {
+            $ajuste = AjustePrecioBusqueda::create([
+                'empresa_id' => $request->user()->empresa_id,
+                'user_id' => $request->user()->id,
+                'porcentaje' => $datos['porcentaje'],
+                'descripcion_filtro' => $descripcionFiltro,
+                'productos_count' => $productos->count(),
+            ]);
+
+            foreach ($productos as $producto) {
+                $precioAnterior = (float) $producto->precio;
+                $nuevoPrecio = max(0, round($precioAnterior * (1 + $datos['porcentaje'] / 100), 2));
+
+                $producto->update(['precio' => $nuevoPrecio]);
+
+                $ajuste->cambios()->create([
+                    'producto_id' => $producto->id,
+                    'precio_anterior' => $precioAnterior,
+                    'precio_nuevo' => $nuevoPrecio,
+                ]);
+            }
+        });
+
+        return redirect()->route('productos.index', $request->only(['buscar', 'marca', 'categoria', 'proveedor_id', 'orden', 'dir', 'por_pagina']))
+            ->with('status', count($productos).' producto(s) actualizados con el ajuste de precio. Podés deshacerlo desde "Historial de ajustes de precio".');
     }
 
     private function reposicionParaEditar(Request $request, int $empresaId): ?array

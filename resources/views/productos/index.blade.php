@@ -20,6 +20,13 @@
             </svg>
             Importaciones
         </a>
+        <a href="{{ route('productos.ajustesPrecio.index') }}" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 7v5l3 3"/>
+            </svg>
+            Historial de ajustes de precio
+        </a>
         <a href="{{ route('productos.reposiciones.index') }}" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
                 <circle cx="12" cy="12" r="9"/>
@@ -339,6 +346,51 @@
         </form>
     </div>
 
+    <div class="mb-4 bg-white rounded-lg shadow p-4 flex flex-wrap items-end gap-3">
+        <div>
+            <label for="porcentaje_ajuste_busqueda" class="block text-xs text-slate-500 mb-1">Ajustar precio (%) de la búsqueda actual</label>
+            <input type="number" id="porcentaje_ajuste_busqueda" step="0.01" placeholder="Ej: 10 o -5"
+                class="w-40 rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+        </div>
+        <button type="button" id="btn_ajustar_precio_busqueda" data-cantidad="{{ $cantidadAjustablePorBusqueda }}" data-filtro="{{ $descripcionFiltro }}"
+            {{ $cantidadAjustablePorBusqueda === 0 ? 'disabled' : '' }}
+            class="rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400 disabled:opacity-50 disabled:cursor-not-allowed">
+            Aplicar a TODOS estos {{ $cantidadAjustablePorBusqueda }} producto(s)
+        </button>
+        <p class="text-xs text-slate-500 w-full">
+            "Aplicar a todos" pega en lo que coincide con el filtro de arriba ahora mismo ({{ $descripcionFiltro }}) — no a toda tu lista de productos.
+            Si preferís elegir a mano, tildá los productos puntuales en la tabla de abajo y usá el botón que aparece ahí. Las promos quedan afuera en los dos casos.
+        </p>
+    </div>
+
+    <div id="modal_ajustar_precio_busqueda" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/50 p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 class="text-lg font-semibold mb-3">Ajustar precio</h2>
+            <p id="mensaje_ajustar_precio_busqueda" class="text-sm text-slate-600 mb-4"></p>
+            <div class="flex gap-2 justify-end">
+                <button type="button" id="modal_ajustar_precio_busqueda_cancelar" class="rounded px-4 py-2 text-sm font-medium text-slate-600 hover:underline">
+                    Cancelar
+                </button>
+                <form method="POST" action="{{ route('productos.ajustarPrecioBusqueda') }}" id="form_ajustar_precio_busqueda">
+                    @csrf
+                    <input type="hidden" name="buscar" value="{{ $buscar }}">
+                    <input type="hidden" name="marca" value="{{ $marca }}">
+                    <input type="hidden" name="categoria" value="{{ $categoria }}">
+                    <input type="hidden" name="proveedor_id" value="{{ $proveedorId }}">
+                    <input type="hidden" name="orden" value="{{ $orden }}">
+                    <input type="hidden" name="dir" value="{{ $direccion }}">
+                    <input type="hidden" name="por_pagina" value="{{ $porPagina }}">
+                    <input type="hidden" name="porcentaje" id="input_porcentaje_ajuste_busqueda">
+                    <input type="hidden" name="alcance" id="input_alcance_ajuste_busqueda">
+                    <div id="ids_seleccionados_ajuste_precio"></div>
+                    <button type="submit" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
+                        Confirmar ajuste
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <div id="bloque_seleccion" class="hidden mb-4 bg-white rounded-lg shadow p-4 flex flex-wrap items-center gap-4">
         <p class="text-sm w-full">
             <strong id="contador_seleccion">0</strong> producto(s) seleccionados
@@ -390,13 +442,21 @@
                 Descargar PDF de estos seleccionados
             </button>
         </form>
+
+        <div class="flex items-center gap-2">
+            <button type="button" id="btn_ajustar_precio_seleccionados" class="rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+                Aplicar % (de arriba) a estos seleccionados
+            </button>
+        </div>
     </div>
 
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <table class="w-full text-sm">
             <thead class="bg-slate-50 text-slate-500 text-left">
                 <tr>
-                    <th class="px-4 py-2 font-medium"></th>
+                    <th class="px-4 py-2 font-medium">
+                        <input type="checkbox" id="check_todos_pagina" class="rounded border border-slate-300" title="Tildar/destildar todos los de esta página">
+                    </th>
                     <th class="px-4 py-2 font-medium">Nombre</th>
                     <th class="px-4 py-2 font-medium">Código</th>
                     <th class="px-4 py-2 font-medium">
@@ -505,6 +565,42 @@
 
     <script>
         (function () {
+            const input = document.getElementById('porcentaje_ajuste_busqueda');
+            const boton = document.getElementById('btn_ajustar_precio_busqueda');
+            const modal = document.getElementById('modal_ajustar_precio_busqueda');
+            const mensaje = document.getElementById('mensaje_ajustar_precio_busqueda');
+            const inputOculto = document.getElementById('input_porcentaje_ajuste_busqueda');
+
+            boton.addEventListener('click', function () {
+                const porcentaje = parseFloat(input.value);
+
+                if (isNaN(porcentaje) || porcentaje === 0) {
+                    alert('Ingresá un porcentaje distinto de 0 (por ejemplo 10 para aumentar, o -5 para descontar).');
+                    input.focus();
+                    return;
+                }
+
+                const cantidad = boton.dataset.cantidad;
+                const filtro = boton.dataset.filtro;
+                const signo = porcentaje > 0 ? '+' : '';
+
+                mensaje.textContent = 'Se va a aplicar ' + signo + porcentaje + '% al precio de los ' + cantidad
+                    + ' producto(s) que coinciden con el filtro actual (' + filtro + '). Se puede deshacer después desde el Historial de ajustes de precio.';
+                inputOculto.value = porcentaje;
+                document.getElementById('input_alcance_ajuste_busqueda').value = 'busqueda';
+                document.getElementById('ids_seleccionados_ajuste_precio').innerHTML = '';
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            });
+
+            document.getElementById('modal_ajustar_precio_busqueda_cancelar').addEventListener('click', function () {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            });
+        })();
+
+        (function () {
             const modal = document.getElementById('modal_editar_producto');
             const form = document.getElementById('form_editar_producto');
             const campoStock = document.getElementById('editar_producto_stock');
@@ -588,6 +684,23 @@
                 });
             });
 
+            const checkTodosPagina = document.getElementById('check_todos_pagina');
+            if (checkTodosPagina) {
+                checkTodosPagina.addEventListener('change', function () {
+                    document.querySelectorAll('.seleccion-producto').forEach(function (checkbox) {
+                        checkbox.checked = checkTodosPagina.checked;
+
+                        if (checkTodosPagina.checked) {
+                            seleccion.add(checkbox.dataset.id);
+                        } else {
+                            seleccion.delete(checkbox.dataset.id);
+                        }
+                    });
+                    guardarSeleccion(seleccion);
+                    actualizarBloque();
+                });
+            }
+
             document.getElementById('vaciar_seleccion').addEventListener('click', function (evento) {
                 evento.preventDefault();
                 seleccion = new Set();
@@ -595,6 +708,7 @@
                 document.querySelectorAll('.seleccion-producto').forEach(function (cb) {
                     cb.checked = false;
                 });
+                if (checkTodosPagina) checkTodosPagina.checked = false;
                 actualizarBloque();
             });
 
@@ -680,6 +794,45 @@
                     input.value = id;
                     contenedor.appendChild(input);
                 });
+            });
+
+            document.getElementById('btn_ajustar_precio_seleccionados').addEventListener('click', function () {
+                if (seleccion.size === 0) {
+                    alert('Tildá al menos un producto antes de aplicar el ajuste.');
+                    return;
+                }
+
+                const inputPorcentaje = document.getElementById('porcentaje_ajuste_busqueda');
+                const porcentaje = parseFloat(inputPorcentaje.value);
+
+                if (isNaN(porcentaje) || porcentaje === 0) {
+                    alert('Ingresá el porcentaje arriba (por ejemplo 10 para aumentar, o -5 para descontar) antes de aplicarlo a los seleccionados.');
+                    inputPorcentaje.focus();
+                    return;
+                }
+
+                const modal = document.getElementById('modal_ajustar_precio_busqueda');
+                const mensaje = document.getElementById('mensaje_ajustar_precio_busqueda');
+                const signo = porcentaje > 0 ? '+' : '';
+
+                mensaje.textContent = 'Se va a aplicar ' + signo + porcentaje + '% al precio de los ' + seleccion.size
+                    + ' producto(s) que tildaste a mano. Esta acción no se puede deshacer desde acá (sí desde el Historial de ajustes de precio).';
+
+                document.getElementById('input_porcentaje_ajuste_busqueda').value = porcentaje;
+                document.getElementById('input_alcance_ajuste_busqueda').value = 'seleccionados';
+
+                const contenedorIds = document.getElementById('ids_seleccionados_ajuste_precio');
+                contenedorIds.innerHTML = '';
+                seleccion.forEach(function (id) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'productos_ids[]';
+                    input.value = id;
+                    contenedorIds.appendChild(input);
+                });
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
             });
 
             actualizarBloque();
