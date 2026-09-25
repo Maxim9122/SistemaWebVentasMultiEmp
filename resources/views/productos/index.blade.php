@@ -352,10 +352,13 @@
             <input type="number" id="porcentaje_ajuste_busqueda" step="0.01" placeholder="Ej: 10 o -5"
                 class="w-40 rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
         </div>
+        <button type="button" id="btn_ajustar_precio_seleccionados" disabled
+            class="rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400 disabled:opacity-50 disabled:cursor-not-allowed">
+            Aplicar a <span id="texto_cantidad_seleccionados">0</span> seleccionado(s)
+        </button>
         <p class="text-xs text-slate-500 w-full">
-            Cargá acá el porcentaje y despues tildá a qué productos aplicarlo: con el check del encabezado de la tabla (selecciona
-            <strong>todo</strong> el resultado de la búsqueda actual, en todas las páginas) o tildando puntualmente los que quieras.
-            El botón para aplicarlo aparece abajo apenas tildes algo. Las promos quedan siempre afuera.
+            Tildá a qué productos aplicarlo: con el check del encabezado de la tabla (selecciona <strong>todo</strong> el resultado
+            de la búsqueda actual, en todas las páginas) o tildando puntualmente los que quieras. Las promos quedan siempre afuera.
         </p>
     </div>
 
@@ -437,12 +440,6 @@
                 Descargar PDF de estos seleccionados
             </button>
         </form>
-
-        <div class="flex items-center gap-2">
-            <button type="button" id="btn_ajustar_precio_seleccionados" class="rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
-                Aplicar % (de arriba) a estos seleccionados
-            </button>
-        </div>
     </div>
 
     <div class="bg-white rounded-lg shadow overflow-hidden">
@@ -632,9 +629,15 @@
             const contador = document.getElementById('contador_seleccion');
             const bloque = document.getElementById('bloque_seleccion');
 
+            const btnAjustarPrecioSeleccionados = document.getElementById('btn_ajustar_precio_seleccionados');
+            const textoCantidadSeleccionados = document.getElementById('texto_cantidad_seleccionados');
+
             function actualizarBloque() {
                 contador.textContent = seleccion.size;
                 bloque.classList.toggle('hidden', seleccion.size === 0);
+
+                if (textoCantidadSeleccionados) textoCantidadSeleccionados.textContent = seleccion.size;
+                if (btnAjustarPrecioSeleccionados) btnAjustarPrecioSeleccionados.disabled = seleccion.size === 0;
             }
 
             document.querySelectorAll('.seleccion-producto').forEach(function (checkbox) {
