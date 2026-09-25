@@ -44,7 +44,14 @@
     </div>
 
     <p><strong>Cliente:</strong> {{ $pedido->cliente_nombre }}</p>
-    <p><strong>Vendedor:</strong> {{ $pedido->vendedor->name }} &nbsp;&nbsp; <strong>Cajero:</strong> {{ $pedido->cajero->name ?? '—' }}</p>
+    @if ($pedido->cajero && $pedido->vendedor_id === $pedido->cobrado_por)
+        <p><strong>Cajero:</strong> {{ $pedido->cajero->name }}</p>
+    @else
+        <p><strong>Vendedor:</strong> {{ $pedido->vendedor->name }} &nbsp;&nbsp; <strong>Cajero:</strong> {{ $pedido->cajero->name ?? '—' }}</p>
+    @endif
+    @if ($pedido->esFiado())
+        <p><strong>Cuenta corriente</strong></p>
+    @endif
 
     <table class="items">
         <thead>
@@ -68,7 +75,7 @@
     </table>
 
     <div class="totales">
-        <p class="total">Total: ${{ number_format((float) $pedido->total_cobrado, 2, ',', '.') }}</p>
+        <p class="total">Total: ${{ number_format((float) $pedido->total, 2, ',', '.') }}</p>
     </div>
 
     <div class="footer">

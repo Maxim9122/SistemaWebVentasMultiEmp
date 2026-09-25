@@ -49,7 +49,11 @@ class ComprobantePdfService
             fechaEmision: $pedido->cobrado_at,
             clienteNombre: $factura->cliente_nombre,
             clienteCuit: $factura->cliente_cuit,
-            importe: (float) $pedido->total_cobrado,
+            // El total del comprobante es el total de la venta, no lo que
+            // efectivamente entró a la caja (total_cobrado excluye a
+            // propósito la parte fiada — ver ProcesadorDeCobro) — si no, una
+            // venta fiada (total o parcialmente) imprimía $0 o de menos.
+            importe: (float) $pedido->total,
         );
     }
 

@@ -196,7 +196,11 @@ class ProcesadorDeCobro
                 'empresa_id' => $pedidoActual->empresa_id,
                 'factura_id' => $factura->id,
                 'creado_por' => $usuario->id,
-                'importe_acreditado' => $pedidoActual->total_cobrado,
+                // Se acredita el total facturado (lo que la factura
+                // original informó a AFIP, ver EmisionComprobanteService),
+                // no total_cobrado — ese excluye a propósito la parte fiada
+                // y dejaría una venta fiada facturada sin acreditar bien.
+                'importe_acreditado' => $pedidoActual->total,
                 'motivo' => $motivo,
             ]);
         });
@@ -524,7 +528,11 @@ class ProcesadorDeCobro
                 'empresa_id' => $pedidoActual->empresa_id,
                 'factura_id' => $facturaOriginal->id,
                 'creado_por' => $usuario->id,
-                'importe_acreditado' => $pedidoActual->total_cobrado,
+                // Se acredita el total facturado (lo que la factura
+                // original informó a AFIP, ver EmisionComprobanteService),
+                // no total_cobrado — ese excluye a propósito la parte fiada
+                // y dejaría una venta fiada facturada sin acreditar bien.
+                'importe_acreditado' => $pedidoActual->total,
                 'motivo' => $motivo ?: 'Corrección de la venta: se reemplaza por una factura nueva con los datos actualizados.',
             ]);
 

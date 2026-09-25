@@ -35,8 +35,15 @@
         <p>Fecha: {{ $pedido->cobrado_at?->format('d-m-Y H:i') }}</p>
         <p>Venta N°: {{ $pedido->numero_venta }}</p>
         <p>Cliente: {{ $pedido->cliente_nombre }}</p>
-        <p>Vendedor: {{ $pedido->vendedor->name }}</p>
-        <p>Cajero: {{ $pedido->cajero->name ?? '—' }}</p>
+        @if ($pedido->cajero && $pedido->vendedor_id === $pedido->cobrado_por)
+            <p>Cajero: {{ $pedido->cajero->name }}</p>
+        @else
+            <p>Vendedor: {{ $pedido->vendedor->name }}</p>
+            <p>Cajero: {{ $pedido->cajero->name ?? '—' }}</p>
+        @endif
+        @if ($pedido->esFiado())
+            <p>Cuenta corriente</p>
+        @endif
         <hr>
 
         <h3>Detalle</h3>
@@ -48,7 +55,7 @@
         @endforeach
         <hr>
 
-        <p>Total: ${{ number_format((float) $pedido->total_cobrado, 2, ',', '.') }}</p>
+        <p>Total: ${{ number_format((float) $pedido->total, 2, ',', '.') }}</p>
         <hr>
 
         <div class="footer">

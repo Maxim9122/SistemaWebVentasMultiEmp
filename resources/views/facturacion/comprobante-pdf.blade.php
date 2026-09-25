@@ -44,8 +44,15 @@
             Cliente:
             {{ $clienteCuit ? $clienteNombre.' — CUIT: '.\App\Models\Empresa::formatearCuit($clienteCuit) : 'Consumidor Final' }}
         </p>
-        <p>Vendedor: {{ $pedido->vendedor->name }}</p>
-        <p>Cajero: {{ $pedido->cajero->name ?? '—' }}</p>
+        @if ($pedido->cajero && $pedido->vendedor_id === $pedido->cobrado_por)
+            <p>Cajero: {{ $pedido->cajero->name }}</p>
+        @else
+            <p>Vendedor: {{ $pedido->vendedor->name }}</p>
+            <p>Cajero: {{ $pedido->cajero->name ?? '—' }}</p>
+        @endif
+        @if ($pedido->esFiado())
+            <p>Cuenta corriente</p>
+        @endif
         <hr>
 
         <h3>Detalle</h3>

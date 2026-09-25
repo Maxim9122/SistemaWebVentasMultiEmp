@@ -71,7 +71,10 @@ class EmisionComprobanteService
             $docNro = $factura->cliente_cuit;
         }
 
-        $importe = (float) $pedido->total_cobrado;
+        // El importe que se le informa a AFIP es el total de la venta, no
+        // lo que entró a la caja (total_cobrado excluye a propósito la
+        // parte fiada) — si no, una venta fiada se facturaba por de menos.
+        $importe = (float) $pedido->total;
         $esMonotributo = $factura->tipo_factura === 'C';
         $calculo = $esMonotributo ? $this->iva->sinDiscriminar($importe) : $this->iva->calcular($importe);
 
