@@ -240,6 +240,8 @@ Route::middleware('auth')->group(function () {
             Route::get('/', [CreditoController::class, 'index'])->name('index');
             Route::post('/pagos', [CreditoController::class, 'registrarPago'])->name('pagos.store');
             Route::get('/pagos/{pago}/comprobante.pdf', [CreditoController::class, 'comprobantePagoPdf'])->name('pagos.comprobantePdf');
+            Route::put('/pagos/{pago}', [CreditoController::class, 'actualizarPago'])->name('pagos.update');
+            Route::post('/pagos/{pago}/anular', [CreditoController::class, 'anularPago'])->name('pagos.anular');
             Route::put('/clientes/{cliente}/promesa-pago', [CreditoController::class, 'actualizarPromesaPago'])->name('clientes.promesaPago.update');
             Route::post('/promesa-pago-masiva', [CreditoController::class, 'actualizarPromesaPagoMasiva'])->name('promesaPagoMasiva');
         });

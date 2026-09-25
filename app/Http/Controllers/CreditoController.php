@@ -42,14 +42,24 @@ class CreditoController extends Controller
             ->paginate($porPagina)
             ->withQueryString();
 
-        $pagosCliente = $cliente
-            ? $cliente->pagosCredito()->with('usuario')->latest()->get()
-            : collect();
+        // Antes solo se mostraba el detalle de pagos filtrando por cliente
+        // — ahora se muestra siempre, acotado al mismo rango de fechas que
+        // ya filtra la tabla de ventas fiadas (por defecto, hoy), y además
+        // por cliente si hay uno elegido. `with('cliente')` porque cuando no
+        // hay un cliente puntual filtrado, la tabla necesita mostrar a quién
+        // corresponde cada pago.
+        $pagosFiltrados = PagoCredito::where('empresa_id', $empresaId)
+            ->when($cliente, fn ($q) => $q->where('cliente_id', $cliente->id))
+            ->when($fechaDesde, fn ($q) => $q->whereDate('created_at', '>=', $fechaDesde))
+            ->when($fechaHasta, fn ($q) => $q->whereDate('created_at', '<=', $fechaHasta))
+            ->with(['usuario', 'cliente'])
+            ->latest()
+            ->get();
 
         return view('creditos.index', [
             'ventasFiadas' => $ventasFiadas,
             'cliente' => $cliente,
-            'pagosCliente' => $pagosCliente,
+            'pagosCliente' => $pagosFiltrados,
             'totalesGenerales' => $cliente ? null : $this->totalesGenerales($empresaId),
             'clientesParaBuscador' => Cliente::where('empresa_id', $empresaId)->orderBy('nombre')->get(['id', 'nombre', 'cuit']),
             'porPagina' => $porPagina,
@@ -76,6 +86,7 @@ class CreditoController extends Controller
             ->sum('monto_fiado');
 
         $totalPagado = (float) PagoCredito::where('empresa_id', $empresaId)
+            ->whereNull('anulado_at')
             ->selectRaw('COALESCE(SUM(monto_efectivo + monto_tarjeta + monto_transferencia), 0) as total')
             ->value('total');
 
@@ -151,9 +162,20 @@ class CreditoController extends Controller
         $montoEfectivo = (float) ($datos['monto_efectivo'] ?? 0);
         $montoTarjeta = (float) ($datos['monto_tarjeta'] ?? 0);
         $montoTransferencia = (float) ($datos['monto_transferencia'] ?? 0);
+        $montoTotal = round($montoEfectivo + $montoTarjeta + $montoTransferencia, 2);
 
-        if ($montoEfectivo <= 0 && $montoTarjeta <= 0 && $montoTransferencia <= 0) {
+        if ($montoTotal <= 0) {
             return back()->withErrors(['monto_efectivo' => 'Cargá al menos un monto (efectivo, tarjeta o transferencia).'])->withInput();
+        }
+
+        $cliente = Cliente::where('empresa_id', $empresaId)->findOrFail($datos['cliente_id']);
+        $saldoPendiente = $cliente->saldoPendiente();
+
+        if ($montoTotal > $saldoPendiente) {
+            return back()->withErrors([
+                'monto_efectivo' => 'El pago ($'.number_format($montoTotal, 2, ',', '.').') no puede superar lo que debe '
+                    .$cliente->nombre.' ($'.number_format($saldoPendiente, 2, ',', '.').').',
+            ])->withInput();
         }
 
         $pago = PagoCredito::create([
@@ -188,6 +210,65 @@ class CreditoController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.$pdf->nombreArchivoPagoCredito($pago).'"',
         ]);
+    }
+
+    public function actualizarPago(Request $request, PagoCredito $pago): RedirectResponse
+    {
+        $this->autorizarPago($request, $pago);
+
+        if ($pago->estaAnulado()) {
+            return back()->withErrors(['monto_efectivo' => 'Este pago está anulado, no se puede editar.']);
+        }
+
+        $datos = $request->validate([
+            'monto_efectivo' => ['nullable', 'numeric', 'min:0'],
+            'monto_tarjeta' => ['nullable', 'numeric', 'min:0'],
+            'monto_transferencia' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $montoEfectivo = (float) ($datos['monto_efectivo'] ?? 0);
+        $montoTarjeta = (float) ($datos['monto_tarjeta'] ?? 0);
+        $montoTransferencia = (float) ($datos['monto_transferencia'] ?? 0);
+        $montoTotal = round($montoEfectivo + $montoTarjeta + $montoTransferencia, 2);
+
+        if ($montoTotal <= 0) {
+            return back()->withErrors(['monto_efectivo' => 'Cargá al menos un monto (efectivo, tarjeta o transferencia).']);
+        }
+
+        $pago->load('cliente');
+
+        // El saldo "disponible" para este pago es el saldo actual del
+        // cliente MÁS lo que este mismo pago ya venía aportando (si no, el
+        // propio pago que se está editando se restaría dos veces).
+        $saldoDisponible = round($pago->cliente->saldoPendiente() + $pago->total(), 2);
+
+        if ($montoTotal > $saldoDisponible) {
+            return back()->withErrors([
+                'monto_efectivo' => 'El pago ($'.number_format($montoTotal, 2, ',', '.').') no puede superar lo que debe '
+                    .$pago->cliente->nombre.' ($'.number_format($saldoDisponible, 2, ',', '.').').',
+            ]);
+        }
+
+        $pago->update([
+            'monto_efectivo' => $montoEfectivo,
+            'monto_tarjeta' => $montoTarjeta,
+            'monto_transferencia' => $montoTransferencia,
+        ]);
+
+        return back()->with('status', 'Pago actualizado.');
+    }
+
+    public function anularPago(Request $request, PagoCredito $pago): RedirectResponse
+    {
+        $this->autorizarPago($request, $pago);
+
+        if ($pago->estaAnulado()) {
+            return back()->withErrors(['monto_efectivo' => 'Este pago ya estaba anulado.']);
+        }
+
+        $pago->update(['anulado_at' => now()]);
+
+        return back()->with('status', 'Pago anulado.');
     }
 
     private function autorizarPago(Request $request, PagoCredito $pago): void

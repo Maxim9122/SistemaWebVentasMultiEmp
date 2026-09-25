@@ -59,7 +59,10 @@ class Cliente extends Model
 
     public function totalPagadoCredito(): float
     {
-        $pagos = $this->pagosCredito()->selectRaw('COALESCE(SUM(monto_efectivo + monto_tarjeta + monto_transferencia), 0) as total')->first();
+        $pagos = $this->pagosCredito()
+            ->whereNull('anulado_at')
+            ->selectRaw('COALESCE(SUM(monto_efectivo + monto_tarjeta + monto_transferencia), 0) as total')
+            ->first();
 
         return (float) $pagos->total;
     }

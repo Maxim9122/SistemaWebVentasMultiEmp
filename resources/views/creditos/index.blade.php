@@ -80,14 +80,9 @@
 
     @if ($cliente)
         <div class="bg-white rounded-lg shadow p-6 mb-4">
-            <div class="flex items-start justify-between gap-4 mb-4">
-                <div>
-                    <p class="text-sm text-slate-500 mb-1">Cliente</p>
-                    <p class="text-lg font-semibold">{{ $cliente->nombre }} @if ($cliente->cuit) <span class="text-sm font-normal text-slate-500">({{ $cliente->cuit }})</span> @endif</p>
-                </div>
-                <button type="button" id="btn_ver_pagos_cliente" class="rounded px-3 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400 whitespace-nowrap">
-                    Ver detalle de pagos ({{ $pagosCliente->count() }})
-                </button>
+            <div class="mb-4">
+                <p class="text-sm text-slate-500 mb-1">Cliente</p>
+                <p class="text-lg font-semibold">{{ $cliente->nombre }} @if ($cliente->cuit) <span class="text-sm font-normal text-slate-500">({{ $cliente->cuit }})</span> @endif</p>
             </div>
 
             <div class="grid grid-cols-3 gap-4 text-sm">
@@ -107,54 +102,133 @@
                 </div>
             </div>
         </div>
+    @endif
 
-        {{-- Modal: detalle de pagos parciales del cliente --}}
-        <div id="modal_pagos_cliente" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40 p-4">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-semibold">Historial de pagos de {{ $cliente->nombre }}</h2>
-                    <button type="button" id="btn_cerrar_pagos_cliente" class="text-slate-400 hover:text-slate-600">&times;</button>
-                </div>
+    {{-- Detalle de pagos: antes solo aparecía filtrando por cliente, ahora
+    siempre se muestra, acotado al mismo rango de fechas que ya filtra la
+    tabla de ventas fiadas (por defecto hoy) — y además por cliente si hay
+    uno elegido, igual que antes. --}}
+    <div class="bg-white rounded-lg shadow p-4 mb-4 flex flex-wrap items-center justify-between gap-2">
+        <p class="text-sm text-slate-600">
+            Pagos @if ($cliente) de {{ $cliente->nombre }} @endif
+            entre {{ \Illuminate\Support\Carbon::parse($fechaDesde)->format('d/m/Y') }} y {{ \Illuminate\Support\Carbon::parse($fechaHasta)->format('d/m/Y') }}
+        </p>
+        <button type="button" id="btn_ver_pagos_cliente" class="rounded px-3 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400 whitespace-nowrap">
+            Ver detalle ({{ $pagosCliente->count() }})
+        </button>
+    </div>
 
-                <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead class="bg-slate-50 text-slate-500 text-left">
-                        <tr>
-                            <th class="px-4 py-2 font-medium">Fecha y hora</th>
-                            <th class="px-4 py-2 font-medium">Registrado por</th>
-                            <th class="px-4 py-2 font-medium text-right">Efectivo</th>
-                            <th class="px-4 py-2 font-medium text-right">Tarjeta</th>
-                            <th class="px-4 py-2 font-medium text-right">Transferencia</th>
-                            <th class="px-4 py-2 font-medium text-right">Total</th>
-                            <th class="px-4 py-2 font-medium"></th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y">
-                        @forelse ($pagosCliente as $pago)
-                            <tr>
-                                <td class="px-4 py-2 text-slate-500">{{ $pago->created_at->format('d/m/Y H:i') }}</td>
-                                <td class="px-4 py-2">{{ $pago->usuario->name }}</td>
-                                <td class="px-4 py-2 text-right">{{ $pago->monto_efectivo > 0 ? '$'.number_format($pago->monto_efectivo, 2, ',', '.') : '—' }}</td>
-                                <td class="px-4 py-2 text-right">{{ $pago->monto_tarjeta > 0 ? '$'.number_format($pago->monto_tarjeta, 2, ',', '.') : '—' }}</td>
-                                <td class="px-4 py-2 text-right">{{ $pago->monto_transferencia > 0 ? '$'.number_format($pago->monto_transferencia, 2, ',', '.') : '—' }}</td>
-                                <td class="px-4 py-2 text-right font-medium">${{ number_format($pago->total(), 2, ',', '.') }}</td>
-                                <td class="px-4 py-2 text-right whitespace-nowrap">
+    {{-- Modal: detalle de pagos parciales (del rango de fechas, y del cliente si hay uno filtrado) --}}
+    <div id="modal_pagos_cliente" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] overflow-y-auto p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold">Historial de pagos{{ $cliente ? ' de '.$cliente->nombre : '' }}</h2>
+                <button type="button" id="btn_cerrar_pagos_cliente" class="text-slate-400 hover:text-slate-600">&times;</button>
+            </div>
+
+            <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-slate-500 text-left">
+                    <tr>
+                        <th class="px-4 py-2 font-medium">Fecha y hora</th>
+                        @unless ($cliente)
+                            <th class="px-4 py-2 font-medium">Cliente</th>
+                        @endunless
+                        <th class="px-4 py-2 font-medium">Registrado por</th>
+                        <th class="px-4 py-2 font-medium text-right">Efectivo</th>
+                        <th class="px-4 py-2 font-medium text-right">Tarjeta</th>
+                        <th class="px-4 py-2 font-medium text-right">Transferencia</th>
+                        <th class="px-4 py-2 font-medium text-right">Total</th>
+                        <th class="px-4 py-2 font-medium"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y">
+                    @forelse ($pagosCliente as $pago)
+                        <tr @class(['opacity-50' => $pago->estaAnulado()])>
+                            <td class="px-4 py-2 text-slate-500">{{ $pago->created_at->format('d/m/Y H:i') }}</td>
+                            @unless ($cliente)
+                                <td class="px-4 py-2">{{ $pago->cliente->nombre ?? '—' }}</td>
+                            @endunless
+                            <td class="px-4 py-2">{{ $pago->usuario->name }}</td>
+                            <td class="px-4 py-2 text-right">{{ $pago->monto_efectivo > 0 ? '$'.number_format($pago->monto_efectivo, 2, ',', '.') : '—' }}</td>
+                            <td class="px-4 py-2 text-right">{{ $pago->monto_tarjeta > 0 ? '$'.number_format($pago->monto_tarjeta, 2, ',', '.') : '—' }}</td>
+                            <td class="px-4 py-2 text-right">{{ $pago->monto_transferencia > 0 ? '$'.number_format($pago->monto_transferencia, 2, ',', '.') : '—' }}</td>
+                            <td class="px-4 py-2 text-right font-medium">${{ number_format($pago->total(), 2, ',', '.') }}</td>
+                            <td class="px-4 py-2 text-right whitespace-nowrap">
+                                @if ($pago->estaAnulado())
+                                    <span class="text-xs font-medium rounded px-2 py-1 bg-slate-200 text-slate-700">Anulado</span>
+                                @else
                                     <a href="{{ route('creditos.pagos.comprobantePdf', $pago) }}" target="_blank" class="text-xs text-slate-500 hover:underline">
                                         Comprobante
                                     </a>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="7" class="px-4 py-6 text-center text-slate-500">Este cliente todavía no hizo ningún pago parcial.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-                </div>
+                                    <button type="button" class="btn-editar-pago text-xs text-slate-500 hover:underline ml-2"
+                                        data-url="{{ route('creditos.pagos.update', $pago) }}"
+                                        data-cliente="{{ $pago->cliente->nombre ?? '—' }}"
+                                        data-efectivo="{{ $pago->monto_efectivo }}"
+                                        data-tarjeta="{{ $pago->monto_tarjeta }}"
+                                        data-transferencia="{{ $pago->monto_transferencia }}">
+                                        Editar
+                                    </button>
+                                    <form method="POST" action="{{ route('creditos.pagos.anular', $pago) }}" class="inline"
+                                        onsubmit="return confirm('¿Anular este pago? El saldo pendiente del cliente va a aumentar de nuevo. No se borra, queda marcado como anulado.');">
+                                        @csrf
+                                        <button type="submit" class="text-xs text-red-600 hover:underline ml-2">Anular</button>
+                                    </form>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="{{ $cliente ? 6 : 7 }}" class="px-4 py-6 text-center text-slate-500">No hay pagos que coincidan con el filtro.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
             </div>
         </div>
-    @endif
+    </div>
+
+    {{-- Modal: editar un pago parcial existente --}}
+    <div id="modal_editar_pago" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold">Editar pago de <span id="editar_pago_cliente"></span></h2>
+                <button type="button" id="btn_cerrar_editar_pago" class="text-slate-400 hover:text-slate-600">&times;</button>
+            </div>
+
+            <form method="POST" id="form_editar_pago" class="space-y-3">
+                @csrf
+                @method('PUT')
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label for="editar_pago_efectivo" class="block text-sm font-medium mb-1">Efectivo</label>
+                        <input type="number" id="editar_pago_efectivo" name="monto_efectivo" step="0.01" min="0"
+                            class="w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                    </div>
+                    <div>
+                        <label for="editar_pago_tarjeta" class="block text-sm font-medium mb-1">Tarjeta</label>
+                        <input type="number" id="editar_pago_tarjeta" name="monto_tarjeta" step="0.01" min="0"
+                            class="w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                    </div>
+                    <div>
+                        <label for="editar_pago_transferencia" class="block text-sm font-medium mb-1">Transferencia</label>
+                        <input type="number" id="editar_pago_transferencia" name="monto_transferencia" step="0.01" min="0"
+                            class="w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                    </div>
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
+                        Guardar cambios
+                    </button>
+                    <button type="button" id="btn_cancelar_editar_pago" class="rounded px-4 py-2 text-sm font-medium text-slate-600 hover:underline">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <p class="px-4 py-2 text-sm font-medium border-b bg-slate-50">
@@ -424,6 +498,37 @@
             modal.addEventListener('click', function (evento) {
                 if (evento.target === modal) cerrar();
             });
+        })();
+
+        (function () {
+            const modal = document.getElementById('modal_editar_pago');
+            const form = document.getElementById('form_editar_pago');
+            const nombreCliente = document.getElementById('editar_pago_cliente');
+            const campoEfectivo = document.getElementById('editar_pago_efectivo');
+            const campoTarjeta = document.getElementById('editar_pago_tarjeta');
+            const campoTransferencia = document.getElementById('editar_pago_transferencia');
+
+            function cerrar() {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+
+            document.querySelectorAll('.btn-editar-pago').forEach(function (boton) {
+                boton.addEventListener('click', function () {
+                    form.action = boton.dataset.url;
+                    nombreCliente.textContent = boton.dataset.cliente;
+                    campoEfectivo.value = boton.dataset.efectivo;
+                    campoTarjeta.value = boton.dataset.tarjeta;
+                    campoTransferencia.value = boton.dataset.transferencia;
+
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    campoEfectivo.focus();
+                });
+            });
+
+            document.getElementById('btn_cerrar_editar_pago').addEventListener('click', cerrar);
+            document.getElementById('btn_cancelar_editar_pago').addEventListener('click', cerrar);
         })();
 
         (function () {

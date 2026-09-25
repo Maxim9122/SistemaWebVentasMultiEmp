@@ -17,6 +17,7 @@ class PagoCredito extends Model
         'monto_efectivo',
         'monto_tarjeta',
         'monto_transferencia',
+        'anulado_at',
     ];
 
     protected function casts(): array
@@ -25,7 +26,13 @@ class PagoCredito extends Model
             'monto_efectivo' => 'decimal:2',
             'monto_tarjeta' => 'decimal:2',
             'monto_transferencia' => 'decimal:2',
+            'anulado_at' => 'datetime',
         ];
+    }
+
+    public function estaAnulado(): bool
+    {
+        return $this->anulado_at !== null;
     }
 
     public function empresa(): BelongsTo
