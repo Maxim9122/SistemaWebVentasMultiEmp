@@ -15,7 +15,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -77,39 +76,35 @@ class ProductoController extends Controller
             // abre solo, ya cargado con las líneas de ese lote.
             'reposicionParaEditar' => $this->reposicionParaEditar($request, $empresaId),
             'descripcionFiltro' => $this->descripcionFiltroProductos($buscar, $marca, $categoria, $proveedorId),
-            // Cuenta aparte (no $productos->total()) porque el ajuste de
-            // precio por búsqueda excluye promos — así el número del botón
-            // coincide exactamente con lo que realmente se va a tocar.
-            'cantidadAjustablePorBusqueda' => $this->productosFiltrados($request, $buscar, $marca, $categoria, $proveedorId)
+            // Ids de TODO el resultado del filtro actual (no solo la página
+            // que se ve), sin promos — se lo pasamos al JS para que el check
+            // "seleccionar todo el resultado de la búsqueda" pueda tildar
+            // productos de páginas que ni siquiera están renderizadas todavía.
+            'idsAjustablesBusqueda' => $this->productosFiltrados($request, $buscar, $marca, $categoria, $proveedorId)
                 ->where('es_promocion', false)
-                ->count(),
+                ->pluck('id'),
         ]);
     }
 
     /**
-     * Ajuste de precio por % aplicado únicamente a lo que la búsqueda/filtro
-     * actual está mostrando (no a "todos", no a una selección por checkbox
-     * como en Grupos) — vuelve a correr exactamente el mismo filtro que armó
-     * el listado (`productosFiltrados()`, tomado del request, nunca de una
-     * lista de ids que mande el navegador) para garantizar que el ajuste
-     * pegue solo en lo que la búsqueda mostró, ni un producto más.
+     * Ajuste de precio por % aplicado solo a los productos tildados (a mano,
+     * o con el check "seleccionar todo el resultado de la búsqueda", que en
+     * el navegador tilda uno por uno todos los ids de todas las páginas del
+     * filtro actual — ver `idsAjustablesBusqueda` en index()).
      *
-     * Dos alcances posibles (mismo criterio que ya usa
-     * GrupoProductoController::ajustarPrecio): "busqueda" (todos los que
-     * coinciden con el filtro actual) o "seleccionados" (solo los que se
-     * tildaron a mano). En los dos casos la base es la MISMA query filtrada
-     * — en "seleccionados" se le suma un whereIn sobre esa query ya
-     * filtrada, nunca sobre productos sueltos, así que aunque queden ids
-     * viejos tildados de una búsqueda anterior (la selección persiste en
+     * Igual, nunca se confía a ciegas en los ids que mande el navegador: acá
+     * se vuelven a filtrar contra `productosFiltrados()` (mismo filtro que
+     * armó el listado, tomado del request) — así, si quedaron ids viejos
+     * tildados de una búsqueda anterior (la selección persiste en
      * localStorage entre búsquedas), solo pasan los que además siguen
-     * coincidiendo con el filtro de ahora.
+     * coincidiendo con el filtro de ahora. Mismo criterio de intersección
+     * que ya usa GrupoProductoController::ajustarPrecio.
      */
     public function ajustarPrecioBusqueda(Request $request): RedirectResponse
     {
         $datos = $request->validate([
             'porcentaje' => ['required', 'numeric', 'between:-100,1000'],
-            'alcance' => ['required', Rule::in(['busqueda', 'seleccionados'])],
-            'productos_ids' => ['required_if:alcance,seleccionados', 'array'],
+            'productos_ids' => ['required', 'array', 'min:1'],
             'productos_ids.*' => ['integer'],
         ]);
 
@@ -118,28 +113,22 @@ class ProductoController extends Controller
         $categoria = trim((string) $request->input('categoria', ''));
         $proveedorId = $request->filled('proveedor_id') ? (int) $request->input('proveedor_id') : null;
 
+        $idsSolicitados = array_map('intval', $datos['productos_ids']);
+
         // Las promos quedan afuera a propósito — su precio es un valor final
         // armado a mano por el admin (no un precio de catálogo), mismo
-        // criterio que ya las excluye de entrar a un grupo.
-        $query = $this->productosFiltrados($request, $buscar, $marca, $categoria, $proveedorId)
-            ->where('es_promocion', false);
-
-        if ($datos['alcance'] === 'seleccionados') {
-            $idsSolicitados = array_map('intval', $datos['productos_ids'] ?? []);
-            $query->whereIn('productos.id', $idsSolicitados);
-        }
-
-        $productos = $query->get();
+        // criterio que ya las excluye de entrar a un grupo (ni siquiera
+        // tienen checkbox en la fila).
+        $productos = $this->productosFiltrados($request, $buscar, $marca, $categoria, $proveedorId)
+            ->where('es_promocion', false)
+            ->whereIn('productos.id', $idsSolicitados)
+            ->get();
 
         if ($productos->isEmpty()) {
-            return back()->withErrors(['porcentaje' => 'No hay productos para ajustar — revisá la búsqueda o la selección.']);
+            return back()->withErrors(['porcentaje' => 'Ninguno de los productos seleccionados coincide con la búsqueda actual — revisá el filtro o la selección.']);
         }
 
         $descripcionFiltro = $this->descripcionFiltroProductos($buscar, $marca, $categoria, $proveedorId);
-
-        if ($datos['alcance'] === 'seleccionados') {
-            $descripcionFiltro = 'seleccionados a mano dentro de '.$descripcionFiltro;
-        }
 
         DB::transaction(function () use ($productos, $datos, $request, $descripcionFiltro) {
             $ajuste = AjustePrecioBusqueda::create([

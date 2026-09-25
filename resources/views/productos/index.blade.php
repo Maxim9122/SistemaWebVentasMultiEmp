@@ -348,18 +348,14 @@
 
     <div class="mb-4 bg-white rounded-lg shadow p-4 flex flex-wrap items-end gap-3">
         <div>
-            <label for="porcentaje_ajuste_busqueda" class="block text-xs text-slate-500 mb-1">Ajustar precio (%) de la búsqueda actual</label>
+            <label for="porcentaje_ajuste_busqueda" class="block text-xs text-slate-500 mb-1">Ajustar precio (%)</label>
             <input type="number" id="porcentaje_ajuste_busqueda" step="0.01" placeholder="Ej: 10 o -5"
                 class="w-40 rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
         </div>
-        <button type="button" id="btn_ajustar_precio_busqueda" data-cantidad="{{ $cantidadAjustablePorBusqueda }}" data-filtro="{{ $descripcionFiltro }}"
-            {{ $cantidadAjustablePorBusqueda === 0 ? 'disabled' : '' }}
-            class="rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400 disabled:opacity-50 disabled:cursor-not-allowed">
-            Aplicar a TODOS estos {{ $cantidadAjustablePorBusqueda }} producto(s)
-        </button>
         <p class="text-xs text-slate-500 w-full">
-            "Aplicar a todos" pega en lo que coincide con el filtro de arriba ahora mismo ({{ $descripcionFiltro }}) — no a toda tu lista de productos.
-            Si preferís elegir a mano, tildá los productos puntuales en la tabla de abajo y usá el botón que aparece ahí. Las promos quedan afuera en los dos casos.
+            Cargá acá el porcentaje y despues tildá a qué productos aplicarlo: con el check del encabezado de la tabla (selecciona
+            <strong>todo</strong> el resultado de la búsqueda actual, en todas las páginas) o tildando puntualmente los que quieras.
+            El botón para aplicarlo aparece abajo apenas tildes algo. Las promos quedan siempre afuera.
         </p>
     </div>
 
@@ -381,7 +377,6 @@
                     <input type="hidden" name="dir" value="{{ $direccion }}">
                     <input type="hidden" name="por_pagina" value="{{ $porPagina }}">
                     <input type="hidden" name="porcentaje" id="input_porcentaje_ajuste_busqueda">
-                    <input type="hidden" name="alcance" id="input_alcance_ajuste_busqueda">
                     <div id="ids_seleccionados_ajuste_precio"></div>
                     <button type="submit" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
                         Confirmar ajuste
@@ -455,7 +450,7 @@
             <thead class="bg-slate-50 text-slate-500 text-left">
                 <tr>
                     <th class="px-4 py-2 font-medium">
-                        <input type="checkbox" id="check_todos_pagina" class="rounded border border-slate-300" title="Tildar/destildar todos los de esta página">
+                        <input type="checkbox" id="check_todos_pagina" class="rounded border border-slate-300" title="Tildar/destildar TODO el resultado de la búsqueda (todas las páginas)">
                     </th>
                     <th class="px-4 py-2 font-medium">Nombre</th>
                     <th class="px-4 py-2 font-medium">Código</th>
@@ -565,34 +560,7 @@
 
     <script>
         (function () {
-            const input = document.getElementById('porcentaje_ajuste_busqueda');
-            const boton = document.getElementById('btn_ajustar_precio_busqueda');
             const modal = document.getElementById('modal_ajustar_precio_busqueda');
-            const mensaje = document.getElementById('mensaje_ajustar_precio_busqueda');
-            const inputOculto = document.getElementById('input_porcentaje_ajuste_busqueda');
-
-            boton.addEventListener('click', function () {
-                const porcentaje = parseFloat(input.value);
-
-                if (isNaN(porcentaje) || porcentaje === 0) {
-                    alert('Ingresá un porcentaje distinto de 0 (por ejemplo 10 para aumentar, o -5 para descontar).');
-                    input.focus();
-                    return;
-                }
-
-                const cantidad = boton.dataset.cantidad;
-                const filtro = boton.dataset.filtro;
-                const signo = porcentaje > 0 ? '+' : '';
-
-                mensaje.textContent = 'Se va a aplicar ' + signo + porcentaje + '% al precio de los ' + cantidad
-                    + ' producto(s) que coinciden con el filtro actual (' + filtro + '). Se puede deshacer después desde el Historial de ajustes de precio.';
-                inputOculto.value = porcentaje;
-                document.getElementById('input_alcance_ajuste_busqueda').value = 'busqueda';
-                document.getElementById('ids_seleccionados_ajuste_precio').innerHTML = '';
-
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-            });
 
             document.getElementById('modal_ajustar_precio_busqueda_cancelar').addEventListener('click', function () {
                 modal.classList.add('hidden');
@@ -684,18 +652,37 @@
                 });
             });
 
+            // Todos los ids que matchean la búsqueda actual, en TODAS las
+            // páginas (no solo los que están renderizados ahora) — así el
+            // check general puede tildar de verdad "todo el resultado",
+            // no solo lo que se ve en pantalla.
+            const idsAjustablesBusqueda = @json($idsAjustablesBusqueda->map(fn ($id) => (string) $id));
+
             const checkTodosPagina = document.getElementById('check_todos_pagina');
             if (checkTodosPagina) {
-                checkTodosPagina.addEventListener('change', function () {
-                    document.querySelectorAll('.seleccion-producto').forEach(function (checkbox) {
-                        checkbox.checked = checkTodosPagina.checked;
+                // Refleja el estado real al cargar: si ya está TODO el
+                // resultado de la búsqueda tildado (por ej. se tildó "todo"
+                // en una página anterior), que no quede destildado a la vista.
+                checkTodosPagina.checked = idsAjustablesBusqueda.length > 0
+                    && idsAjustablesBusqueda.every(function (id) { return seleccion.has(id); });
 
+                checkTodosPagina.addEventListener('change', function () {
+                    idsAjustablesBusqueda.forEach(function (id) {
                         if (checkTodosPagina.checked) {
-                            seleccion.add(checkbox.dataset.id);
+                            seleccion.add(id);
                         } else {
-                            seleccion.delete(checkbox.dataset.id);
+                            seleccion.delete(id);
                         }
                     });
+
+                    // Los checkboxes visibles de esta página reflejan el
+                    // nuevo estado (los de otras páginas se van a ver
+                    // tildados solos al navegar, porque leen de `seleccion`
+                    // guardada en localStorage al cargar cada página).
+                    document.querySelectorAll('.seleccion-producto').forEach(function (checkbox) {
+                        checkbox.checked = seleccion.has(checkbox.dataset.id);
+                    });
+
                     guardarSeleccion(seleccion);
                     actualizarBloque();
                 });
@@ -819,7 +806,6 @@
                     + ' producto(s) que tildaste a mano. Esta acción no se puede deshacer desde acá (sí desde el Historial de ajustes de precio).';
 
                 document.getElementById('input_porcentaje_ajuste_busqueda').value = porcentaje;
-                document.getElementById('input_alcance_ajuste_busqueda').value = 'seleccionados';
 
                 const contenedorIds = document.getElementById('ids_seleccionados_ajuste_precio');
                 contenedorIds.innerHTML = '';
