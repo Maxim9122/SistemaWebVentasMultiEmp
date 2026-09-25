@@ -3,7 +3,36 @@
 @section('titulo', 'Productos')
 
 @section('contenido')
+    {{-- Solo en compu (mouse real): mostrar el desplegable con hover, sin
+    tocar el clic que ya funciona para celular/tablet más abajo. #menu_historial
+    sigue arrancando con la clase "hidden" de Tailwind (display:none); este
+    !important la pisa nada más mientras el mouse está encima del contenedor. --}}
+    <style>
+        @media (hover: hover) and (pointer: fine) {
+            #contenedor_menu_historial:hover #menu_historial {
+                display: block !important;
+            }
+        }
+    </style>
+
     <div class="mb-4 flex flex-wrap justify-end gap-2">
+        <div class="relative" id="contenedor_menu_historial">
+            <button type="button" id="btn_menu_historial" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path d="M12 7v5l3 3"/>
+                </svg>
+                Historial
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 shrink-0">
+                    <path d="M6 9l6 6 6-6"/>
+                </svg>
+            </button>
+            <div id="menu_historial" class="hidden absolute right-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 bg-white shadow-lg py-1">
+                <a href="{{ route('productos.reposiciones.index') }}" class="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Reposiciones de stock</a>
+                <a href="{{ route('productos.importaciones.index') }}" class="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Importaciones desde Excel</a>
+                <a href="{{ route('productos.ajustesPrecio.index') }}" class="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Ajustes de precio</a>
+            </div>
+        </div>
         <a href="{{ route('productos.proveedores.index') }}" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
                 <rect x="1" y="7" width="13" height="9" rx="1"/>
@@ -13,26 +42,12 @@
             </svg>
             Proveedores
         </a>
-        <a href="{{ route('productos.importaciones.index') }}" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+        <a href="{{ route('productos.grupos.index') }}" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
-                <path d="M12 3v10m0 0-3.5-3.5M12 13l3.5-3.5"/>
-                <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+                <path d="M4 4h7l9 9-7 7-9-9V4z"/>
+                <circle cx="8.5" cy="8.5" r="1" fill="currentColor" stroke="none"/>
             </svg>
-            Importaciones
-        </a>
-        <a href="{{ route('productos.ajustesPrecio.index') }}" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
-                <circle cx="12" cy="12" r="9"/>
-                <path d="M12 7v5l3 3"/>
-            </svg>
-            Historial de ajustes de precio
-        </a>
-        <a href="{{ route('productos.reposiciones.index') }}" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
-                <circle cx="12" cy="12" r="9"/>
-                <path d="M12 7v5l3 3"/>
-            </svg>
-            Reposiciones
+            Grupos
         </a>
         <button type="button" id="btn_abrir_reponer_stock" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
@@ -42,13 +57,6 @@
             </svg>
             Reponer stock
         </button>
-        <a href="{{ route('productos.grupos.index') }}" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
-                <path d="M4 4h7l9 9-7 7-9-9V4z"/>
-                <circle cx="8.5" cy="8.5" r="1" fill="currentColor" stroke="none"/>
-            </svg>
-            Grupos
-        </a>
         <a href="{{ route('productos.importar.subir') }}" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
                 <rect x="3" y="4" width="18" height="16" rx="1"/>
@@ -429,25 +437,17 @@
             </button>
         </form>
 
-        <form method="POST" action="{{ route('productos.exportarPdf') }}" id="form_pdf_seleccionados" target="_blank" class="flex items-center gap-2">
-            @csrf
-            <div id="ids_seleccionados_pdf"></div>
-            <button type="submit" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
-                    <path d="M12 4v10m0 0-3.5-3.5M12 14l3.5-3.5"/>
-                    <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
-                </svg>
-                Descargar PDF de estos seleccionados
-            </button>
-        </form>
     </div>
 
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <table class="w-full text-sm">
             <thead class="bg-slate-50 text-slate-500 text-left">
                 <tr>
-                    <th class="px-4 py-2 font-medium">
-                        <input type="checkbox" id="check_todos_pagina" class="rounded border border-slate-300" title="Tildar/destildar TODO el resultado de la búsqueda (todas las páginas)">
+                    <th class="px-4 py-2 font-medium whitespace-nowrap">
+                        <label class="inline-flex items-center gap-1.5 cursor-pointer font-normal">
+                            <input type="checkbox" id="check_todos_pagina" class="rounded border border-slate-300" title="Selecciona todo el resultado de la búsqueda, en todas las páginas">
+                            Seleccionar todos
+                        </label>
                     </th>
                     <th class="px-4 py-2 font-medium">Nombre</th>
                     <th class="px-4 py-2 font-medium">Código</th>
@@ -562,6 +562,22 @@
             document.getElementById('modal_ajustar_precio_busqueda_cancelar').addEventListener('click', function () {
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
+            });
+        })();
+
+        (function () {
+            const boton = document.getElementById('btn_menu_historial');
+            const menu = document.getElementById('menu_historial');
+
+            boton.addEventListener('click', function (evento) {
+                evento.stopPropagation();
+                menu.classList.toggle('hidden');
+            });
+
+            document.addEventListener('click', function (evento) {
+                if (!menu.classList.contains('hidden') && !menu.contains(evento.target)) {
+                    menu.classList.add('hidden');
+                }
             });
         })();
 
@@ -769,22 +785,6 @@
                 localStorage.removeItem(storageKey);
             });
 
-            // A diferencia de "crear grupo"/"crear promo" (que consumen la
-            // selección), descargar el PDF no cambia nada — se deja la
-            // selección tal cual para poder, por ejemplo, exportarla después
-            // a Excel también sin tener que tildar todo de nuevo.
-            document.getElementById('form_pdf_seleccionados').addEventListener('submit', function () {
-                const contenedor = document.getElementById('ids_seleccionados_pdf');
-                contenedor.innerHTML = '';
-
-                seleccion.forEach(function (id) {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = 'productos_ids[]';
-                    input.value = id;
-                    contenedor.appendChild(input);
-                });
-            });
 
             document.getElementById('btn_ajustar_precio_seleccionados').addEventListener('click', function () {
                 if (seleccion.size === 0) {
@@ -851,10 +851,30 @@
 
         (function () {
             const modal = document.getElementById('modal_exportar_pdf_productos');
+            const mensaje = document.getElementById('modal_exportar_pdf_productos_mensaje');
             const cancelar = document.getElementById('modal_exportar_pdf_productos_cancelar');
             const confirmar = document.getElementById('modal_exportar_pdf_productos_confirmar');
+            const storageKey = 'svm_seleccion_productos_{{ auth()->user()->empresa_id }}';
+
+            // Si hay productos tildados (con el check general o a mano), el
+            // PDF se arma con esos — si no, con el filtro actual. Mismo
+            // criterio que ya usa el backend (exportarPdf prioriza
+            // productos_ids sobre el filtro cuando vienen los dos).
+            function idsSeleccionados() {
+                try {
+                    return JSON.parse(localStorage.getItem(storageKey) || '[]');
+                } catch (e) {
+                    return [];
+                }
+            }
 
             document.getElementById('btn_exportar_pdf_productos').addEventListener('click', function () {
+                const ids = idsSeleccionados();
+
+                mensaje.textContent = ids.length > 0
+                    ? 'Se va a abrir un PDF listo para imprimir con los ' + ids.length + ' producto(s) que tenés seleccionados.'
+                    : 'Se va a abrir un PDF listo para imprimir con los productos que coinciden con el filtro actual (búsqueda, marca, categoría y/o proveedor).';
+
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
             });
@@ -867,7 +887,20 @@
             confirmar.addEventListener('click', function () {
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
-                window.open('{{ route('productos.exportarPdf', request()->only(['buscar', 'marca', 'categoria', 'proveedor_id'])) }}', '_blank');
+
+                const ids = idsSeleccionados();
+                const params = new URLSearchParams();
+
+                if (ids.length > 0) {
+                    ids.forEach(function (id) { params.append('productos_ids[]', id); });
+                } else {
+                    if (@json($buscar)) params.append('buscar', @json($buscar));
+                    if (@json($marca)) params.append('marca', @json($marca));
+                    if (@json($categoria)) params.append('categoria', @json($categoria));
+                    if (@json($proveedorId)) params.append('proveedor_id', @json($proveedorId));
+                }
+
+                window.open('{{ route('productos.exportarPdf') }}?' + params.toString(), '_blank');
             });
         })();
 
