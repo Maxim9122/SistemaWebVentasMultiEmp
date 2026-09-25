@@ -9,7 +9,15 @@
     !important la pisa nada más mientras el mouse está encima del contenedor. --}}
     <style>
         @media (hover: hover) and (pointer: fine) {
-            #contenedor_menu_historial:hover #menu_historial {
+            /* Dos selectores a propósito: el primero cubre pasar el mouse
+               por el botón; el segundo (menú en :hover directo) evita que
+               se cierre apenas el mouse entra al menú en sí — sin esto,
+               un menú posicionado "absolute" no cuenta como parte del área
+               con :hover de su contenedor y se cerraba de golpe. También se
+               sacó el margen entre botón y menú (quedan pegados) para que
+               no quede un hueco muerto en el medio al mover el mouse. */
+            #contenedor_menu_historial:hover #menu_historial,
+            #menu_historial:hover {
                 display: block !important;
             }
         }
@@ -27,7 +35,7 @@
                     <path d="M6 9l6 6 6-6"/>
                 </svg>
             </button>
-            <div id="menu_historial" class="hidden absolute right-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 bg-white shadow-lg py-1">
+            <div id="menu_historial" class="hidden absolute right-0 top-full z-50 w-56 rounded-lg border border-slate-200 bg-white shadow-lg py-1">
                 <a href="{{ route('productos.reposiciones.index') }}" class="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Reposiciones de stock</a>
                 <a href="{{ route('productos.importaciones.index') }}" class="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Importaciones desde Excel</a>
                 <a href="{{ route('productos.ajustesPrecio.index') }}" class="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Ajustes de precio</a>
