@@ -908,7 +908,18 @@
                     if (@json($proveedorId)) params.append('proveedor_id', @json($proveedorId));
                 }
 
-                window.open('{{ route('productos.exportarPdf') }}?' + params.toString(), '_blank');
+                // A propósito no usa window.open(): en la PWA instalada,
+                // window.open() a veces termina navegando dentro de la
+                // misma ventana de la app en vez de abrir aparte. Simular
+                // el clic de un link real (mismo patrón que ya funciona
+                // bien en Créditos/Ventas) es más confiable ahí.
+                const link = document.createElement('a');
+                link.href = '{{ route('productos.exportarPdf') }}?' + params.toString();
+                link.target = '_blank';
+                link.rel = 'noopener';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
             });
         })();
 
