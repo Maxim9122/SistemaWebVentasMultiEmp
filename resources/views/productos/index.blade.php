@@ -87,6 +87,124 @@
         'textoConfirmar' => 'Descargar',
     ])
 
+    {{-- Modal: editar producto --}}
+    <div id="modal_editar_producto" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between px-6 py-4 border-b">
+                <h2 class="text-lg font-semibold">Editar producto</h2>
+                <button type="button" id="btn_cerrar_editar_producto" class="text-slate-400 hover:text-slate-600 p-1" aria-label="Cerrar">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                        <path d="M6 6l12 12M18 6L6 18"/>
+                    </svg>
+                </button>
+            </div>
+
+            <form method="POST" id="form_editar_producto" class="px-6 py-4 overflow-y-auto flex-1 space-y-4">
+                @csrf
+                @method('PUT')
+
+                <div>
+                    <label for="editar_producto_nombre" class="block text-sm font-medium mb-1">Nombre</label>
+                    <input id="editar_producto_nombre" name="nombre" type="text" required
+                        class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="editar_producto_codigo" class="block text-sm font-medium mb-1">Código / SKU</label>
+                        <input id="editar_producto_codigo" name="codigo" type="text"
+                            class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                    </div>
+                    <div>
+                        <label for="editar_producto_categoria" class="block text-sm font-medium mb-1">Categoría</label>
+                        <input id="editar_producto_categoria" name="categoria" type="text"
+                            class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="editar_producto_marca" class="block text-sm font-medium mb-1">Marca</label>
+                    <input id="editar_producto_marca" name="marca" type="text"
+                        class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="editar_producto_precio" class="block text-sm font-medium mb-1">Precio</label>
+                        <input id="editar_producto_precio" name="precio" type="number" step="0.01" min="0" required
+                            class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                    </div>
+                    <div>
+                        <label for="editar_producto_costo" class="block text-sm font-medium mb-1">Costo</label>
+                        <input id="editar_producto_costo" name="costo" type="number" step="0.01" min="0"
+                            class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    @if (auth()->user()->empresa->controla_stock)
+                        <div>
+                            <label for="editar_producto_stock" class="block text-sm font-medium mb-1">Stock</label>
+                            <input id="editar_producto_stock" name="stock" type="number" step="1" min="0"
+                                class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                        </div>
+                    @else
+                        <input type="hidden" name="stock" value="0">
+                    @endif
+                    <div class="@if (! auth()->user()->empresa->controla_stock) col-span-2 @endif">
+                        <label for="editar_producto_unidad" class="block text-sm font-medium mb-1">Unidad</label>
+                        <input id="editar_producto_unidad" name="unidad" type="text" placeholder="kg, unidad, caja..."
+                            class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="editar_producto_proveedor_id" class="block text-sm font-medium mb-1">Proveedor</label>
+                    <select id="editar_producto_proveedor_id" name="proveedor_id"
+                        class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                        <option value="">— Sin proveedor —</option>
+                        @foreach ($proveedoresDisponibles as $proveedorEditar)
+                            <option value="{{ $proveedorEditar->id }}">{{ $proveedorEditar->nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="border-t pt-4">
+                    <p class="font-medium text-slate-900 mb-1">Precios por cantidad (opcional)</p>
+                    <p class="text-slate-500 text-sm mb-3">
+                        Hasta 3 tramos de descuento por volumen. Al vender, el carrito aplica solo por la cantidad
+                        cargada — no hace falta elegir el precio a mano.
+                    </p>
+                    <div class="space-y-2">
+                        @for ($n = 1; $n <= 3; $n++)
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="editar_producto_cantidad_minima_{{ $n }}" class="block text-xs text-slate-500 mb-1">A partir de (unidades)</label>
+                                    <input id="editar_producto_cantidad_minima_{{ $n }}" name="cantidad_minima_{{ $n }}" type="number" step="1" min="2"
+                                        class="w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                                </div>
+                                <div>
+                                    <label for="editar_producto_precio_cantidad_{{ $n }}" class="block text-xs text-slate-500 mb-1">Precio por unidad</label>
+                                    <input id="editar_producto_precio_cantidad_{{ $n }}" name="precio_cantidad_{{ $n }}" type="number" step="0.01" min="0"
+                                        class="w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                                </div>
+                            </div>
+                        @endfor
+                    </div>
+                </div>
+            </form>
+
+            <div class="px-6 py-4 border-t flex justify-end gap-2">
+                <button type="button" id="btn_cancelar_editar_producto" class="rounded px-4 py-2 text-sm font-medium text-slate-600 hover:underline">
+                    Cancelar
+                </button>
+                <button type="submit" form="form_editar_producto" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
+                    Guardar cambios
+                </button>
+            </div>
+        </div>
+    </div>
+
     {{-- Modal: reponer stock --}}
     <div id="modal_reponer_stock" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40 p-4">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
@@ -329,7 +447,29 @@
                         </td>
                         <td class="px-4 py-2 text-right">
                             <div class="flex items-center justify-end gap-3">
-                                <a href="{{ $producto->es_promocion ? route('productos.promociones.edit', $producto) : route('productos.edit', $producto) }}" class="text-sm text-slate-600 hover:underline">Editar</a>
+                                @if ($producto->es_promocion)
+                                    <a href="{{ route('productos.promociones.edit', $producto) }}" class="text-sm text-slate-600 hover:underline">Editar</a>
+                                @else
+                                    <button type="button" class="btn-editar-producto text-sm text-slate-600 hover:underline"
+                                        data-url="{{ route('productos.update', $producto) }}"
+                                        data-nombre="{{ $producto->nombre }}"
+                                        data-codigo="{{ $producto->codigo }}"
+                                        data-categoria="{{ $producto->categoria }}"
+                                        data-marca="{{ $producto->marca }}"
+                                        data-precio="{{ $producto->precio }}"
+                                        data-costo="{{ $producto->costo }}"
+                                        data-stock="{{ $producto->stock }}"
+                                        data-unidad="{{ $producto->unidad }}"
+                                        data-proveedor-id="{{ $producto->proveedor_id }}"
+                                        data-cantidad-minima1="{{ $producto->cantidad_minima_1 }}"
+                                        data-precio-cantidad1="{{ $producto->precio_cantidad_1 }}"
+                                        data-cantidad-minima2="{{ $producto->cantidad_minima_2 }}"
+                                        data-precio-cantidad2="{{ $producto->precio_cantidad_2 }}"
+                                        data-cantidad-minima3="{{ $producto->cantidad_minima_3 }}"
+                                        data-precio-cantidad3="{{ $producto->precio_cantidad_3 }}">
+                                        Editar
+                                    </button>
+                                @endif
                                 @if ($producto->activo)
                                     <form method="POST" action="{{ route('productos.desactivar', $producto) }}">
                                         @csrf
@@ -364,6 +504,48 @@
     </div>
 
     <script>
+        (function () {
+            const modal = document.getElementById('modal_editar_producto');
+            const form = document.getElementById('form_editar_producto');
+            const campoStock = document.getElementById('editar_producto_stock');
+
+            function valor(boton, clave) {
+                return boton.dataset[clave] || '';
+            }
+
+            function cerrarModal() {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+
+            document.querySelectorAll('.btn-editar-producto').forEach(function (boton) {
+                boton.addEventListener('click', function () {
+                    form.action = boton.dataset.url;
+                    document.getElementById('editar_producto_nombre').value = valor(boton, 'nombre');
+                    document.getElementById('editar_producto_codigo').value = valor(boton, 'codigo');
+                    document.getElementById('editar_producto_categoria').value = valor(boton, 'categoria');
+                    document.getElementById('editar_producto_marca').value = valor(boton, 'marca');
+                    document.getElementById('editar_producto_precio').value = valor(boton, 'precio');
+                    document.getElementById('editar_producto_costo').value = valor(boton, 'costo');
+                    if (campoStock) campoStock.value = valor(boton, 'stock');
+                    document.getElementById('editar_producto_unidad').value = valor(boton, 'unidad');
+                    document.getElementById('editar_producto_proveedor_id').value = boton.dataset.proveedorId || '';
+
+                    [1, 2, 3].forEach(function (n) {
+                        document.getElementById('editar_producto_cantidad_minima_' + n).value = valor(boton, 'cantidadMinima' + n);
+                        document.getElementById('editar_producto_precio_cantidad_' + n).value = valor(boton, 'precioCantidad' + n);
+                    });
+
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    document.getElementById('editar_producto_nombre').focus();
+                });
+            });
+
+            document.getElementById('btn_cerrar_editar_producto').addEventListener('click', cerrarModal);
+            document.getElementById('btn_cancelar_editar_producto').addEventListener('click', cerrarModal);
+        })();
+
         (function () {
             const storageKey = 'svm_seleccion_productos_{{ auth()->user()->empresa_id }}';
 

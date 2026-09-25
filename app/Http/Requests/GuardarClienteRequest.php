@@ -35,6 +35,8 @@ class GuardarClienteRequest extends FormRequest
             ],
             'telefono' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
+            'direccion' => ['nullable', 'string', 'max:255'],
+            'garante' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

@@ -32,6 +32,18 @@
                 </div>
             </div>
 
+            <div>
+                <label for="direccion" class="block text-sm font-medium mb-1">Dirección</label>
+                <input id="direccion" name="direccion" type="text" value="{{ old('direccion') }}"
+                    class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+            </div>
+
+            <div>
+                <label for="garante" class="block text-sm font-medium mb-1">Garante</label>
+                <input id="garante" name="garante" type="text" value="{{ old('garante') }}"
+                    class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+            </div>
+
             <div class="flex gap-2">
                 <button type="submit" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
                     Crear cliente

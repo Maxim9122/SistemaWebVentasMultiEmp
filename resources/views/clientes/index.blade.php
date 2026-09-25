@@ -22,6 +22,71 @@
         </a>
     </div>
 
+    {{-- Modal: editar cliente --}}
+    <div id="modal_editar_cliente" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between px-6 py-4 border-b">
+                <h2 class="text-lg font-semibold">Editar cliente</h2>
+                <button type="button" id="btn_cerrar_editar_cliente" class="text-slate-400 hover:text-slate-600 p-1" aria-label="Cerrar">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                        <path d="M6 6l12 12M18 6L6 18"/>
+                    </svg>
+                </button>
+            </div>
+
+            <form method="POST" id="form_editar_cliente" class="px-6 py-4 overflow-y-auto flex-1 space-y-4">
+                @csrf
+                @method('PUT')
+
+                <div>
+                    <label for="editar_cliente_nombre" class="block text-sm font-medium mb-1">Nombre</label>
+                    <input id="editar_cliente_nombre" name="nombre" type="text" required
+                        class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                </div>
+
+                <div>
+                    <label for="editar_cliente_cuit" class="block text-sm font-medium mb-1">CUIT / DNI</label>
+                    <input id="editar_cliente_cuit" name="cuit" type="text" required
+                        class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="editar_cliente_telefono" class="block text-sm font-medium mb-1">Teléfono</label>
+                        <input id="editar_cliente_telefono" name="telefono" type="text" placeholder="549..."
+                            class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                    </div>
+                    <div>
+                        <label for="editar_cliente_email" class="block text-sm font-medium mb-1">Email</label>
+                        <input id="editar_cliente_email" name="email" type="email"
+                            class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="editar_cliente_direccion" class="block text-sm font-medium mb-1">Dirección</label>
+                    <input id="editar_cliente_direccion" name="direccion" type="text"
+                        class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                </div>
+
+                <div>
+                    <label for="editar_cliente_garante" class="block text-sm font-medium mb-1">Garante</label>
+                    <input id="editar_cliente_garante" name="garante" type="text"
+                        class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                </div>
+            </form>
+
+            <div class="px-6 py-4 border-t flex justify-end gap-2">
+                <button type="button" id="btn_cancelar_editar_cliente" class="rounded px-4 py-2 text-sm font-medium text-slate-600 hover:underline">
+                    Cancelar
+                </button>
+                <button type="submit" form="form_editar_cliente" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
+                    Guardar cambios
+                </button>
+            </div>
+        </div>
+    </div>
+
     @include('partials.modal-confirmacion', [
         'id' => 'modal_exportar_clientes',
         'titulo' => 'Descargar Excel',
@@ -88,7 +153,16 @@
                             @endif
                         </td>
                         <td class="px-4 py-2 text-right whitespace-nowrap">
-                            <a href="{{ route('clientes.edit', $cliente) }}" class="text-sm text-slate-600 hover:underline">Editar</a>
+                            <button type="button" class="btn-editar-cliente text-sm text-slate-600 hover:underline"
+                                data-url="{{ route('clientes.update', $cliente) }}"
+                                data-nombre="{{ $cliente->nombre }}"
+                                data-cuit="{{ $cliente->cuit }}"
+                                data-telefono="{{ $cliente->telefono }}"
+                                data-email="{{ $cliente->email }}"
+                                data-direccion="{{ $cliente->direccion }}"
+                                data-garante="{{ $cliente->garante }}">
+                                Editar
+                            </button>
                             @if ($cliente->activo)
                                 <form method="POST" action="{{ route('clientes.desactivar', $cliente) }}" class="inline">
                                     @csrf
@@ -116,6 +190,41 @@
     </div>
 
     <script>
+        (function () {
+            var modal = document.getElementById('modal_editar_cliente');
+            var form = document.getElementById('form_editar_cliente');
+            var campoNombre = document.getElementById('editar_cliente_nombre');
+            var campoCuit = document.getElementById('editar_cliente_cuit');
+            var campoTelefono = document.getElementById('editar_cliente_telefono');
+            var campoEmail = document.getElementById('editar_cliente_email');
+            var campoDireccion = document.getElementById('editar_cliente_direccion');
+            var campoGarante = document.getElementById('editar_cliente_garante');
+
+            function cerrarModal() {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+
+            document.querySelectorAll('.btn-editar-cliente').forEach(function (boton) {
+                boton.addEventListener('click', function () {
+                    form.action = boton.dataset.url;
+                    campoNombre.value = boton.dataset.nombre || '';
+                    campoCuit.value = boton.dataset.cuit || '';
+                    campoTelefono.value = boton.dataset.telefono || '';
+                    campoEmail.value = boton.dataset.email || '';
+                    campoDireccion.value = boton.dataset.direccion || '';
+                    campoGarante.value = boton.dataset.garante || '';
+
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    campoNombre.focus();
+                });
+            });
+
+            document.getElementById('btn_cerrar_editar_cliente').addEventListener('click', cerrarModal);
+            document.getElementById('btn_cancelar_editar_cliente').addEventListener('click', cerrarModal);
+        })();
+
         (function () {
             var boton = document.getElementById('btn_exportar_clientes');
             var modal = document.getElementById('modal_exportar_clientes');

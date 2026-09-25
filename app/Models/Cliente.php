@@ -18,6 +18,8 @@ class Cliente extends Model
         'cuit',
         'telefono',
         'email',
+        'direccion',
+        'garante',
         'activo',
         'fecha_promesa_pago',
     ];
