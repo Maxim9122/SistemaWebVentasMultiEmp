@@ -240,6 +240,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/', [CreditoController::class, 'index'])->name('index');
             Route::post('/pagos', [CreditoController::class, 'registrarPago'])->name('pagos.store');
             Route::get('/pagos/{pago}/comprobante.pdf', [CreditoController::class, 'comprobantePagoPdf'])->name('pagos.comprobantePdf');
+            Route::get('/pagos/{pago}/imprimir', [CreditoController::class, 'imprimirPago'])->name('pagos.imprimir');
             Route::put('/pagos/{pago}', [CreditoController::class, 'actualizarPago'])->name('pagos.update');
             Route::post('/pagos/{pago}/anular', [CreditoController::class, 'anularPago'])->name('pagos.anular');
             Route::put('/clientes/{cliente}/promesa-pago', [CreditoController::class, 'actualizarPromesaPago'])->name('clientes.promesaPago.update');
@@ -257,6 +258,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/{pedido}/cobrar', [PresupuestoController::class, 'cobrar'])->name('cobrar');
             Route::post('/{pedido}/cancelar', [PresupuestoController::class, 'cancelar'])->name('cancelar');
             Route::get('/{pedido}/ticket.pdf', [PresupuestoController::class, 'ticketPdf'])->name('ticketPdf');
+            Route::get('/{pedido}/ticket/imprimir', [PresupuestoController::class, 'imprimirTicket'])->name('imprimirTicket');
             Route::post('/{pedido}/enviar-email', [PresupuestoController::class, 'enviarEmail'])->name('enviarEmail');
         });
 
@@ -281,9 +283,12 @@ Route::middleware('auth')->group(function () {
             Route::post('/{pedido}/enviar-email', [VentaController::class, 'enviarEmail'])->name('enviarEmail');
             Route::get('/{pedido}/comprobante.pdf', [VentaController::class, 'comprobantePdf'])->name('comprobantePdf');
             Route::get('/{pedido}/remito.pdf', [VentaController::class, 'remitoPdf'])->name('remitoPdf');
+            Route::get('/{pedido}/comprobante/imprimir', [VentaController::class, 'imprimirComprobante'])->name('imprimirComprobante');
+            Route::get('/{pedido}/remito/imprimir', [VentaController::class, 'imprimirRemito'])->name('imprimirRemito');
             Route::post('/{pedido}/anular', [VentaController::class, 'anularFactura'])->name('anularFactura');
             Route::post('/{pedido}/reintentar-nota-credito', [VentaController::class, 'reintentarNotaCredito'])->name('reintentarNotaCredito');
             Route::get('/{pedido}/nota-credito.pdf', [VentaController::class, 'notaCreditoPdf'])->name('notaCreditoPdf');
+            Route::get('/{pedido}/nota-credito/imprimir', [VentaController::class, 'imprimirNotaCredito'])->name('imprimirNotaCredito');
         });
     });
 

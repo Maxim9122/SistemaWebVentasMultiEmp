@@ -183,7 +183,7 @@
                 </button>
             </div>
 
-            <a href="{{ route('presupuestos.ticketPdf', $pedido) }}" target="_blank" class="text-sm text-slate-600 hover:underline pb-2">
+            <a href="{{ route('presupuestos.imprimirTicket', $pedido) }}" target="_blank" class="text-sm text-slate-600 hover:underline pb-2">
                 Ver / imprimir presupuesto
             </a>
         </div>

@@ -306,6 +306,16 @@ class PresupuestoController extends Controller
         ]);
     }
 
+    public function imprimirTicket(Request $request, Pedido $pedido, ComprobantePdfService $pdf): Response
+    {
+        $this->autorizar($request, $pedido);
+        $this->asegurarEsPresupuesto($pedido);
+
+        $pedido->load(['items', 'vendedor', 'cliente']);
+
+        return response($pdf->generarPresupuestoHtml($pedido, modoWeb: true));
+    }
+
     public function enviarEmail(Request $request, Pedido $pedido, ComprobantePdfService $pdf, EnvioTicketService $envio): RedirectResponse
     {
         $this->autorizar($request, $pedido);

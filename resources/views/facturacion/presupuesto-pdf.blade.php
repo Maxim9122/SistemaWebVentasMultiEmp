@@ -19,6 +19,7 @@
     </style>
 </head>
 <body>
+    @include('facturacion._barra-imprimir')
     <div class="ticket">
         <h3>Presupuesto</h3>
         <h5>No válido como factura ni remito</h5>

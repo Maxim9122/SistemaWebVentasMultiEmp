@@ -24,6 +24,7 @@
     </style>
 </head>
 <body>
+    @include('facturacion._barra-imprimir')
     <div class="encabezado">
         <div class="empresa">
             <h1>{{ $empresa->razon_social }}</h1>

@@ -212,6 +212,15 @@ class CreditoController extends Controller
         ]);
     }
 
+    public function imprimirPago(Request $request, PagoCredito $pago, ComprobantePdfService $pdf): Response
+    {
+        $this->autorizarPago($request, $pago);
+
+        $pago->load(['cliente', 'usuario']);
+
+        return response($pdf->generarPagoCreditoHtml($pago, modoWeb: true));
+    }
+
     public function actualizarPago(Request $request, PagoCredito $pago): RedirectResponse
     {
         $this->autorizarPago($request, $pago);

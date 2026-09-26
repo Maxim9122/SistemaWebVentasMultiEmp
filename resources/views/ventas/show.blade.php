@@ -52,7 +52,7 @@
                 <p class="text-xs text-slate-500 mt-1">
                     CAE: {{ $factura->cae }} (vence {{ $factura->cae_vencimiento?->format('d/m/Y') }})
                 </p>
-                <a href="{{ route('ventas.comprobantePdf', $pedido) }}" target="_blank" class="inline-block mt-2 text-xs rounded px-3 py-1.5 border border-slate-300 hover:border-slate-400">
+                <a href="{{ route('ventas.imprimirComprobante', $pedido) }}" target="_blank" class="inline-block mt-2 text-xs rounded px-3 py-1.5 border border-slate-300 hover:border-slate-400">
                     Ver / imprimir comprobante
                 </a>
             @elseif ($factura->error_mensaje)
@@ -87,7 +87,7 @@
                             <p class="text-xs text-slate-500 mt-1">
                                 CAE: {{ $notaCredito->cae }} (vence {{ $notaCredito->cae_vencimiento?->format('d/m/Y') }})
                             </p>
-                            <a href="{{ route('ventas.notaCreditoPdf', $pedido) }}" target="_blank" class="inline-block mt-2 text-xs rounded px-3 py-1.5 border border-slate-300 hover:border-slate-400">
+                            <a href="{{ route('ventas.imprimirNotaCredito', $pedido) }}" target="_blank" class="inline-block mt-2 text-xs rounded px-3 py-1.5 border border-slate-300 hover:border-slate-400">
                                 Ver / imprimir nota de crédito
                             </a>
                         @elseif ($notaCredito->error_mensaje)
@@ -125,7 +125,7 @@
         @else
             <p class="text-xs font-medium rounded px-2 py-1 inline-block bg-slate-200 text-slate-700 mb-2">Remito</p>
             <p class="font-medium">{{ $pedido->cliente_nombre }}</p>
-            <a href="{{ route('ventas.remitoPdf', $pedido) }}" target="_blank" class="inline-block mt-2 text-xs rounded px-3 py-1.5 border border-slate-300 hover:border-slate-400">
+            <a href="{{ route('ventas.imprimirRemito', $pedido) }}" target="_blank" class="inline-block mt-2 text-xs rounded px-3 py-1.5 border border-slate-300 hover:border-slate-400">
                 Ver / imprimir remito
             </a>
         @endif

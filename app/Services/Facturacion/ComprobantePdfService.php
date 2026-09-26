@@ -37,6 +37,25 @@ class ComprobantePdfService
 
     public function generarFactura(Factura $factura, Pedido $pedido): string
     {
+        $tieneQr = $factura->cae && $factura->numero_comprobante && $factura->empresa->credencialFacturacion?->punto_venta && $pedido->cobrado_at;
+
+        return $this->renderizar(
+            $this->generarFacturaHtml($factura, $pedido),
+            $pedido->items->count(),
+            $this->alturaExtraComprobante((bool) $tieneQr),
+            $pedido->empresa->usaFormatoA4(),
+        );
+    }
+
+    /**
+     * Mismo HTML que arma el PDF de la factura, pero sin pasarlo por dompdf
+     * — se usa para la vista "Imprimir" desde el navegador (ver
+     * VentaController::imprimirComprobante), que evita depender de que el
+     * usuario tenga configurado algo distinto a Chrome/el navegador como
+     * lector de PDF por defecto en su compu.
+     */
+    public function generarFacturaHtml(Factura $factura, Pedido $pedido, bool $modoWeb = false): string
+    {
         return $this->generar(
             empresa: $factura->empresa,
             pedido: $pedido,
@@ -54,10 +73,23 @@ class ComprobantePdfService
             // propósito la parte fiada — ver ProcesadorDeCobro) — si no, una
             // venta fiada (total o parcialmente) imprimía $0 o de menos.
             importe: (float) $pedido->total,
+            modoWeb: $modoWeb,
         );
     }
 
     public function generarNotaCredito(NotaCredito $notaCredito, Pedido $pedido): string
+    {
+        $tieneQr = $notaCredito->cae && $notaCredito->numero_comprobante && $notaCredito->empresa->credencialFacturacion?->punto_venta && $notaCredito->updated_at;
+
+        return $this->renderizar(
+            $this->generarNotaCreditoHtml($notaCredito, $pedido),
+            $pedido->items->count(),
+            $this->alturaExtraComprobante((bool) $tieneQr),
+            $pedido->empresa->usaFormatoA4(),
+        );
+    }
+
+    public function generarNotaCreditoHtml(NotaCredito $notaCredito, Pedido $pedido, bool $modoWeb = false): string
     {
         $factura = $notaCredito->factura;
 
@@ -75,29 +107,40 @@ class ComprobantePdfService
             clienteCuit: $factura->cliente_cuit,
             importe: (float) $notaCredito->importe_acreditado,
             referenciaAsociada: "Anula Factura {$factura->tipo_factura} Nro {$factura->numero_comprobante}",
+            modoWeb: $modoWeb,
         );
     }
 
     public function generarRemito(Pedido $pedido): string
     {
+        return $this->renderizarComprobante($this->generarRemitoHtml($pedido), $pedido);
+    }
+
+    public function generarRemitoHtml(Pedido $pedido, bool $modoWeb = false): string
+    {
         $empresa = $pedido->empresa;
-        $html = view($this->vista($empresa, 'remito-pdf'), [
+
+        return view($this->vista($empresa, 'remito-pdf'), [
             'empresa' => $empresa,
             'pedido' => $pedido,
+            'modoWeb' => $modoWeb,
         ])->render();
-
-        return $this->renderizar($html, $pedido->items->count(), 0, $empresa->usaFormatoA4());
     }
 
     public function generarPresupuesto(Pedido $pedido): string
     {
+        return $this->renderizarComprobante($this->generarPresupuestoHtml($pedido), $pedido);
+    }
+
+    public function generarPresupuestoHtml(Pedido $pedido, bool $modoWeb = false): string
+    {
         $empresa = $pedido->empresa;
-        $html = view($this->vista($empresa, 'presupuesto-pdf'), [
+
+        return view($this->vista($empresa, 'presupuesto-pdf'), [
             'empresa' => $empresa,
             'pedido' => $pedido,
+            'modoWeb' => $modoWeb,
         ])->render();
-
-        return $this->renderizar($html, $pedido->items->count(), 0, $empresa->usaFormatoA4());
     }
 
     /**
@@ -110,13 +153,29 @@ class ComprobantePdfService
      */
     public function generarPagoCredito(PagoCredito $pago): string
     {
+        return $this->renderizar($this->generarPagoCreditoHtml($pago), 0, 0, $pago->empresa->usaFormatoA4());
+    }
+
+    public function generarPagoCreditoHtml(PagoCredito $pago, bool $modoWeb = false): string
+    {
         $empresa = $pago->empresa;
-        $html = view($this->vista($empresa, 'pago-credito-pdf'), [
+
+        return view($this->vista($empresa, 'pago-credito-pdf'), [
             'empresa' => $empresa,
             'pago' => $pago,
+            'modoWeb' => $modoWeb,
         ])->render();
+    }
 
-        return $this->renderizar($html, 0, 0, $empresa->usaFormatoA4());
+    /**
+     * Punto común de salida para remito/presupuesto: convierte el HTML ya
+     * armado a PDF con el alto calculado según cantidad de ítems. Factura y
+     * NotaCredito tienen su propio cálculo de alto (suman el QR) — ver
+     * generar().
+     */
+    private function renderizarComprobante(string $html, Pedido $pedido): string
+    {
+        return $this->renderizar($html, $pedido->items->count(), 0, $pedido->empresa->usaFormatoA4());
     }
 
     private function generar(
@@ -133,6 +192,7 @@ class ComprobantePdfService
         ?string $clienteCuit,
         float $importe,
         ?string $referenciaAsociada = null,
+        bool $modoWeb = false,
     ): string {
         $credencial = $empresa->credencialFacturacion;
         $puntoVenta = $credencial?->punto_venta;
@@ -142,7 +202,7 @@ class ComprobantePdfService
             ? $this->qrAfip($empresa, (int) $codigoAfip, $puntoVenta, $numeroComprobante, $cae, $fechaEmision, $importe, $clienteCuit)
             : null;
 
-        $html = view($this->vista($empresa, 'comprobante-pdf'), [
+        return view($this->vista($empresa, 'comprobante-pdf'), [
             'empresa' => $empresa,
             'pedido' => $pedido,
             'letra' => $letra,
@@ -157,13 +217,21 @@ class ComprobantePdfService
             'calculo' => $calculo,
             'referenciaAsociada' => $referenciaAsociada,
             'qr' => $qr,
+            'modoWeb' => $modoWeb,
         ])->render();
+    }
 
-        // +14 por la línea nueva "Venta N°:", +140 si hay QR (imagen 110px + margen + separador).
+    /**
+     * Alto del ticket para factura/nota de crédito — a diferencia de
+     * remito/presupuesto, suma espacio extra si hay QR de AFIP. Se calcula
+     * acá (no dentro de generar()) porque ahora generar() solo arma HTML,
+     * nunca pasa por dompdf directamente.
+     */
+    public function alturaExtraComprobante(bool $tieneQr): int
+    {
+        // +14 por la línea "Venta N°:", +140 si hay QR (imagen 110px + margen + separador).
         // Solo importa para el formato ticket — en A4 la página tiene alto fijo.
-        $alturaExtra = 14 + ($qr ? 140 : 0);
-
-        return $this->renderizar($html, $pedido->items->count(), $alturaExtra, $empresa->usaFormatoA4());
+        return 14 + ($tieneQr ? 140 : 0);
     }
 
     /**

@@ -310,6 +310,60 @@ class VentaController extends Controller
         ]);
     }
 
+    /**
+     * Mismo comprobante que comprobantePdf(), pero como página HTML normal
+     * en vez de archivo PDF — con un botón "Imprimir" que dispara
+     * window.print() directo. Se agregó porque descargar el PDF y abrirlo
+     * dependía de qué programa tuviera el usuario configurado por defecto
+     * para PDFs en su compu (ej. Adobe Acrobat le "tapaba" la ventana del
+     * sistema sin poder volver) — así nunca se sale del navegador/PWA.
+     */
+    public function imprimirComprobante(Request $request, Pedido $pedido, ComprobantePdfService $pdf): Response
+    {
+        $this->autorizar($request, $pedido);
+        $this->asegurarCobrado($pedido);
+
+        $factura = $pedido->factura;
+
+        if (! $factura || ! $factura->cae) {
+            abort(404);
+        }
+
+        $pedido->load(['items', 'vendedor', 'cajero']);
+
+        return response($pdf->generarFacturaHtml($factura, $pedido, modoWeb: true));
+    }
+
+    public function imprimirNotaCredito(Request $request, Pedido $pedido, ComprobantePdfService $pdf): Response
+    {
+        $this->autorizar($request, $pedido);
+        $this->asegurarCobrado($pedido);
+
+        $notaCredito = $pedido->factura?->notaCredito;
+
+        if (! $notaCredito || ! $notaCredito->cae) {
+            abort(404);
+        }
+
+        $pedido->load(['items', 'vendedor', 'cajero']);
+
+        return response($pdf->generarNotaCreditoHtml($notaCredito, $pedido, modoWeb: true));
+    }
+
+    public function imprimirRemito(Request $request, Pedido $pedido, ComprobantePdfService $pdf): Response
+    {
+        $this->autorizar($request, $pedido);
+        $this->asegurarCobrado($pedido);
+
+        if ($pedido->tipo_comprobante !== 'remito') {
+            abort(404);
+        }
+
+        $pedido->load(['items', 'vendedor', 'cajero']);
+
+        return response($pdf->generarRemitoHtml($pedido, modoWeb: true));
+    }
+
     public function notaCreditoPdf(Request $request, Pedido $pedido, ComprobantePdfService $pdf): Response
     {
         $this->autorizar($request, $pedido);

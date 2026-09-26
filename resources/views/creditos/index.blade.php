@@ -158,7 +158,7 @@
                                 @if ($pago->estaAnulado())
                                     <span class="text-xs font-medium rounded px-2 py-1 bg-slate-200 text-slate-700">Anulado</span>
                                 @else
-                                    <a href="{{ route('creditos.pagos.comprobantePdf', $pago) }}" target="_blank" class="text-xs text-slate-500 hover:underline">
+                                    <a href="{{ route('creditos.pagos.imprimir', $pago) }}" target="_blank" class="text-xs text-slate-500 hover:underline">
                                         Comprobante
                                     </a>
                                     <button type="button" class="btn-editar-pago text-xs text-slate-500 hover:underline ml-2"
