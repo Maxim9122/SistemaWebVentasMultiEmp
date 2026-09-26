@@ -48,14 +48,19 @@
             </thead>
             <tbody class="divide-y">
                 @forelse ($pagosCreditoCaja as $pago)
-                    <tr>
-                        <td class="px-3 py-2">{{ $pago->cliente->nombre }}</td>
+                    <tr @class(['opacity-50' => $pago->estaAnulado()])>
+                        <td class="px-3 py-2">
+                            {{ $pago->cliente->nombre }}
+                            @if ($pago->estaAnulado())
+                                <span class="ml-1 text-xs font-medium rounded px-2 py-0.5 bg-slate-200 text-slate-700">Anulado</span>
+                            @endif
+                        </td>
                         <td class="px-3 py-2 text-slate-500">{{ $pago->created_at->format('d/m/Y H:i') }}</td>
                         <td class="px-3 py-2 text-slate-500">{{ $pago->usuario->name }}</td>
                         <td class="px-3 py-2 text-right">{{ $pago->monto_efectivo > 0 ? '$'.number_format($pago->monto_efectivo, 2, ',', '.') : '—' }}</td>
                         <td class="px-3 py-2 text-right">{{ $pago->monto_tarjeta > 0 ? '$'.number_format($pago->monto_tarjeta, 2, ',', '.') : '—' }}</td>
                         <td class="px-3 py-2 text-right">{{ $pago->monto_transferencia > 0 ? '$'.number_format($pago->monto_transferencia, 2, ',', '.') : '—' }}</td>
-                        <td class="px-3 py-2 text-right font-medium">${{ number_format($pago->total(), 2, ',', '.') }}</td>
+                        <td class="px-3 py-2 text-right font-medium @class(['line-through' => $pago->estaAnulado()])">${{ number_format($pago->total(), 2, ',', '.') }}</td>
                     </tr>
                 @empty
                     <tr>

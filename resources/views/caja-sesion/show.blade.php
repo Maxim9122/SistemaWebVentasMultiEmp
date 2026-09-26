@@ -26,6 +26,14 @@
                     <p class="font-medium">${{ number_format($caja->totalVentasTransferencia(), 2, ',', '.') }}</p>
                 </div>
                 <div>
+                    <p class="text-slate-500">Pagos de créditos en efectivo</p>
+                    <p class="font-medium text-emerald-600">+${{ number_format($caja->totalPagosCreditoEfectivo(), 2, ',', '.') }}</p>
+                </div>
+                <div>
+                    <p class="text-slate-500">Pagos de créditos por transferencia</p>
+                    <p class="font-medium text-emerald-600">+${{ number_format($caja->totalPagosCreditoTransferencia(), 2, ',', '.') }}</p>
+                </div>
+                <div>
                     <p class="text-slate-500">Egresos en efectivo</p>
                     <p class="font-medium text-red-600">-${{ number_format($caja->totalEgresosEfectivo(), 2, ',', '.') }}</p>
                 </div>

@@ -84,19 +84,20 @@ class Caja extends Model
         return (float) $this->egresos()->sum('monto_transferencia');
     }
 
+    // Los pagos anulados quedan en el listado (marcados) pero no suman.
     public function totalPagosCreditoEfectivo(): float
     {
-        return (float) $this->pagosCredito()->sum('monto_efectivo');
+        return (float) $this->pagosCredito()->whereNull('anulado_at')->sum('monto_efectivo');
     }
 
     public function totalPagosCreditoTarjeta(): float
     {
-        return (float) $this->pagosCredito()->sum('monto_tarjeta');
+        return (float) $this->pagosCredito()->whereNull('anulado_at')->sum('monto_tarjeta');
     }
 
     public function totalPagosCreditoTransferencia(): float
     {
-        return (float) $this->pagosCredito()->sum('monto_transferencia');
+        return (float) $this->pagosCredito()->whereNull('anulado_at')->sum('monto_transferencia');
     }
 
     /**
