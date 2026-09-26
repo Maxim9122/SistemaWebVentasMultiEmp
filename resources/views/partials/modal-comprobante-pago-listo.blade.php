@@ -4,13 +4,13 @@
         <p class="text-sm text-slate-600 mb-1">
             {{ $pagoListo->cliente->nombre }} — ${{ number_format($pagoListo->total(), 2, ',', '.') }}
         </p>
-        <p class="text-sm text-slate-600 mb-4">¿Querés descargar el comprobante en PDF?</p>
+        <p class="text-sm text-slate-600 mb-4">¿Querés imprimir el comprobante?</p>
         <div class="flex gap-2 justify-end">
             <button type="button" id="modal_comprobante_pago_listo_cerrar" class="rounded px-4 py-2 text-sm font-medium text-slate-600 hover:underline">
                 No, gracias
             </button>
-            <a href="{{ route('creditos.pagos.comprobantePdf', $pagoListo) }}" class="rounded bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 text-sm font-medium">
-                Descargar PDF
+            <a href="{{ route('creditos.pagos.imprimir', $pagoListo) }}" target="_blank" class="rounded bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 text-sm font-medium">
+                Imprimir
             </a>
         </div>
     </div>
