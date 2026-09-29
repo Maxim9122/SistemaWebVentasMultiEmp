@@ -28,7 +28,9 @@ class GuardarClienteRequest extends FormRequest
         return [
             'nombre' => ['required', 'string', 'max:255'],
             'cuit' => [
-                'required', 'string', 'max:20',
+                'nullable', // <-- Cambiado de 'required' a 'nullable'
+                'string', 
+                'max:20',
                 Rule::unique('clientes', 'cuit')
                     ->where('empresa_id', $this->user()->empresa_id)
                     ->ignore($cliente?->id),

@@ -46,7 +46,7 @@
 
                 <div>
                     <label for="editar_cliente_cuit" class="block text-sm font-medium mb-1">CUIT / DNI</label>
-                    <input id="editar_cliente_cuit" name="cuit" type="text" required
+                    <input id="editar_cliente_cuit" name="cuit" type="text" 
                         class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
                 </div>
 

@@ -16,7 +16,7 @@
 
             <div>
                 <label for="cuit" class="block text-sm font-medium mb-1">CUIT / DNI</label>
-                <input id="cuit" name="cuit" type="text" value="{{ old('cuit', $cliente->cuit) }}" required
+                <input id="cuit" name="cuit" type="text" value="{{ old('cuit', $cliente->cuit) }}"
                     class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
             </div>
 
