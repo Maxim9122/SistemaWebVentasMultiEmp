@@ -42,6 +42,7 @@ class ProductoController extends Controller
         $empresaId = $request->user()->empresa_id;
 
         $productos = $this->productosFiltrados($request, $buscar, $marca, $categoria, $proveedorId)
+            ->with('proveedor')
             ->orderBy($orden, $direccion)
             ->paginate($porPagina)
             ->withQueryString();

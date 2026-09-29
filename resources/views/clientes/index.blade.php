@@ -126,26 +126,26 @@
         </form>
     </div>
 
-    <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="bg-white rounded-lg shadow overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-slate-50 text-slate-500 text-left">
                 <tr>
-                    <th class="px-4 py-2 font-medium">Nombre</th>
-                    <th class="px-4 py-2 font-medium">CUIT / DNI</th>
-                    <th class="px-4 py-2 font-medium">Teléfono</th>
-                    <th class="px-4 py-2 font-medium">Email</th>
-                    <th class="px-4 py-2 font-medium">Estado</th>
-                    <th class="px-4 py-2 font-medium"></th>
+                    <th class="px-4 py-2 font-medium whitespace-nowrap">Nombre</th>
+                    <th class="px-4 py-2 font-medium whitespace-nowrap">CUIT / DNI</th>
+                    <th class="px-4 py-2 font-medium whitespace-nowrap">Teléfono</th>
+                    <th class="px-4 py-2 font-medium whitespace-nowrap">Email</th>
+                    <th class="px-4 py-2 font-medium whitespace-nowrap">Estado</th>
+                    <th class="px-4 py-2 font-medium whitespace-nowrap"></th>
                 </tr>
             </thead>
             <tbody class="divide-y">
                 @forelse ($clientes as $cliente)
                     <tr>
-                        <td class="px-4 py-2 font-medium">{{ $cliente->nombre }}</td>
-                        <td class="px-4 py-2 text-slate-500">{{ $cliente->cuit ?? '—' }}</td>
-                        <td class="px-4 py-2 text-slate-500">{{ $cliente->telefono ?? '—' }}</td>
-                        <td class="px-4 py-2 text-slate-500">{{ $cliente->email ?? '—' }}</td>
-                        <td class="px-4 py-2">
+                        <td class="px-4 py-2 font-medium whitespace-nowrap">{{ $cliente->nombre }}</td>
+                        <td class="px-4 py-2 text-slate-500 whitespace-nowrap">{{ $cliente->cuit ?? '—' }}</td>
+                        <td class="px-4 py-2 text-slate-500 whitespace-nowrap">{{ $cliente->telefono ?? '—' }}</td>
+                        <td class="px-4 py-2 text-slate-500 whitespace-nowrap">{{ $cliente->email ?? '—' }}</td>
+                        <td class="px-4 py-2 whitespace-nowrap">
                             @if ($cliente->activo)
                                 <span class="text-xs font-medium rounded px-2 py-1 bg-emerald-100 text-emerald-800">Activo</span>
                             @else

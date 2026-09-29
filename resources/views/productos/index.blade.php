@@ -447,7 +447,7 @@
 
     </div>
 
-    <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="bg-white rounded-lg shadow overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-slate-50 text-slate-500 text-left">
                 <tr>
@@ -457,24 +457,25 @@
                             Seleccionar todos
                         </label>
                     </th>
-                    <th class="px-4 py-2 font-medium">Nombre</th>
-                    <th class="px-4 py-2 font-medium">Código</th>
-                    <th class="px-4 py-2 font-medium">
+                    <th class="px-4 py-2 font-medium whitespace-nowrap">Nombre</th>
+                    <th class="px-4 py-2 font-medium whitespace-nowrap">Código</th>
+                    <th class="px-4 py-2 font-medium whitespace-nowrap">
                         <a href="{{ request()->fullUrlWithQuery(['orden' => 'categoria', 'dir' => ($orden === 'categoria' && $direccion === 'asc') ? 'desc' : 'asc', 'page' => null]) }}" class="hover:underline">
                             Categoría{{ $orden === 'categoria' ? ($direccion === 'asc' ? ' ↑' : ' ↓') : '' }}
                         </a>
                     </th>
-                    <th class="px-4 py-2 font-medium">
+                    <th class="px-4 py-2 font-medium whitespace-nowrap">
                         <a href="{{ request()->fullUrlWithQuery(['orden' => 'marca', 'dir' => ($orden === 'marca' && $direccion === 'asc') ? 'desc' : 'asc', 'page' => null]) }}" class="hover:underline">
                             Marca{{ $orden === 'marca' ? ($direccion === 'asc' ? ' ↑' : ' ↓') : '' }}
                         </a>
                     </th>
-                    <th class="px-4 py-2 font-medium text-right">Precio</th>
+                    <th class="px-4 py-2 font-medium whitespace-nowrap">Proveedor</th>
+                    <th class="px-4 py-2 font-medium text-right whitespace-nowrap">Precio</th>
                     @if (auth()->user()->empresa->controla_stock)
-                        <th class="px-4 py-2 font-medium text-right">Stock</th>
+                        <th class="px-4 py-2 font-medium text-right whitespace-nowrap">Stock</th>
                     @endif
-                    <th class="px-4 py-2 font-medium">Estado</th>
-                    <th class="px-4 py-2 font-medium"></th>
+                    <th class="px-4 py-2 font-medium whitespace-nowrap">Estado</th>
+                    <th class="px-4 py-2 font-medium whitespace-nowrap"></th>
                 </tr>
             </thead>
             <tbody class="divide-y">
@@ -493,12 +494,13 @@
                                 <span class="ml-1 text-xs font-medium rounded px-1.5 py-0.5 bg-sky-100 text-sky-800">Precio por cantidad</span>
                             @endif
                         </td>
-                        <td class="px-4 py-2 text-slate-500">{{ $producto->codigo ?? '—' }}</td>
-                        <td class="px-4 py-2 text-slate-500">{{ $producto->categoria ?? '—' }}</td>
-                        <td class="px-4 py-2 text-slate-500">{{ $producto->marca ?? '—' }}</td>
-                        <td class="px-4 py-2 text-right">${{ number_format($producto->precio, 2, ',', '.') }}</td>
+                        <td class="px-4 py-2 text-slate-500 whitespace-nowrap">{{ $producto->codigo ?? '—' }}</td>
+                        <td class="px-4 py-2 text-slate-500 whitespace-nowrap">{{ $producto->categoria ?? '—' }}</td>
+                        <td class="px-4 py-2 text-slate-500 whitespace-nowrap">{{ $producto->marca ?? '—' }}</td>
+                        <td class="px-4 py-2 text-slate-500 whitespace-nowrap">{{ $producto->proveedor->nombre ?? '—' }}</td>
+                        <td class="px-4 py-2 text-right whitespace-nowrap">${{ number_format($producto->precio, 2, ',', '.') }}</td>
                         @if (auth()->user()->empresa->controla_stock)
-                            <td class="px-4 py-2 text-right">{{ $producto->stock }}</td>
+                            <td class="px-4 py-2 text-right whitespace-nowrap">{{ $producto->stock }}</td>
                         @endif
                         <td class="px-4 py-2">
                             <span class="text-xs font-medium rounded px-2 py-1 @class(['bg-emerald-100 text-emerald-800' => $producto->activo, 'bg-slate-200 text-slate-700' => ! $producto->activo])">
@@ -546,7 +548,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="{{ auth()->user()->empresa->controla_stock ? 9 : 8 }}" class="px-4 py-6 text-center text-slate-500">
+                        <td colspan="{{ auth()->user()->empresa->controla_stock ? 10 : 9 }}" class="px-4 py-6 text-center text-slate-500">
                             @if ($buscar !== '')
                                 No encontramos productos que coincidan con "{{ $buscar }}".
                             @else
