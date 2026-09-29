@@ -24,10 +24,31 @@
         </p>
 
         @if ($duplicados->isNotEmpty())
+            @php
+                $filasAfectadas = $duplicados->sum('veces');
+                $codigoSospechoso = $duplicados->first(fn ($d) => $d['veces'] >= 15);
+            @endphp
+
+            @if ($codigoSospechoso)
+                <div class="rounded border border-red-300 bg-red-50 px-4 py-3 mb-4">
+                    <p class="text-sm font-medium text-red-900 mb-1">
+                        🔴 El código "{{ $codigoSospechoso['codigo'] }}" aparece en {{ $codigoSospechoso['veces'] }} filas distintas del Excel.
+                    </p>
+                    <p class="text-xs text-red-800">
+                        Esto normalmente pasa cuando la columna "Código" quedó mal exportada (por ejemplo, valores
+                        vacíos o con error que Excel muestra como "NaN" o "#N/A"). Si seguís así, vas a terminar
+                        creando o actualizando el mismo producto una y otra vez por error, en vez de {{ $filasAfectadas }}
+                        productos distintos. Te recomendamos revisar el archivo, o directamente dejar la columna
+                        "Código" en "Ignorar esta columna" más abajo si no la vas a usar.
+                    </p>
+                </div>
+            @endif
+
             <div class="rounded border border-amber-300 bg-amber-50 px-4 py-3 mb-4">
                 <p class="text-sm font-medium text-amber-900 mb-1">
-                    ⚠ {{ $duplicados->count() }} {{ Str::plural('producto', $duplicados->count()) }} de este Excel
-                    ya {{ $duplicados->count() === 1 ? 'existe' : 'existen' }} en tu catálogo (mismo código).
+                    ⚠ {{ $filasAfectadas }} {{ Str::plural('fila', $filasAfectadas) }} de este Excel
+                    ({{ $duplicados->count() }} {{ Str::plural('código', $duplicados->count()) }} distinto{{ $duplicados->count() === 1 ? '' : 's' }})
+                    ya {{ $filasAfectadas === 1 ? 'existe' : 'existen' }} en tu catálogo (mismo código).
                 </p>
                 <p class="text-xs text-amber-800 mb-2">
                     Según cómo esté asignada la columna "Código" ahora mismo — si la cambiás abajo, puede variar.
@@ -40,6 +61,9 @@
                                 Código {{ $duplicado['codigo'] }} — ya cargado como "{{ $duplicado['nombre_actual'] }}"
                                 @if ($duplicado['nombre_excel'] && $duplicado['nombre_excel'] !== $duplicado['nombre_actual'])
                                     (en el Excel: "{{ $duplicado['nombre_excel'] }}")
+                                @endif
+                                @if ($duplicado['veces'] > 1)
+                                    — se repite en {{ $duplicado['veces'] }} filas del Excel
                                 @endif
                             </li>
                         @endforeach

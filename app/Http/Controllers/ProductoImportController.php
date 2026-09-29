@@ -88,8 +88,13 @@ class ProductoImportController extends Controller
      * empresa — se avisa antes de importar para que el usuario elija si
      * actualizarlos o dejarlos como están, en vez de pisarlos en silencio.
      *
+     * Se agrupa por código (para no repetir la misma línea cientos de veces
+     * si el Excel tiene ese código repetido), pero "veces" cuenta cuántas
+     * filas reales del Excel tienen ese código — así el aviso no subestima
+     * el impacto real de la importación.
+     *
      * @param  array<int, string|null>  $mapeo
-     * @return \Illuminate\Support\Collection<int, array{codigo: string, nombre_excel: string, nombre_actual: string}>
+     * @return \Illuminate\Support\Collection<int, array{codigo: string, nombre_excel: string, nombre_actual: string, veces: int}>
      */
     private function detectarDuplicados(string $rutaAbsoluta, array $mapeo, int $empresaId): \Illuminate\Support\Collection
     {
@@ -101,27 +106,35 @@ class ProductoImportController extends Controller
         }
 
         $filas = $this->importador->leerFilas($rutaAbsoluta);
-        $codigosPorFila = [];
+        $vecesPorCodigo = [];
+        $nombreExcelPorCodigo = [];
 
         foreach ($filas as $fila) {
             $codigo = trim((string) ($fila[$indiceCodigo] ?? ''));
 
-            if ($codigo !== '') {
-                $codigosPorFila[$codigo] = $indiceNombre !== false ? trim((string) ($fila[$indiceNombre] ?? '')) : '';
+            if ($codigo === '') {
+                continue;
+            }
+
+            $vecesPorCodigo[$codigo] = ($vecesPorCodigo[$codigo] ?? 0) + 1;
+
+            if (! isset($nombreExcelPorCodigo[$codigo])) {
+                $nombreExcelPorCodigo[$codigo] = $indiceNombre !== false ? trim((string) ($fila[$indiceNombre] ?? '')) : '';
             }
         }
 
-        if ($codigosPorFila === []) {
+        if ($vecesPorCodigo === []) {
             return collect();
         }
 
         return Producto::where('empresa_id', $empresaId)
-            ->whereIn('codigo', array_keys($codigosPorFila))
+            ->whereIn('codigo', array_keys($vecesPorCodigo))
             ->get(['codigo', 'nombre'])
             ->map(fn (Producto $producto) => [
                 'codigo' => $producto->codigo,
-                'nombre_excel' => $codigosPorFila[$producto->codigo] ?? '',
+                'nombre_excel' => $nombreExcelPorCodigo[$producto->codigo] ?? '',
                 'nombre_actual' => $producto->nombre,
+                'veces' => $vecesPorCodigo[$producto->codigo] ?? 1,
             ])
             ->values();
     }
