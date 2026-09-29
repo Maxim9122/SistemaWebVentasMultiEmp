@@ -480,7 +480,7 @@
             </thead>
             <tbody class="divide-y">
                 @forelse ($productos as $producto)
-                    <tr>
+                    <tr class="even:bg-slate-50 has-[:checked]:bg-slate-200">
                         <td class="px-4 py-2">
                             @unless ($producto->es_promocion)
                                 <input type="checkbox" class="seleccion-producto rounded border border-slate-300" data-id="{{ $producto->id }}">
