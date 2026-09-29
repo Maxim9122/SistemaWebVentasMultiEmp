@@ -189,7 +189,22 @@
                 modal.classList.remove('flex');
             });
 
-            document.getElementById('confirmar-modal-importar').addEventListener('click', function () {
+            // form.submit() (a diferencia de un <button type="submit"> normal) no
+            // dispara el evento 'submit' del documento, así que el bloqueo global
+            // de doble envío (partials/evitar-doble-envio) nunca se entera de este
+            // form — hay que bloquear el botón acá a mano.
+            document.getElementById('confirmar-modal-importar').addEventListener('click', function (evento) {
+                const boton = evento.currentTarget;
+
+                if (boton.disabled) {
+                    return;
+                }
+
+                boton.disabled = true;
+                boton.classList.add('opacity-60', 'cursor-not-allowed');
+                boton.textContent = 'Procesando...';
+                document.getElementById('cancelar-modal-importar').disabled = true;
+
                 form.submit();
             });
         })();
