@@ -22,6 +22,7 @@ class ImportacionProductos extends Model
         'actualizados_count',
         'errores_count',
         'ignorados_count',
+        'copiados_count',
         'revertida_at',
     ];
 

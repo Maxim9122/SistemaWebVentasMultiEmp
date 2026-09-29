@@ -22,6 +22,9 @@
                         @if ($importacion->ignorados_count > 0)
                             · {{ $importacion->ignorados_count }} ignorados
                         @endif
+                        @if ($importacion->copiados_count > 0)
+                            · {{ $importacion->copiados_count }} copiados
+                        @endif
                         · {{ $importacion->errores_count }} errores
                     </p>
                 </div>

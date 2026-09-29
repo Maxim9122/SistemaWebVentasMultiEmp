@@ -146,6 +146,7 @@ class ProductoImportController extends Controller
         $creados = 0;
         $actualizados = 0;
         $ignorados = 0;
+        $copiados = 0;
         $errores = [];
 
         $importacion = ImportacionProductos::create([
@@ -155,7 +156,7 @@ class ProductoImportController extends Controller
             'nombre_archivo' => $datosImportacion['nombre_archivo'] ?? 'archivo.xlsx',
         ]);
 
-        DB::transaction(function () use ($filas, $mapeoPorIndice, $empresaId, $proveedorId, $modoDuplicados, $importacion, &$creados, &$actualizados, &$ignorados, &$errores) {
+        DB::transaction(function () use ($filas, $mapeoPorIndice, $empresaId, $proveedorId, $modoDuplicados, $importacion, &$creados, &$actualizados, &$ignorados, &$copiados, &$errores) {
             foreach ($filas as $indiceFila => $fila) {
                 if (collect($fila)->every(fn ($valor) => trim((string) $valor) === '')) {
                     continue;
@@ -200,6 +201,25 @@ class ProductoImportController extends Controller
                         continue;
                     }
 
+                    if ($modoDuplicados === 'copiar') {
+                        // Copia como producto nuevo, sin código: si le dejáramos
+                        // el mismo código del Excel, chocaría con la restricción
+                        // única (empresa_id, codigo) de la tabla. No se inventa
+                        // un código al azar — directamente queda sin código,
+                        // igual que cualquier producto cargado sin uno.
+                        $copia = Producto::create([...$atributos, 'empresa_id' => $empresaId, 'codigo' => null]);
+                        $copiados++;
+
+                        ImportacionProductoCambio::create([
+                            'importacion_id' => $importacion->id,
+                            'producto_id' => $copia->id,
+                            'fue_creado' => true,
+                            'datos_anteriores' => null,
+                        ]);
+
+                        continue;
+                    }
+
                     $datosAnteriores = $producto->only([
                         'nombre', 'codigo', 'precio', 'costo', 'stock', 'categoria', 'marca', 'unidad', 'proveedor_id',
                     ]);
@@ -233,6 +253,7 @@ class ProductoImportController extends Controller
             'creados_count' => $creados,
             'actualizados_count' => $actualizados,
             'ignorados_count' => $ignorados,
+            'copiados_count' => $copiados,
             'errores_count' => count($errores),
         ]);
 
@@ -248,6 +269,7 @@ class ProductoImportController extends Controller
             'creados' => $creados,
             'actualizados' => $actualizados,
             'ignorados' => $ignorados,
+            'copiados' => $copiados,
             'errores' => $errores,
         ]);
     }

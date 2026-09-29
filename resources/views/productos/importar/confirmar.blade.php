@@ -59,9 +59,13 @@
                         <input type="radio" name="modo_duplicados" value="actualizar" checked class="mt-0.5">
                         <span><strong>Actualizarlos</strong> — pisa precio, costo, stock, etc. con los datos del Excel.</span>
                     </label>
-                    <label class="flex items-start gap-2 text-sm cursor-pointer">
+                    <label class="flex items-start gap-2 text-sm mb-1.5 cursor-pointer">
                         <input type="radio" name="modo_duplicados" value="ignorar" class="mt-0.5">
                         <span><strong>Ignorarlos</strong> — los deja tal cual están, solo crea los que son nuevos.</span>
+                    </label>
+                    <label class="flex items-start gap-2 text-sm cursor-pointer">
+                        <input type="radio" name="modo_duplicados" value="copiar" class="mt-0.5">
+                        <span><strong>Crearlos como copia nueva</strong> — no toca el producto existente, crea uno nuevo con los datos del Excel pero sin código (para no chocar con el que ya existe).</span>
                     </label>
                 </div>
             @endif
@@ -144,9 +148,12 @@
             document.getElementById('abrir-modal-importar').addEventListener('click', function () {
                 if (textoModoDuplicados && radiosModoDuplicados.length > 0) {
                     const elegido = document.querySelector('input[name="modo_duplicados"]:checked');
-                    textoModoDuplicados.innerHTML = (elegido && elegido.value === 'ignorar')
-                        ? 'Los productos cuyo código ya exista se van a <strong>dejar como están</strong>; el resto se va a <strong>crear</strong>.'
-                        : 'Los productos cuyo código ya exista se van a <strong>actualizar</strong>; el resto se va a <strong>crear</strong>.';
+                    const textos = {
+                        ignorar: 'Los productos cuyo código ya exista se van a <strong>dejar como están</strong>; el resto se va a <strong>crear</strong>.',
+                        copiar: 'Los productos cuyo código ya exista se van a <strong>duplicar</strong> (copia nueva sin código); el resto se va a <strong>crear</strong>.',
+                        actualizar: 'Los productos cuyo código ya exista se van a <strong>actualizar</strong>; el resto se va a <strong>crear</strong>.',
+                    };
+                    textoModoDuplicados.innerHTML = textos[elegido?.value] ?? textos.actualizar;
                 }
 
                 modal.classList.remove('hidden');
