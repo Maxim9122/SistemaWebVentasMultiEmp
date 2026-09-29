@@ -29,6 +29,7 @@ class ConfirmarImportacionProductosRequest extends FormRequest
             'token' => ['required', 'string'],
             'mapeo' => ['required', 'array'],
             'mapeo.*' => ['nullable', 'string', 'in:'.implode(',', MapeoColumnasService::CAMPOS)],
+            'modo_duplicados' => ['nullable', 'string', 'in:actualizar,ignorar'],
         ];
     }
 

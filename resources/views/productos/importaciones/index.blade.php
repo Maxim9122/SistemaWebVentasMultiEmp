@@ -18,8 +18,11 @@
                         proveedor: {{ $importacion->proveedor->nombre ?? 'ninguno' }}
                     </p>
                     <p class="text-sm text-slate-500">
-                        {{ $importacion->creados_count }} creados · {{ $importacion->actualizados_count }} actualizados ·
-                        {{ $importacion->errores_count }} errores
+                        {{ $importacion->creados_count }} creados · {{ $importacion->actualizados_count }} actualizados
+                        @if ($importacion->ignorados_count > 0)
+                            · {{ $importacion->ignorados_count }} ignorados
+                        @endif
+                        · {{ $importacion->errores_count }} errores
                     </p>
                 </div>
                 <div class="flex items-center gap-3 shrink-0">

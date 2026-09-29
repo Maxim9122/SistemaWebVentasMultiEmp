@@ -65,6 +65,12 @@ class ProductoImportController extends Controller
             'proveedor_id' => $proveedorId,
         ], now()->addMinutes(30));
 
+        // Según la asignación de columnas ya sugerida (el usuario todavía la
+        // puede ajustar abajo) — es una estimación para avisar antes de
+        // importar, no la fuente de verdad: confirmar() vuelve a calcularlo
+        // con el mapeo definitivo que se haya terminado usando.
+        $duplicados = $this->detectarDuplicados($rutaAbsoluta, $sugerencias, $empresaId);
+
         return view('productos.importar.confirmar', [
             'token' => $token,
             'encabezados' => $lectura['encabezados'],
@@ -73,7 +79,51 @@ class ProductoImportController extends Controller
             'campos' => MapeoColumnasService::CAMPOS,
             'filasTotales' => $filasTotales,
             'proveedorNombre' => $proveedorNombre,
+            'duplicados' => $duplicados,
         ]);
+    }
+
+    /**
+     * Productos del Excel cuyo código ya existe en el catálogo de la
+     * empresa — se avisa antes de importar para que el usuario elija si
+     * actualizarlos o dejarlos como están, en vez de pisarlos en silencio.
+     *
+     * @param  array<int, string|null>  $mapeo
+     * @return \Illuminate\Support\Collection<int, array{codigo: string, nombre_excel: string, nombre_actual: string}>
+     */
+    private function detectarDuplicados(string $rutaAbsoluta, array $mapeo, int $empresaId): \Illuminate\Support\Collection
+    {
+        $indiceCodigo = array_search('codigo', $mapeo, true);
+        $indiceNombre = array_search('nombre', $mapeo, true);
+
+        if ($indiceCodigo === false) {
+            return collect();
+        }
+
+        $filas = $this->importador->leerFilas($rutaAbsoluta);
+        $codigosPorFila = [];
+
+        foreach ($filas as $fila) {
+            $codigo = trim((string) ($fila[$indiceCodigo] ?? ''));
+
+            if ($codigo !== '') {
+                $codigosPorFila[$codigo] = $indiceNombre !== false ? trim((string) ($fila[$indiceNombre] ?? '')) : '';
+            }
+        }
+
+        if ($codigosPorFila === []) {
+            return collect();
+        }
+
+        return Producto::where('empresa_id', $empresaId)
+            ->whereIn('codigo', array_keys($codigosPorFila))
+            ->get(['codigo', 'nombre'])
+            ->map(fn (Producto $producto) => [
+                'codigo' => $producto->codigo,
+                'nombre_excel' => $codigosPorFila[$producto->codigo] ?? '',
+                'nombre_actual' => $producto->nombre,
+            ])
+            ->values();
     }
 
     public function confirmar(ConfirmarImportacionProductosRequest $request): View|RedirectResponse
@@ -88,12 +138,14 @@ class ProductoImportController extends Controller
         $empresaId = $datosImportacion['empresa_id'];
         $proveedorId = $datosImportacion['proveedor_id'] ?? null;
         $mapeoPorIndice = $request->validated('mapeo');
+        $modoDuplicados = $request->validated('modo_duplicados') ?? 'actualizar';
         $rutaAbsoluta = Storage::disk('local')->path($datosImportacion['ruta']);
 
         $filas = $this->importador->leerFilas($rutaAbsoluta);
 
         $creados = 0;
         $actualizados = 0;
+        $ignorados = 0;
         $errores = [];
 
         $importacion = ImportacionProductos::create([
@@ -103,7 +155,7 @@ class ProductoImportController extends Controller
             'nombre_archivo' => $datosImportacion['nombre_archivo'] ?? 'archivo.xlsx',
         ]);
 
-        DB::transaction(function () use ($filas, $mapeoPorIndice, $empresaId, $proveedorId, $importacion, &$creados, &$actualizados, &$errores) {
+        DB::transaction(function () use ($filas, $mapeoPorIndice, $empresaId, $proveedorId, $modoDuplicados, $importacion, &$creados, &$actualizados, &$ignorados, &$errores) {
             foreach ($filas as $indiceFila => $fila) {
                 if (collect($fila)->every(fn ($valor) => trim((string) $valor) === '')) {
                     continue;
@@ -142,6 +194,12 @@ class ProductoImportController extends Controller
                     : null;
 
                 if ($producto) {
+                    if ($modoDuplicados === 'ignorar') {
+                        $ignorados++;
+
+                        continue;
+                    }
+
                     $datosAnteriores = $producto->only([
                         'nombre', 'codigo', 'precio', 'costo', 'stock', 'categoria', 'marca', 'unidad', 'proveedor_id',
                     ]);
@@ -174,6 +232,7 @@ class ProductoImportController extends Controller
         $importacion->update([
             'creados_count' => $creados,
             'actualizados_count' => $actualizados,
+            'ignorados_count' => $ignorados,
             'errores_count' => count($errores),
         ]);
 
@@ -188,6 +247,7 @@ class ProductoImportController extends Controller
         return view('productos.importar.resultado', [
             'creados' => $creados,
             'actualizados' => $actualizados,
+            'ignorados' => $ignorados,
             'errores' => $errores,
         ]);
     }

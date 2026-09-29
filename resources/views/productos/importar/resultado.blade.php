@@ -13,6 +13,12 @@
                 <p class="text-2xl font-semibold text-sky-700">{{ $actualizados }}</p>
                 <p class="text-slate-500">Actualizados</p>
             </div>
+            @if ($ignorados > 0)
+                <div>
+                    <p class="text-2xl font-semibold text-slate-500">{{ $ignorados }}</p>
+                    <p class="text-slate-500">Ignorados (ya existían)</p>
+                </div>
+            @endif
             <div>
                 <p class="text-2xl font-semibold text-red-700">{{ count($errores) }}</p>
                 <p class="text-slate-500">Con error</p>

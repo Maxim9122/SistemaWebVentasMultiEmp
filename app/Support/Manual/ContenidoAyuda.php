@@ -169,6 +169,7 @@ class ContenidoAyuda
                         'titulo' => 'Importar productos desde Excel/CSV',
                         'resumen' => '
                             <p>Desde <strong>Productos → Importar</strong>, subís el archivo y mapeás qué columna corresponde a cada campo. Antes de confirmar se muestra una vista previa. Queda un historial de importaciones que se puede <strong>deshacer</strong> si algo salió mal.</p>
+                            <p>Si el archivo tiene productos cuyo <strong>código ya existe</strong> en tu catálogo, aparece un aviso antes de importar mostrando cuáles son, y podés elegir: <strong>actualizarlos</strong> (pisa precio, costo, stock, etc. con los datos del Excel) o <strong>ignorarlos</strong> (los deja tal cual están y solo crea los que son nuevos).</p>
                         ',
                     ],
                     'reponer-stock' => [
