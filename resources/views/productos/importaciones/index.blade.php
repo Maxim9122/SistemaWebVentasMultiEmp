@@ -25,6 +25,9 @@
                         @if ($importacion->copiados_count > 0)
                             · {{ $importacion->copiados_count }} copiados
                         @endif
+                        @if ($importacion->codigos_invalidos_count > 0)
+                            · {{ $importacion->codigos_invalidos_count }} sin código válido
+                        @endif
                         · {{ $importacion->errores_count }} errores
                     </p>
                 </div>

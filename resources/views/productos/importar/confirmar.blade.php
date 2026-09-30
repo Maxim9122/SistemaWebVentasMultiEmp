@@ -23,6 +23,22 @@
             tener que hacer esto de nuevo.
         </p>
 
+        @if (! empty($codigosInvalidos))
+            <div class="rounded border border-sky-300 bg-sky-50 px-4 py-3 mb-4">
+                <p class="text-sm font-medium text-sky-900 mb-1">
+                    ℹ {{ array_sum($codigosInvalidos) }} {{ Str::plural('fila', array_sum($codigosInvalidos)) }} de este Excel
+                    {{ array_sum($codigosInvalidos) === 1 ? 'tiene' : 'tienen' }} un código no válido (no es un código real, es un
+                    valor de error de Excel) — se van a crear como productos nuevos <strong>sin código</strong>, sin buscar
+                    ninguna coincidencia por ese valor.
+                </p>
+                <p class="text-xs text-sky-800">
+                    @foreach ($codigosInvalidos as $valor => $cantidad)
+                        "{{ $valor }}" → {{ $cantidad }} {{ Str::plural('fila', $cantidad) }}{{ ! $loop->last ? ', ' : '' }}
+                    @endforeach
+                </p>
+            </div>
+        @endif
+
         @if ($duplicados->isNotEmpty())
             @php
                 $filasAfectadas = $duplicados->sum('veces');

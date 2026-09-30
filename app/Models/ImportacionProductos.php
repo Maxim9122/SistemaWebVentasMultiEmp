@@ -23,6 +23,7 @@ class ImportacionProductos extends Model
         'errores_count',
         'ignorados_count',
         'copiados_count',
+        'codigos_invalidos_count',
         'revertida_at',
     ];
 

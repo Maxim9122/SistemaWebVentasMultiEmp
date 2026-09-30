@@ -21,10 +21,27 @@ use Illuminate\View\View;
 
 class ProductoImportController extends Controller
 {
+    /**
+     * Valores que Excel deja en una celda cuando el dato original se perdió
+     * (columna corrupta, fórmula rota, recuperación automática de un archivo
+     * dañado) — no son códigos reales, aunque no estén vacíos. Si se los
+     * tratara como código de verdad, la primera fila con ese valor crea un
+     * producto y todas las filas siguientes con el mismo valor lo van
+     * pisando en cadena, mezclando productos distintos entre sí.
+     */
+    private const CODIGOS_INVALIDOS = [
+        'nan', '#n/a', 'n/a', 'na', '#value!', '#ref!', '#div/0!', '#null!', '#name?', '#num!',
+    ];
+
     public function __construct(
         private readonly LectorArchivoExcel $importador,
         private readonly MapeoColumnasService $mapeoColumnas,
     ) {}
+
+    private function esCodigoInvalido(string $codigo): bool
+    {
+        return in_array(mb_strtolower(trim($codigo)), self::CODIGOS_INVALIDOS, true);
+    }
 
     public function subir(Request $request): View
     {
@@ -70,6 +87,7 @@ class ProductoImportController extends Controller
         // importar, no la fuente de verdad: confirmar() vuelve a calcularlo
         // con el mapeo definitivo que se haya terminado usando.
         $duplicados = $this->detectarDuplicados($rutaAbsoluta, $sugerencias, $empresaId);
+        $codigosInvalidos = $this->detectarCodigosInvalidos($rutaAbsoluta, $sugerencias);
 
         return view('productos.importar.confirmar', [
             'token' => $token,
@@ -80,7 +98,38 @@ class ProductoImportController extends Controller
             'filasTotales' => $filasTotales,
             'proveedorNombre' => $proveedorNombre,
             'duplicados' => $duplicados,
+            'codigosInvalidos' => $codigosInvalidos,
         ]);
+    }
+
+    /**
+     * Cuenta, agrupado por valor, cuántas filas del Excel tienen un código
+     * "inválido" (ver CODIGOS_INVALIDOS) — para avisar antes de importar que
+     * esas filas se van a crear como productos nuevos sin código, en vez de
+     * intentar buscarles una coincidencia por ese valor.
+     *
+     * @param  array<int, string|null>  $mapeo
+     * @return array<string, int>
+     */
+    private function detectarCodigosInvalidos(string $rutaAbsoluta, array $mapeo): array
+    {
+        $indiceCodigo = array_search('codigo', $mapeo, true);
+
+        if ($indiceCodigo === false) {
+            return [];
+        }
+
+        $conteo = [];
+
+        foreach ($this->importador->leerFilas($rutaAbsoluta) as $fila) {
+            $codigo = trim((string) ($fila[$indiceCodigo] ?? ''));
+
+            if ($codigo !== '' && $this->esCodigoInvalido($codigo)) {
+                $conteo[$codigo] = ($conteo[$codigo] ?? 0) + 1;
+            }
+        }
+
+        return $conteo;
     }
 
     /**
@@ -112,7 +161,7 @@ class ProductoImportController extends Controller
         foreach ($filas as $fila) {
             $codigo = trim((string) ($fila[$indiceCodigo] ?? ''));
 
-            if ($codigo === '') {
+            if ($codigo === '' || $this->esCodigoInvalido($codigo)) {
                 continue;
             }
 
@@ -160,6 +209,7 @@ class ProductoImportController extends Controller
         $actualizados = 0;
         $ignorados = 0;
         $copiados = 0;
+        $codigosInvalidos = 0;
         $errores = [];
 
         $importacion = ImportacionProductos::create([
@@ -169,7 +219,7 @@ class ProductoImportController extends Controller
             'nombre_archivo' => $datosImportacion['nombre_archivo'] ?? 'archivo.xlsx',
         ]);
 
-        DB::transaction(function () use ($filas, $mapeoPorIndice, $empresaId, $proveedorId, $modoDuplicados, $importacion, &$creados, &$actualizados, &$ignorados, &$copiados, &$errores) {
+        DB::transaction(function () use ($filas, $mapeoPorIndice, $empresaId, $proveedorId, $modoDuplicados, $importacion, &$creados, &$actualizados, &$ignorados, &$copiados, &$codigosInvalidos, &$errores) {
             foreach ($filas as $indiceFila => $fila) {
                 if (collect($fila)->every(fn ($valor) => trim((string) $valor) === '')) {
                     continue;
@@ -202,6 +252,15 @@ class ProductoImportController extends Controller
                 ];
 
                 $codigo = blank($datos['codigo'] ?? null) ? null : trim((string) $datos['codigo']);
+
+                if ($codigo !== null && $this->esCodigoInvalido($codigo)) {
+                    // "NaN", "#N/A", etc. no son códigos reales — se tratan
+                    // como si la celda estuviera vacía, para que nunca
+                    // encuentren (ni generen) una coincidencia falsa con otra
+                    // fila que tenga el mismo valor basura.
+                    $codigo = null;
+                    $codigosInvalidos++;
+                }
 
                 $producto = $codigo !== null
                     ? Producto::where('empresa_id', $empresaId)->where('codigo', $codigo)->first()
@@ -267,6 +326,7 @@ class ProductoImportController extends Controller
             'actualizados_count' => $actualizados,
             'ignorados_count' => $ignorados,
             'copiados_count' => $copiados,
+            'codigos_invalidos_count' => $codigosInvalidos,
             'errores_count' => count($errores),
         ]);
 
@@ -283,6 +343,7 @@ class ProductoImportController extends Controller
             'actualizados' => $actualizados,
             'ignorados' => $ignorados,
             'copiados' => $copiados,
+            'codigosInvalidos' => $codigosInvalidos,
             'errores' => $errores,
         ]);
     }

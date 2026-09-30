@@ -31,6 +31,14 @@
             </div>
         </div>
 
+        @if ($codigosInvalidos > 0)
+            <p class="text-xs text-sky-800 bg-sky-50 border border-sky-200 rounded px-3 py-2">
+                ℹ De los creados, {{ $codigosInvalidos }} {{ Str::plural('fila', $codigosInvalidos) }} tenían un código no válido
+                en el Excel (ej: "NaN") — se {{ $codigosInvalidos === 1 ? 'creó' : 'crearon' }} sin código, en vez de intentar
+                buscar una coincidencia con ese valor.
+            </p>
+        @endif
+
         @if (count($errores) > 0)
             <div class="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
                 <p class="font-medium mb-1">Filas que no se pudieron importar:</p>
