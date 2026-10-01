@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Superadmin;
 use App\Http\Controllers\Controller;
 use App\Models\Empresa;
 use App\Models\PagoAbono;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class EmpresaController extends Controller
@@ -128,6 +130,27 @@ class EmpresaController extends Controller
         $pago->delete();
 
         return back()->with('status', 'Pago eliminado.');
+    }
+
+    /**
+     * Único "olvidé mi contraseña" que tiene hoy el admin de una empresa: no
+     * hay recuperación por email (el proyecto no manda mails reales todavía,
+     * ver MAIL_MAILER=log), así que el superadmin genera una contraseña
+     * temporal nueva y se la pasa a mano — el mismo criterio que ya usa el
+     * admin de cada empresa para resetearle la contraseña a su propio staff
+     * desde "Editar usuario" (ahí no hizo falta nada nuevo, ya existía).
+     */
+    public function resetearPassword(Empresa $empresa, User $usuario): RedirectResponse
+    {
+        if ($usuario->empresa_id !== $empresa->id) {
+            abort(404);
+        }
+
+        $nuevaPassword = Str::password(12);
+
+        $usuario->update(['password' => $nuevaPassword]);
+
+        return back()->with('status', "Contraseña reseteada para {$usuario->name} ({$usuario->email}). Nueva contraseña temporal: {$nuevaPassword} — pasásela de forma segura, no queda guardada en ningún lado después de esto.");
     }
 
     /**

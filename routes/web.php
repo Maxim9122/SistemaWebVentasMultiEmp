@@ -306,6 +306,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/empresas/{empresa}/reactivar', [SuperadminEmpresaController::class, 'reactivar'])->name('empresas.reactivar');
         Route::post('/empresas/{empresa}/pagos', [SuperadminEmpresaController::class, 'registrarPago'])->name('empresas.pagos.store');
         Route::delete('/empresas/{empresa}/pagos/{pago}', [SuperadminEmpresaController::class, 'eliminarPago'])->name('empresas.pagos.destroy');
+        Route::post('/empresas/{empresa}/usuarios/{usuario}/resetear-password', [SuperadminEmpresaController::class, 'resetearPassword'])->name('empresas.usuarios.resetearPassword');
 
         Route::get('/vencimientos', [SuperadminVencimientoController::class, 'index'])->name('vencimientos.index');
     });

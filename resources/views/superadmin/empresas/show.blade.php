@@ -53,8 +53,15 @@
 
         <div>
             <h2 class="text-sm font-semibold text-slate-700 mb-2">Usuario administrador</h2>
-            @foreach ($empresa->users as $usuario)
-                <p class="text-sm">{{ $usuario->name }} — {{ $usuario->email }}</p>
+            @foreach ($empresa->users->where('role', 'admin') as $usuario)
+                <div class="flex items-center gap-3 text-sm mb-1">
+                    <p>{{ $usuario->name }} — {{ $usuario->email }}</p>
+                    <form method="POST" action="{{ route('superadmin.empresas.usuarios.resetearPassword', [$empresa, $usuario]) }}"
+                        onsubmit="return confirm('¿Generar una contraseña nueva para {{ $usuario->name }}? La contraseña actual deja de funcionar al instante.');">
+                        @csrf
+                        <button type="submit" class="text-xs text-slate-500 hover:underline">Resetear contraseña</button>
+                    </form>
+                </div>
             @endforeach
         </div>
 
