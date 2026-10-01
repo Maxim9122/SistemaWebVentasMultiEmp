@@ -171,6 +171,7 @@ class ContenidoAyuda
                             <p>Desde <strong>Productos → Importar</strong>, subís el archivo y mapeás qué columna corresponde a cada campo. Antes de confirmar se muestra una vista previa. Queda un historial de importaciones que se puede <strong>deshacer</strong> si algo salió mal.</p>
                             <p>Si el archivo tiene productos cuyo <strong>código ya existe</strong> en tu catálogo, aparece un aviso antes de importar mostrando cuáles son, y podés elegir: <strong>actualizarlos</strong> (pisa precio, costo, stock, etc. con los datos del Excel), <strong>ignorarlos</strong> (los deja tal cual están y solo crea los que son nuevos) o <strong>crearlos como copia nueva</strong> (no toca el producto existente, crea uno nuevo con los datos del Excel pero sin código, para no chocar con el que ya existe).</p>
                             <p>Si una celda de la columna "Código" tiene un valor que no es un código real (por ejemplo "NaN" o "#N/A" — típico de un Excel exportado con errores), el sistema lo detecta y avisa antes de importar: esas filas se crean como productos nuevos <strong>sin código</strong>, nunca se usan para buscar una coincidencia entre sí ni con el catálogo.</p>
+                            <p>Las columnas de Precio, Costo y Stock aceptan el signo "$", espacios y separadores de miles/decimales en cualquiera de los dos formatos habituales (por ejemplo "$1.500,50" o "1,500.50") — se limpian solos antes de importar.</p>
                         ',
                     ],
                     'reponer-stock' => [
