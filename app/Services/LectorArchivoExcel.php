@@ -45,6 +45,45 @@ class LectorArchivoExcel
     {
         $hoja = IOFactory::load($rutaAbsoluta)->getActiveSheet();
 
-        return $hoja->toArray(null, true, true, false);
+        return $this->recortarColumnasFantasma($hoja->toArray(null, true, true, false));
+    }
+
+    /**
+     * Excel a veces reporta como "usado" un rango mucho más ancho de lo que
+     * tiene datos reales (quedó un formato, borde o estilo aplicado sobre un
+     * rango grande alguna vez, aunque esas celdas estén vacías) —
+     * toArray() respeta ese rango tal cual, así que un archivo con 7
+     * columnas de datos puede devolver 30, la mayoría vacías. Se recorta
+     * desde el final hasta la última columna que tenga al menos un valor no
+     * vacío en CUALQUIER fila (no solo el encabezado, por si hay una
+     * columna sin título pero con datos reales debajo).
+     *
+     * @param  list<list<mixed>>  $filas
+     * @return list<list<mixed>>
+     */
+    private function recortarColumnasFantasma(array $filas): array
+    {
+        if ($filas === []) {
+            return $filas;
+        }
+
+        $ultimaColumnaConDatos = -1;
+
+        foreach ($filas as $fila) {
+            foreach ($fila as $indice => $valor) {
+                if ($indice > $ultimaColumnaConDatos && trim((string) $valor) !== '') {
+                    $ultimaColumnaConDatos = $indice;
+                }
+            }
+        }
+
+        if ($ultimaColumnaConDatos === -1) {
+            return [];
+        }
+
+        return array_map(
+            fn (array $fila) => array_slice($fila, 0, $ultimaColumnaConDatos + 1),
+            $filas,
+        );
     }
 }
