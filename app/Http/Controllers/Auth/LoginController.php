@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\SesionUsuario;
+use App\Rules\Recaptcha;
 use App\Services\ControlAccesoStaff;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,6 +28,24 @@ class LoginController extends Controller
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
         ]);
+
+        // Mismo captcha que ya se usa en el registro de empresas (misma
+        // clase App\Rules\Recaptcha — sin configurar RECAPTCHA_SECRET_KEY no
+        // hace nada, igual que ahí). Va antes de Auth::attempt(): si un bot
+        // está probando contraseñas, se corta acá, sin llegar a gastar un
+        // intento de login de verdad.
+        $errorRecaptcha = null;
+        (new Recaptcha)->validate(
+            'g-recaptcha-response',
+            $request->input('g-recaptcha-response'),
+            function (string $mensaje) use (&$errorRecaptcha) {
+                $errorRecaptcha = $mensaje;
+            },
+        );
+
+        if ($errorRecaptcha !== null) {
+            return back()->withErrors(['g-recaptcha-response' => $errorRecaptcha])->onlyInput('email');
+        }
 
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
             return back()->withErrors(['email' => 'Las credenciales no coinciden con ningún registro.'])->onlyInput('email');

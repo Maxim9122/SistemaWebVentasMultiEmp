@@ -23,6 +23,15 @@
             Recordarme
         </label>
 
+        @if (config('services.recaptcha.site_key'))
+            <div>
+                <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
+                @error('g-recaptcha-response')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+        @endif
+
         <button type="submit" class="w-full rounded bg-slate-900 text-white py-2 text-sm font-medium hover:bg-slate-800">
             Entrar
         </button>
@@ -32,4 +41,8 @@
         ¿Tu empresa todavía no tiene cuenta?
         <a href="{{ route('empresas.registro') }}" class="text-slate-900 font-medium hover:underline">Registrala acá</a>
     </p>
+
+    @if (config('services.recaptcha.site_key'))
+        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    @endif
 @endsection
