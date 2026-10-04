@@ -184,6 +184,17 @@
 
             <div>
                 <label class="flex items-start gap-2 text-sm">
+                    <input type="checkbox" name="permite_pago_qr" value="1"
+                        @checked(old('permite_pago_qr', $empresa->permite_pago_qr)) class="rounded border border-slate-300 mt-0.5">
+                    <span>
+                        <span class="font-medium text-slate-900">Permitir cobro con QR (Mercado Pago)</span><br>
+                        <span class="text-slate-500">Para que aparezca como medio de pago primero hay que conectar la cuenta de Mercado Pago y configurar la caja, más abajo.</span>
+                    </span>
+                </label>
+            </div>
+
+            <div>
+                <label class="flex items-start gap-2 text-sm">
                     <input type="checkbox" name="factura_habilitada" value="1"
                         @checked(old('factura_habilitada', $empresa->factura_habilitada)) class="rounded border border-slate-300 mt-0.5">
                     <span>
@@ -207,7 +218,7 @@
             <div class="border-t pt-5">
                 <p class="font-medium text-slate-900 mb-1">Descuento / recargo por medio de pago</p>
                 <p class="text-slate-500 text-sm mb-3">Un número negativo es descuento, positivo es recargo. Dejá 0 si ese medio no ajusta el precio.</p>
-                <div class="grid grid-cols-3 gap-4">
+                <div class="grid grid-cols-4 gap-4">
                     <div>
                         <label for="ajuste_efectivo_porcentaje" class="block text-sm font-medium mb-1">Efectivo %</label>
                         <input id="ajuste_efectivo_porcentaje" name="ajuste_efectivo_porcentaje" type="number" step="0.01"
@@ -224,6 +235,12 @@
                         <label for="ajuste_transferencia_porcentaje" class="block text-sm font-medium mb-1">Transferencia %</label>
                         <input id="ajuste_transferencia_porcentaje" name="ajuste_transferencia_porcentaje" type="number" step="0.01"
                             value="{{ old('ajuste_transferencia_porcentaje', $empresa->ajuste_transferencia_porcentaje) }}"
+                            class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                    </div>
+                    <div>
+                        <label for="ajuste_mercadopago_porcentaje" class="block text-sm font-medium mb-1">Mercado Pago %</label>
+                        <input id="ajuste_mercadopago_porcentaje" name="ajuste_mercadopago_porcentaje" type="number" step="0.01"
+                            value="{{ old('ajuste_mercadopago_porcentaje', $empresa->ajuste_mercadopago_porcentaje) }}"
                             class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
                     </div>
                 </div>
@@ -347,6 +364,66 @@
                 @enderror
             </div>
         @endif
+
+        <div class="border-t mt-5 pt-5">
+            <p class="font-medium text-slate-900 mb-1">Cobro con QR (Mercado Pago)</p>
+
+            @if ($empresa->credencialMercadoPago?->tienePosConfigurado())
+                <p class="text-sm text-emerald-700 mb-3">Conectado y configurado — este es el QR fijo para imprimir en el mostrador:</p>
+                <img src="{{ $empresa->credencialMercadoPago->mp_qr_image_url }}" alt="QR de cobro de Mercado Pago" class="w-48 h-48 border rounded mb-3">
+            @elseif ($empresa->credencialMercadoPago?->estaActiva())
+                <p class="text-sm text-amber-700 mb-3">Cuenta conectada — falta configurar la caja para generar el QR. Cargá la dirección del local (Mercado Pago la necesita para los cálculos impositivos):</p>
+                <form method="POST" action="{{ route('configuracion.mercadopago.configurar-pos') }}" class="space-y-3 max-w-md">
+                    @csrf
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="col-span-2">
+                            <label class="block text-xs text-slate-500 mb-1">Calle</label>
+                            <input type="text" name="calle" value="{{ old('calle') }}" required class="w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1">Número</label>
+                            <input type="text" name="numero" value="{{ old('numero') }}" required class="w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1">Ciudad</label>
+                            <input type="text" name="ciudad" value="{{ old('ciudad') }}" required class="w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-xs text-slate-500 mb-1">Provincia</label>
+                            <input type="text" name="provincia" value="{{ old('provincia') }}" required class="w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1">Latitud</label>
+                            <input type="text" name="latitud" value="{{ old('latitud') }}" required placeholder="-34.6037" class="w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1">Longitud</label>
+                            <input type="text" name="longitud" value="{{ old('longitud') }}" required placeholder="-58.3816" class="w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400">
+                        Para la latitud/longitud: buscá la dirección en Google Maps, clic derecho sobre el punto exacto y copiá las dos primeras cifras que aparecen.
+                        La ciudad y la provincia tienen que coincidir exacto con el nombre oficial que usa Mercado Pago (ej. "La Plata", "Buenos Aires") —
+                        si lo escribís distinto, Mercado Pago lo rechaza y te va a avisar acá abajo.
+                    </p>
+                    <button type="submit" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
+                        Configurar caja y generar QR
+                    </button>
+                </form>
+            @else
+                <p class="text-slate-500 text-sm mb-3">
+                    Conectá tu cuenta de Mercado Pago para cobrar con un QR fijo (se imprime una sola vez, no cambia por venta) —
+                    tiene menor comisión que el QR dinámico de Checkout.
+                </p>
+                <a href="{{ route('configuracion.mercadopago.conectar') }}" class="inline-block rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
+                    Conectar con Mercado Pago
+                </a>
+            @endif
+
+            @error('mercadopago')
+                <p class="text-sm text-red-600 mt-2">{{ $message }}</p>
+            @enderror
+        </div>
     </div>
 
     <script>

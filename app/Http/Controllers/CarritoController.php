@@ -11,6 +11,7 @@ use App\Models\PedidoItem;
 use App\Models\Producto;
 use App\Models\User;
 use App\Services\Facturacion\EmisionComprobanteService;
+use App\Services\MercadoPago\MercadoPagoQrService;
 use App\Services\ProcesadorDeCobro;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -177,7 +178,8 @@ class CarritoController extends Controller
         Pedido $pedido,
         ProcesadorDeCobro $procesador,
         EmisionComprobanteService $emisor,
-    ): RedirectResponse {
+        MercadoPagoQrService $qrService,
+    ): RedirectResponse|View {
         $this->autorizar($request, $pedido);
         $this->asegurarEsCarrito($pedido);
 
@@ -185,6 +187,35 @@ class CarritoController extends Controller
         $usuario = $request->user();
 
         if ($destino === 'inmediato' && $usuario->role === 'cajero_vendedor') {
+            $montoMercadopago = (float) ($request->validated('monto_mercadopago') ?: 0);
+
+            if ($montoMercadopago > 0) {
+                try {
+                    $intento = $qrService->iniciarIntento(
+                        $usuario->empresa,
+                        $pedido,
+                        $usuario,
+                        $montoMercadopago,
+                        [
+                            'monto_efectivo' => $request->validated('monto_efectivo'),
+                            'monto_tarjeta' => $request->validated('monto_tarjeta'),
+                            'monto_transferencia' => $request->validated('monto_transferencia'),
+                            'monto_fiado' => $request->validated('monto_fiado'),
+                            'tipo_comprobante' => $request->validated('tipo_comprobante'),
+                            'cliente_id' => $request->validated('cliente_id'),
+                            'cliente_nombre' => $request->validated('cliente_nombre'),
+                            'cliente_cuit' => $request->validated('cliente_cuit'),
+                            'cliente_telefono' => $request->validated('cliente_telefono'),
+                            'tipo_factura' => $request->validated('tipo_factura'),
+                        ],
+                    );
+                } catch (\RuntimeException $e) {
+                    abort(409, $e->getMessage());
+                }
+
+                return view('caja.esperando-pago-qr', ['intento' => $intento]);
+            }
+
             try {
                 $factura = $procesador->cobrar(
                     $pedido,
@@ -193,6 +224,7 @@ class CarritoController extends Controller
                         'efectivo' => $request->validated('monto_efectivo'),
                         'tarjeta' => $request->validated('monto_tarjeta'),
                         'transferencia' => $request->validated('monto_transferencia'),
+                        'mercadopago' => 0,
                     ],
                     $request->validated('tipo_comprobante'),
                     $request->filled('cliente_id') ? (int) $request->validated('cliente_id') : null,

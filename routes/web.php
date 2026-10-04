@@ -18,6 +18,7 @@ use App\Http\Controllers\HistorialCajasController;
 use App\Http\Controllers\HistorialSesionesController;
 use App\Http\Controllers\ImportacionClienteController;
 use App\Http\Controllers\ImportacionProductoController;
+use App\Http\Controllers\MercadoPagoConfiguracionController;
 use App\Http\Controllers\MotivoEgresoController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\PresupuestoController;
@@ -190,6 +191,13 @@ Route::middleware('auth')->group(function () {
             Route::post('/configuracion/facturacion-electronica', [FacturacionElectronicaController::class, 'iniciar'])
                 ->name('configuracion.facturacion.iniciar');
 
+            Route::get('/configuracion/mercadopago/conectar', [MercadoPagoConfiguracionController::class, 'conectar'])
+                ->name('configuracion.mercadopago.conectar');
+            Route::get('/configuracion/mercadopago/callback', [MercadoPagoConfiguracionController::class, 'callback'])
+                ->name('configuracion.mercadopago.callback');
+            Route::post('/configuracion/mercadopago/configurar-pos', [MercadoPagoConfiguracionController::class, 'configurarPos'])
+                ->name('configuracion.mercadopago.configurar-pos');
+
             Route::get('/egresos', [EgresoController::class, 'index'])->name('egresos.index');
 
             Route::prefix('cajas')->name('cajas.')->group(function () {
@@ -225,6 +233,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/{pedido}/editar', [CajaController::class, 'editar'])->name('editar');
             Route::post('/{pedido}/editar', [CajaController::class, 'actualizarItems'])->name('actualizarItems');
             Route::post('/{pedido}/cobrar', [CajaController::class, 'cobrar'])->name('cobrar');
+            Route::get('/intentos-mercadopago/{intento}/estado', [CajaController::class, 'estadoIntento'])->name('mercadopago.estado');
         });
 
         Route::prefix('mi-caja')->name('caja-sesion.')->middleware('role:cajero,cajero_vendedor')->group(function () {
