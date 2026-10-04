@@ -3,7 +3,9 @@
     cuyo id se pasa en $formId cuando el medio elegido es mercadopago (lo
     detecta mirando el hidden monto_mercadopago que arma formulario-cobro.blade.php),
     manda el cobro por fetch en vez de un submit normal, y muestra acá mismo
-    la espera/resultado en vez de navegar a otra pantalla.
+    la espera/resultado en vez de navegar a otra pantalla. El pedido/carrito
+    nunca se toca acá — cancelar o dejar vencer el cobro QR lo deja intacto
+    para reintentar con otro medio desde el mismo form.
 --}}
 @php $formId = $formId ?? 'form_cobro'; @endphp
 
@@ -13,9 +15,12 @@
             <div class="mx-auto mb-4 h-12 w-12 rounded-full border-4 border-slate-200 border-t-slate-900 animate-spin"></div>
             <p class="text-lg font-medium text-slate-900">Esperando el pago...</p>
             <p id="modal_cobro_qr_monto" class="text-sm text-slate-500 mt-1"></p>
-            <p class="text-sm text-slate-500 mt-3">
+            <p class="text-sm text-slate-500 mt-3 mb-4">
                 Pedile al cliente que escanee el QR fijo del mostrador. Esto se actualiza solo apenas se confirme el pago.
             </p>
+            <button type="button" id="modal_cobro_qr_cancelar" class="text-sm text-red-600 hover:underline">
+                Cancelar este cobro
+            </button>
         </div>
 
         <div id="modal_cobro_qr_expirado" class="hidden">
@@ -28,7 +33,8 @@
 
         <div id="modal_cobro_qr_cancelado" class="hidden">
             <p class="text-lg font-medium text-slate-700">Cobro cancelado</p>
-            <button type="button" id="modal_cobro_qr_cerrar_cancelado" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800 mt-3">
+            <p class="text-sm text-slate-500 mt-1 mb-4">El carrito sigue igual — podés reintentar con otro medio.</p>
+            <button type="button" id="modal_cobro_qr_cerrar_cancelado" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
                 Cerrar
             </button>
         </div>
@@ -56,7 +62,23 @@
         const divError = document.getElementById('modal_cobro_qr_error');
         const montoTexto = document.getElementById('modal_cobro_qr_monto');
         const errorTexto = document.getElementById('modal_cobro_qr_error_msg');
+        const botonCancelar = document.getElementById('modal_cobro_qr_cancelar');
         const estados = [divPendiente, divExpirado, divCancelado, divError];
+
+        // "enviando" cubre desde que se apreta "Confirmar" hasta que el
+        // intento queda realmente cerrado (aprobado/cancelado/vencido/error)
+        // — el botón de submit del form queda deshabilitado todo ese tiempo,
+        // así un doble click no dispara dos cobros QR en paralelo.
+        let enviando = false;
+        let siguePolling = true;
+        let cancelarUrl = null;
+
+        function habilitarBoton() {
+            enviando = false;
+
+            const boton = form.querySelector('button[type="submit"]');
+            if (boton) boton.disabled = false;
+        }
 
         function mostrarEstado(div) {
             estados.forEach((d) => d.classList.add('hidden'));
@@ -68,23 +90,72 @@
             modal.classList.add('flex');
         }
 
-        function cerrarModal() {
+        function cerrarModalYHabilitar() {
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+            siguePolling = false;
+            habilitarBoton();
         }
 
-        document.getElementById('modal_cobro_qr_cerrar_expirado').addEventListener('click', cerrarModal);
-        document.getElementById('modal_cobro_qr_cerrar_cancelado').addEventListener('click', cerrarModal);
-        document.getElementById('modal_cobro_qr_cerrar_error').addEventListener('click', cerrarModal);
+        document.getElementById('modal_cobro_qr_cerrar_expirado').addEventListener('click', cerrarModalYHabilitar);
+        document.getElementById('modal_cobro_qr_cerrar_cancelado').addEventListener('click', cerrarModalYHabilitar);
+        document.getElementById('modal_cobro_qr_cerrar_error').addEventListener('click', cerrarModalYHabilitar);
+
+        botonCancelar.addEventListener('click', function () {
+            if (! cancelarUrl || ! confirm('¿Cancelar este cobro con QR? El carrito no se pierde, vas a poder cobrar con otro medio.')) {
+                return;
+            }
+
+            botonCancelar.disabled = true;
+            botonCancelar.textContent = 'Cancelando...';
+
+            const token = form.querySelector('input[name="_token"]').value;
+
+            fetch(cancelarUrl, {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': token },
+            })
+                .then(async function (respuesta) {
+                    const datos = await respuesta.json().catch(function () { return {}; });
+
+                    if (! respuesta.ok) {
+                        // Lo más probable: Mercado Pago ya proceso el pago
+                        // justo cuando se apretó cancelar — se deja que el
+                        // polling (que sigue corriendo) resuelva el estado
+                        // real en vez de forzar nada acá.
+                        alert(datos.message || 'No se pudo cancelar.');
+                        botonCancelar.disabled = false;
+                        botonCancelar.textContent = 'Cancelar este cobro';
+
+                        return;
+                    }
+
+                    siguePolling = false;
+                    mostrarEstado(divCancelado);
+                })
+                .catch(function () {
+                    alert('No se pudo conectar con el servidor.');
+                    botonCancelar.disabled = false;
+                    botonCancelar.textContent = 'Cancelar este cobro';
+                });
+        });
 
         function formatearMoneda(monto) {
             return '$' + monto.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         }
 
         function consultar(estadoUrl, redirectUrl) {
+            if (! siguePolling) {
+                return;
+            }
+
             fetch(estadoUrl, { headers: { 'Accept': 'application/json' } })
                 .then((respuesta) => respuesta.json())
                 .then((datos) => {
+                    if (! siguePolling) {
+                        return;
+                    }
+
                     if (datos.estado === 'aprobado') {
                         window.location.href = redirectUrl;
 
@@ -92,12 +163,14 @@
                     }
 
                     if (datos.estado === 'expirado') {
+                        siguePolling = false;
                         mostrarEstado(divExpirado);
 
                         return;
                     }
 
                     if (datos.estado === 'cancelado') {
+                        siguePolling = false;
                         mostrarEstado(divCancelado);
 
                         return;
@@ -129,8 +202,19 @@
 
             evento.preventDefault();
 
+            if (enviando) {
+                return;
+            }
+
+            enviando = true;
+            siguePolling = true;
+            cancelarUrl = null;
+
             const boton = form.querySelector('button[type="submit"]');
             if (boton) boton.disabled = true;
+
+            botonCancelar.disabled = false;
+            botonCancelar.textContent = 'Cancelar este cobro';
 
             fetch(form.action, {
                 method: 'POST',
@@ -144,11 +228,12 @@
                         errorTexto.textContent = datos.message || 'Ocurrió un error al iniciar el cobro.';
                         mostrarEstado(divError);
                         abrirModal();
-                        if (boton) boton.disabled = false;
+                        habilitarBoton();
 
                         return;
                     }
 
+                    cancelarUrl = datos.cancelar_url;
                     montoTexto.innerHTML = 'Monto: <strong>' + formatearMoneda(datos.monto) + '</strong>';
                     mostrarEstado(divPendiente);
                     abrirModal();
@@ -158,7 +243,7 @@
                     errorTexto.textContent = 'No se pudo conectar con el servidor.';
                     mostrarEstado(divError);
                     abrirModal();
-                    if (boton) boton.disabled = false;
+                    habilitarBoton();
                 });
         });
     })();

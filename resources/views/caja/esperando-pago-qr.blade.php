@@ -2,6 +2,16 @@
 
 @section('titulo', 'Esperando el pago')
 
+@php
+    // El pedido puede seguir siendo un carrito (si el cajero_vendedor cobró
+    // QR desde ahí) o ya estar en caja (si vino del flujo de Caja) — el
+    // link de "volver" tiene que apuntar a la pantalla que de verdad sabe
+    // mostrarlo, si no, 404.
+    $urlVolver = $intento->pedido->esCarrito()
+        ? route('carritos.show', $intento->pedido_id)
+        : route('caja.show', $intento->pedido_id);
+@endphp
+
 @section('contenido')
     <div class="max-w-md mx-auto mt-8 bg-white rounded-lg shadow p-6 text-center">
         <div id="estado_pendiente">
@@ -18,14 +28,14 @@
         <div id="estado_expirado" class="hidden">
             <p class="text-lg font-medium text-red-700">El tiempo para pagar venció</p>
             <p class="text-sm text-slate-500 mt-1 mb-4">No se registró el pago a tiempo — podés volver e intentar con otro medio.</p>
-            <a href="{{ route('caja.show', $intento->pedido_id) }}" class="inline-block rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
+            <a href="{{ $urlVolver }}" class="inline-block rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
                 Volver al cobro
             </a>
         </div>
 
         <div id="estado_cancelado" class="hidden">
             <p class="text-lg font-medium text-slate-700">Cobro cancelado</p>
-            <a href="{{ route('caja.show', $intento->pedido_id) }}" class="inline-block rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800 mt-3">
+            <a href="{{ $urlVolver }}" class="inline-block rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800 mt-3">
                 Volver al cobro
             </a>
         </div>

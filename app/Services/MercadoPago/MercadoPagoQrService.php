@@ -53,9 +53,46 @@ class MercadoPagoQrService
             'montos_json' => $montosJson,
         ]);
 
-        $this->crearOrdenQr($credencial->access_token, $credencial->mp_external_pos_id, $intento, $pedido);
+        $ordenId = $this->crearOrdenQr($credencial->access_token, $credencial->mp_external_pos_id, $intento, $pedido);
+
+        // Se guarda ya en la creación (no solo al aprobarse) para poder
+        // cancelar la orden en Mercado Pago si el cajero cancela el cobro
+        // mientras espera — sin esto no hay forma de identificar qué orden
+        // cancelar del lado de Mercado Pago.
+        $intento->update(['mp_merchant_order_id' => $ordenId]);
 
         return $intento;
+    }
+
+    /**
+     * Cancela un intento todavía pendiente — tanto acá como en Mercado
+     * Pago (para que el QR fijo deje de tener ese monto asociado). El
+     * pedido NO se toca: sigue con sus items tal cual, para que el cajero
+     * pueda reintentar con otro medio de pago sin perder nada.
+     */
+    public function cancelarIntento(IntentoPagoMercadopago $intento): void
+    {
+        if ($intento->estado !== IntentoPagoMercadopago::ESTADO_PENDIENTE) {
+            throw new \RuntimeException('Este cobro ya no está pendiente — es posible que ya se haya aprobado o vencido.');
+        }
+
+        $credencial = $intento->empresa->credencialMercadoPago;
+
+        if ($credencial && $intento->mp_merchant_order_id) {
+            try {
+                $this->cliente->cancelarOrden($credencial->access_token, $intento->mp_merchant_order_id);
+            } catch (\Throwable $e) {
+                // Lo más probable es que el cliente ya haya pagado justo
+                // cuando el cajero apretó cancelar (Mercado Pago no deja
+                // cancelar una orden ya procesada) — no se marca cancelado
+                // acá: se deja que el próximo polling/webhook resuelva el
+                // estado real en vez de pisarlo con una cancelación que no
+                // ocurrió de verdad del lado de Mercado Pago.
+                throw new \RuntimeException('No se pudo cancelar — puede que el cliente ya haya pagado. Esperá unos segundos y fijate si se acreditó.');
+            }
+        }
+
+        $intento->update(['estado' => IntentoPagoMercadopago::ESTADO_CANCELADO]);
     }
 
     /**
@@ -68,11 +105,11 @@ class MercadoPagoQrService
      * external_reference (que sí viaja en el body de la notificación), no
      * por un query param armado a mano.
      */
-    private function crearOrdenQr(string $accessToken, string $externalPosId, IntentoPagoMercadopago $intento, Pedido $pedido): void
+    private function crearOrdenQr(string $accessToken, string $externalPosId, IntentoPagoMercadopago $intento, Pedido $pedido): string
     {
         $monto = number_format((float) $intento->monto, 2, '.', '');
 
-        $this->cliente->crearOrdenQr($accessToken, [
+        $orden = $this->cliente->crearOrdenQr($accessToken, [
             'type' => 'qr',
             'total_amount' => $monto,
             'description' => "Venta #{$pedido->id}",
@@ -90,5 +127,7 @@ class MercadoPagoQrService
                 ],
             ],
         ]);
+
+        return (string) ($orden['id'] ?? '');
     }
 }

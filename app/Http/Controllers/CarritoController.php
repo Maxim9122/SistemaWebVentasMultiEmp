@@ -191,8 +191,6 @@ class CarritoController extends Controller
             $montoMercadopago = (float) ($request->validated('monto_mercadopago') ?: 0);
 
             if ($montoMercadopago > 0) {
-                $pedido->update(['estado' => Pedido::ESTADO_EN_CAJA]);
-
                 try {
                     $intento = $qrService->iniciarIntento(
                         $usuario->empresa,
@@ -221,6 +219,7 @@ class CarritoController extends Controller
                         'intento_id' => $intento->id,
                         'monto' => (float) $intento->monto,
                         'estado_url' => route('caja.mercadopago.estado', $intento),
+                        'cancelar_url' => route('caja.mercadopago.cancelar', $intento),
                         'redirect_url' => route('carritos.index'),
                     ]);
                 }

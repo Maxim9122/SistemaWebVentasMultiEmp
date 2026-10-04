@@ -234,6 +234,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/{pedido}/editar', [CajaController::class, 'actualizarItems'])->name('actualizarItems');
             Route::post('/{pedido}/cobrar', [CajaController::class, 'cobrar'])->name('cobrar');
             Route::get('/intentos-mercadopago/{intento}/estado', [CajaController::class, 'estadoIntento'])->name('mercadopago.estado');
+            Route::post('/intentos-mercadopago/{intento}/cancelar', [CajaController::class, 'cancelarIntento'])->name('mercadopago.cancelar');
         });
 
         Route::prefix('mi-caja')->name('caja-sesion.')->middleware('role:cajero,cajero_vendedor')->group(function () {

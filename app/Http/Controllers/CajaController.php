@@ -132,6 +132,7 @@ class CajaController extends Controller
                 'intento_id' => $intento->id,
                 'monto' => (float) $intento->monto,
                 'estado_url' => route('caja.mercadopago.estado', $intento),
+                'cancelar_url' => route('caja.mercadopago.cancelar', $intento),
                 'redirect_url' => route('caja.index'),
             ]);
         }
@@ -151,6 +152,21 @@ class CajaController extends Controller
 
         if ($intento->estado === IntentoPagoMercadopago::ESTADO_APROBADO) {
             $this->marcarComprobanteListoSiCorresponde($intento);
+        }
+
+        return response()->json(['estado' => $intento->estado]);
+    }
+
+    public function cancelarIntento(Request $request, IntentoPagoMercadopago $intento, MercadoPagoQrService $qrService): JsonResponse
+    {
+        if ($intento->empresa_id !== $request->user()->empresa_id) {
+            abort(404);
+        }
+
+        try {
+            $qrService->cancelarIntento($intento);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 409);
         }
 
         return response()->json(['estado' => $intento->estado]);
