@@ -50,7 +50,7 @@ class CajaController extends Controller
         ProcesadorDeCobro $procesador,
         EmisionComprobanteService $emisor,
         MercadoPagoQrService $qrService,
-    ): RedirectResponse|View {
+    ): RedirectResponse|View|JsonResponse {
         $this->autorizar($request, $pedido);
         $this->asegurarEnCaja($pedido);
 
