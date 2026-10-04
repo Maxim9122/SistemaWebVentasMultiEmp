@@ -25,7 +25,7 @@ class Pedido extends Model
 
     public const CLIENTE_POR_DEFECTO = 'Consumidor Final';
 
-    public const FORMAS_PAGO = ['efectivo', 'tarjeta', 'transferencia'];
+    public const FORMAS_PAGO = ['efectivo', 'tarjeta', 'transferencia', 'mercadopago'];
 
     public const FORMA_PAGO_MIXTO = 'mixto';
 
@@ -53,10 +53,12 @@ class Pedido extends Model
         'monto_tarjeta',
         'monto_transferencia',
         'monto_fiado',
+        'monto_mercadopago',
         'cliente_id',
         'ajuste_efectivo_porcentaje',
         'ajuste_tarjeta_porcentaje',
         'ajuste_transferencia_porcentaje',
+        'ajuste_mercadopago_porcentaje',
         'total_cobrado',
     ];
 
@@ -70,9 +72,11 @@ class Pedido extends Model
             'monto_tarjeta' => 'decimal:2',
             'monto_transferencia' => 'decimal:2',
             'monto_fiado' => 'decimal:2',
+            'monto_mercadopago' => 'decimal:2',
             'ajuste_efectivo_porcentaje' => 'decimal:2',
             'ajuste_tarjeta_porcentaje' => 'decimal:2',
             'ajuste_transferencia_porcentaje' => 'decimal:2',
+            'ajuste_mercadopago_porcentaje' => 'decimal:2',
             'total_cobrado' => 'decimal:2',
         ];
     }

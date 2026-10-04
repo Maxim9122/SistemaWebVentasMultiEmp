@@ -41,6 +41,13 @@ return [
         'onboarding_webhook_secret' => env('FACTURACION_ONBOARDING_WEBHOOK_SECRET'),
     ],
 
+    'mercadopago' => [
+        'client_id' => env('MERCADOPAGO_CLIENT_ID'),
+        'client_secret' => env('MERCADOPAGO_CLIENT_SECRET'),
+        'redirect_uri' => env('MERCADOPAGO_REDIRECT_URI'),
+        'webhook_secret' => env('MERCADOPAGO_WEBHOOK_SECRET'),
+    ],
+
     'recaptcha' => [
         'site_key' => env('RECAPTCHA_SITE_KEY'),
         'secret_key' => env('RECAPTCHA_SECRET_KEY'),

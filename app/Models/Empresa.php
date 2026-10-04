@@ -43,6 +43,8 @@ class Empresa extends Model
         'descuento_precio_empleado_porcentaje',
         'horario_laboral_habilitado',
         'permite_fiado',
+        'permite_pago_qr',
+        'ajuste_mercadopago_porcentaje',
         'logo_path',
     ];
 
@@ -68,9 +70,11 @@ class Empresa extends Model
             'mostrar_modal_comprobante' => 'boolean',
             'horario_laboral_habilitado' => 'boolean',
             'permite_fiado' => 'boolean',
+            'permite_pago_qr' => 'boolean',
             'ajuste_efectivo_porcentaje' => 'decimal:2',
             'ajuste_tarjeta_porcentaje' => 'decimal:2',
             'ajuste_transferencia_porcentaje' => 'decimal:2',
+            'ajuste_mercadopago_porcentaje' => 'decimal:2',
             'descuento_precio_empleado_porcentaje' => 'decimal:2',
         ];
     }
@@ -316,8 +320,27 @@ class Empresa extends Model
             'efectivo' => $this->ajuste_efectivo_porcentaje,
             'tarjeta' => $this->ajuste_tarjeta_porcentaje,
             'transferencia' => $this->ajuste_transferencia_porcentaje,
+            'mercadopago' => $this->ajuste_mercadopago_porcentaje,
             default => 0,
         };
+    }
+
+    public function credencialMercadoPago(): HasOne
+    {
+        return $this->hasOne(CredencialMercadoPago::class);
+    }
+
+    /**
+     * Igual criterio que facturacionHabilitada() (ver más abajo): dos
+     * niveles independientes — el admin tiene que haber prendido el
+     * interruptor Y la cuenta de Mercado Pago tiene que estar conectada de
+     * verdad (con Caja/QR ya configurados), no alcanza con uno solo.
+     */
+    public function pagoQrHabilitado(): bool
+    {
+        return $this->permite_pago_qr
+            && $this->credencialMercadoPago?->estaActiva()
+            && $this->credencialMercadoPago?->tienePosConfigurado();
     }
 
     public function condicionFiscalLegible(): ?string

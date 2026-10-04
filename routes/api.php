@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Webhooks\FacturacionComprobantesWebhookController;
 use App\Http\Controllers\Webhooks\FacturacionOnboardingWebhookController;
+use App\Http\Controllers\Webhooks\MercadoPagoWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/webhooks/facturacion/onboarding', FacturacionOnboardingWebhookController::class)
@@ -9,3 +10,6 @@ Route::post('/webhooks/facturacion/onboarding', FacturacionOnboardingWebhookCont
 
 Route::post('/webhooks/facturacion/comprobantes', FacturacionComprobantesWebhookController::class)
     ->name('webhooks.facturacion.comprobantes');
+
+Route::post('/webhooks/mercadopago', MercadoPagoWebhookController::class)
+    ->name('webhooks.mercadopago');

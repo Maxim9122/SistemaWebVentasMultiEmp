@@ -25,6 +25,7 @@ trait ValidaCobro
             'monto_tarjeta' => ['nullable', 'numeric', 'min:0'],
             'monto_transferencia' => ['nullable', 'numeric', 'min:0'],
             'monto_fiado' => ['nullable', 'numeric', 'min:0'],
+            'monto_mercadopago' => ['nullable', 'numeric', 'min:0'],
             'tipo_comprobante' => ['required', Rule::in(Pedido::TIPOS_COMPROBANTE)],
             'cliente_id' => [
                 'nullable',
@@ -49,6 +50,7 @@ trait ValidaCobro
             (float) ($this->input('monto_efectivo') ?: 0),
             (float) ($this->input('monto_tarjeta') ?: 0),
             (float) ($this->input('monto_transferencia') ?: 0),
+            (float) ($this->input('monto_mercadopago') ?: 0),
             $montoFiado,
         ];
 

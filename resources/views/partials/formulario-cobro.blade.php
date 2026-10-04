@@ -1,12 +1,23 @@
 @php
     $soloMedioPago = $soloMedioPago ?? false;
     $fiadoHabilitado = $empresa->permite_fiado && ! $soloMedioPago;
+    $mpHabilitado = $empresa->pagoQrHabilitado() && ! $soloMedioPago;
     $clientesParaBuscador = $clientes->map(fn ($c) => ['id' => $c->id, 'nombre' => $c->nombre, 'cuit' => $c->cuit])->values();
     $ajustes = [
         'efectivo' => (float) $empresa->ajuste_efectivo_porcentaje,
         'tarjeta' => (float) $empresa->ajuste_tarjeta_porcentaje,
         'transferencia' => (float) $empresa->ajuste_transferencia_porcentaje,
+        'mercadopago' => (float) $empresa->ajuste_mercadopago_porcentaje,
     ];
+    // Tailwind necesita ver la clase completa escrita en algún lado del
+    // código para generarla (no alcanza con armar "grid-cols-" . $n a mano),
+    // por eso el match explícito en vez de interpolar el número.
+    $claseGridDividido = match (3 + ($fiadoHabilitado ? 1 : 0) + ($mpHabilitado ? 1 : 0)) {
+        3 => 'grid-cols-3',
+        4 => 'grid-cols-4',
+        5 => 'grid-cols-5',
+        default => 'grid-cols-3',
+    };
     $idUnico = uniqid('cobro_');
     $comprobantePredeterminado = $empresa->comprobantePredeterminadoEfectivo();
 @endphp
@@ -22,6 +33,9 @@
             <option value="efectivo" selected>Efectivo</option>
             <option value="tarjeta">Tarjeta</option>
             <option value="transferencia">Transferencia</option>
+            @if ($mpHabilitado)
+                <option value="mercadopago">Mercado Pago (QR)</option>
+            @endif
             @if ($fiadoHabilitado)
                 <option value="fiado">Fiado (a crédito)</option>
             @endif
@@ -29,7 +43,7 @@
     </div>
 
     <div id="{{ $idUnico }}_pago_dividido" class="hidden space-y-2">
-        <div class="grid {{ $fiadoHabilitado ? 'grid-cols-4' : 'grid-cols-3' }} gap-3">
+        <div class="grid {{ $claseGridDividido }} gap-3">
             <div>
                 <label class="block text-xs text-slate-500 mb-1">Efectivo</label>
                 <input type="number" id="{{ $idUnico }}_input_efectivo" step="0.01" min="0" placeholder="0.00"
@@ -45,6 +59,13 @@
                 <input type="number" id="{{ $idUnico }}_input_transferencia" step="0.01" min="0" placeholder="0.00"
                     class="w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
             </div>
+            @if ($mpHabilitado)
+                <div>
+                    <label class="block text-xs text-slate-500 mb-1">Mercado Pago</label>
+                    <input type="number" id="{{ $idUnico }}_input_mercadopago" step="0.01" min="0" placeholder="0.00"
+                        class="w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                </div>
+            @endif
             @if ($fiadoHabilitado)
                 <div>
                     <label class="block text-xs text-slate-500 mb-1">Fiado</label>
@@ -59,6 +80,7 @@
     <input type="hidden" name="monto_efectivo" id="{{ $idUnico }}_monto_efectivo">
     <input type="hidden" name="monto_tarjeta" id="{{ $idUnico }}_monto_tarjeta">
     <input type="hidden" name="monto_transferencia" id="{{ $idUnico }}_monto_transferencia">
+    <input type="hidden" name="monto_mercadopago" id="{{ $idUnico }}_monto_mercadopago">
     <input type="hidden" name="monto_fiado" id="{{ $idUnico }}_monto_fiado">
 
     <div id="{{ $idUnico }}_desglose" class="mt-2 text-sm text-slate-600"></div>
@@ -160,10 +182,12 @@
         const inputEfectivo = $('_input_efectivo');
         const inputTarjeta = $('_input_tarjeta');
         const inputTransferencia = $('_input_transferencia');
+        const inputMercadopago = $('_input_mercadopago');
         const inputFiado = $('_input_fiado');
         const hiddenEfectivo = $('_monto_efectivo');
         const hiddenTarjeta = $('_monto_tarjeta');
         const hiddenTransferencia = $('_monto_transferencia');
+        const hiddenMercadopago = $('_monto_mercadopago');
         const hiddenFiado = $('_monto_fiado');
         const textoRestante = $('_texto_restante');
         const desglose = $('_desglose');
@@ -175,6 +199,7 @@
             hiddenEfectivo.value = medio === 'efectivo' ? total.toFixed(2) : '';
             hiddenTarjeta.value = medio === 'tarjeta' ? total.toFixed(2) : '';
             hiddenTransferencia.value = medio === 'transferencia' ? total.toFixed(2) : '';
+            hiddenMercadopago.value = medio === 'mercadopago' ? total.toFixed(2) : '';
             hiddenFiado.value = medio === 'fiado' ? total.toFixed(2) : '';
 
             const ajustado = calcularAjustado(total, medio);
@@ -191,13 +216,15 @@
             const efectivo = parseFloat(inputEfectivo.value) || 0;
             const tarjeta = parseFloat(inputTarjeta.value) || 0;
             const transferencia = parseFloat(inputTransferencia.value) || 0;
+            const mercadopago = inputMercadopago ? (parseFloat(inputMercadopago.value) || 0) : 0;
             const fiado = inputFiado ? (parseFloat(inputFiado.value) || 0) : 0;
-            const suma = efectivo + tarjeta + transferencia + fiado;
+            const suma = efectivo + tarjeta + transferencia + mercadopago + fiado;
             const restante = Math.round((total - suma) * 100) / 100;
 
             hiddenEfectivo.value = efectivo > 0 ? efectivo.toFixed(2) : '';
             hiddenTarjeta.value = tarjeta > 0 ? tarjeta.toFixed(2) : '';
             hiddenTransferencia.value = transferencia > 0 ? transferencia.toFixed(2) : '';
+            hiddenMercadopago.value = mercadopago > 0 ? mercadopago.toFixed(2) : '';
             hiddenFiado.value = fiado > 0 ? fiado.toFixed(2) : '';
 
             if (restante > 0) {
@@ -214,7 +241,7 @@
             const partes = [];
             let totalAjustado = 0;
 
-            [['efectivo', efectivo], ['tarjeta', tarjeta], ['transferencia', transferencia]].forEach(function (par) {
+            [['efectivo', efectivo], ['tarjeta', tarjeta], ['transferencia', transferencia], ['mercadopago', mercadopago]].forEach(function (par) {
                 const medio = par[0];
                 const monto = par[1];
 
@@ -251,6 +278,7 @@
                 inputEfectivo.value = '';
                 inputTarjeta.value = '';
                 inputTransferencia.value = '';
+                if (inputMercadopago) inputMercadopago.value = '';
                 if (inputFiado) inputFiado.value = '';
                 actualizarDividido();
             } else {
@@ -262,6 +290,9 @@
         [inputEfectivo, inputTarjeta, inputTransferencia].forEach(function (input) {
             input.addEventListener('input', actualizarDividido);
         });
+        if (inputMercadopago) {
+            inputMercadopago.addEventListener('input', actualizarDividido);
+        }
         if (inputFiado) {
             inputFiado.addEventListener('input', actualizarDividido);
         }
