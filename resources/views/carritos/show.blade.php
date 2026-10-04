@@ -327,6 +327,10 @@
     </script>
 
     @if (auth()->user()->role === 'cajero_vendedor')
-        @include('partials.modal-cobro-qr', ['formId' => 'form_cerrar_carrito'])
+        @include('partials.modal-cobro-qr', [
+            'formId' => 'form_cerrar_carrito',
+            'redirectUrl' => route('carritos.index'),
+            'intentoQrPendiente' => $intentoQrPendiente,
+        ])
     @endif
 @endsection

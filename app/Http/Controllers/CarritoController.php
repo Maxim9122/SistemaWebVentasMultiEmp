@@ -6,6 +6,7 @@ use App\Http\Requests\AgregarItemCarritoRequest;
 use App\Http\Requests\CerrarCarritoRequest;
 use App\Models\Cliente;
 use App\Models\Factura;
+use App\Models\IntentoPagoMercadopago;
 use App\Models\Pedido;
 use App\Models\PedidoItem;
 use App\Models\Producto;
@@ -71,6 +72,7 @@ class CarritoController extends Controller
             'puedeCambiarPrecio' => $request->user()->puedeCambiarPrecioVenta(),
             'empresa' => $request->user()->empresa,
             'clientes' => Cliente::where('empresa_id', $request->user()->empresa_id)->where('activo', true)->orderBy('nombre')->get(),
+            'intentoQrPendiente' => IntentoPagoMercadopago::pendienteParaPedido($pedido->id),
         ]);
     }
 

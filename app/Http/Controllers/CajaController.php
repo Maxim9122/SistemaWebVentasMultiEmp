@@ -40,6 +40,7 @@ class CajaController extends Controller
             'pedido' => $pedido->load(['items', 'vendedor']),
             'empresa' => $request->user()->empresa,
             'clientes' => Cliente::where('empresa_id', $request->user()->empresa_id)->where('activo', true)->orderBy('nombre')->get(),
+            'intentoQrPendiente' => IntentoPagoMercadopago::pendienteParaPedido($pedido->id),
         ]);
     }
 

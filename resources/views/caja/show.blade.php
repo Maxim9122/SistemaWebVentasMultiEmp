@@ -49,5 +49,9 @@
         </form>
     </div>
 
-    @include('partials.modal-cobro-qr', ['formId' => 'form_cobrar_caja'])
+    @include('partials.modal-cobro-qr', [
+        'formId' => 'form_cobrar_caja',
+        'redirectUrl' => route('caja.index'),
+        'intentoQrPendiente' => $intentoQrPendiente,
+    ])
 @endsection

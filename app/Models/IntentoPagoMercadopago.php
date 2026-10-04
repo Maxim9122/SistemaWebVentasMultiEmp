@@ -73,4 +73,19 @@ class IntentoPagoMercadopago extends Model
             && $this->expira_at !== null
             && now()->greaterThan($this->expira_at);
     }
+
+    /**
+     * El intento pendiente (sin vencer) de este pedido, si lo hay — usado
+     * para "resumir" la pantalla de espera si el cajero recarga la página
+     * mientras el QR sigue esperando el pago (si no, el formulario se ve
+     * normal de nuevo pero el botón de cobrar QR rebota con "ya hay un
+     * cobro en curso", sin forma de verlo o cancelarlo).
+     */
+    public static function pendienteParaPedido(int $pedidoId): ?self
+    {
+        return self::where('pedido_id', $pedidoId)
+            ->where('estado', self::ESTADO_PENDIENTE)
+            ->where('expira_at', '>', now())
+            ->first();
+    }
 }

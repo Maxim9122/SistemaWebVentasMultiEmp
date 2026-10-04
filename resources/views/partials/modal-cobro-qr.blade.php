@@ -7,7 +7,10 @@
     nunca se toca acá — cancelar o dejar vencer el cobro QR lo deja intacto
     para reintentar con otro medio desde el mismo form.
 --}}
-@php $formId = $formId ?? 'form_cobro'; @endphp
+@php
+    $formId = $formId ?? 'form_cobro';
+    $intentoQrPendiente = $intentoQrPendiente ?? null;
+@endphp
 
 <div id="modal_cobro_qr" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
     <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 text-center">
@@ -54,6 +57,13 @@
         const form = document.getElementById({{ Js::from($formId) }});
 
         if (! form) return;
+
+        const redirectUrlDefault = {{ Js::from($redirectUrl ?? '') }};
+        const intentoPendiente = {{ Js::from($intentoQrPendiente ? [
+            'monto' => (float) $intentoQrPendiente->monto,
+            'estado_url' => route('caja.mercadopago.estado', $intentoQrPendiente),
+            'cancelar_url' => route('caja.mercadopago.cancelar', $intentoQrPendiente),
+        ] : null) }};
 
         const modal = document.getElementById('modal_cobro_qr');
         const divPendiente = document.getElementById('modal_cobro_qr_pendiente');
@@ -237,7 +247,7 @@
                     montoTexto.innerHTML = 'Monto: <strong>' + formatearMoneda(datos.monto) + '</strong>';
                     mostrarEstado(divPendiente);
                     abrirModal();
-                    setTimeout(function () { consultar(datos.estado_url, datos.redirect_url); }, 3000);
+                    setTimeout(function () { consultar(datos.estado_url, datos.redirect_url || redirectUrlDefault); }, 3000);
                 })
                 .catch(function () {
                     errorTexto.textContent = 'No se pudo conectar con el servidor.';
@@ -246,5 +256,27 @@
                     habilitarBoton();
                 });
         });
+
+        // Si ya había un cobro QR pendiente para este pedido (ej: el cajero
+        // recargó la página mientras esperaba el pago, lo que borra el
+        // estado del modal en el navegador pero no cancela nada del lado
+        // del servidor ni de Mercado Pago), se retoma la espera acá mismo
+        // en vez de dejar el formulario como si nada estuviera pasando —
+        // si no, el cajero vuelve a apretar "Confirmar" y el servidor le
+        // rebota con "ya hay un cobro en curso" sin poder verlo ni
+        // cancelarlo.
+        if (intentoPendiente) {
+            enviando = true;
+            siguePolling = true;
+            cancelarUrl = intentoPendiente.cancelar_url;
+
+            const boton = form.querySelector('button[type="submit"]');
+            if (boton) boton.disabled = true;
+
+            montoTexto.innerHTML = 'Monto: <strong>' + formatearMoneda(intentoPendiente.monto) + '</strong>';
+            mostrarEstado(divPendiente);
+            abrirModal();
+            consultar(intentoPendiente.estado_url, redirectUrlDefault);
+        }
     })();
 </script>
