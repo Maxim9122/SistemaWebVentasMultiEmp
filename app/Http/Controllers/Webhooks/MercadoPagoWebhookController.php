@@ -20,6 +20,15 @@ class MercadoPagoWebhookController extends Controller
 {
     public function __invoke(Request $request, MercadoPagoWebhookService $servicio): Response
     {
+        Log::info('Webhook de Mercado Pago recibido.', [
+            'query' => $request->query(),
+            'headers' => [
+                'x-signature' => $request->header('x-signature'),
+                'x-request-id' => $request->header('x-request-id'),
+            ],
+            'body' => $request->getContent(),
+        ]);
+
         $secret = config('services.mercadopago.webhook_secret');
 
         if (! $secret || ! $servicio->firmaValida($request, $secret)) {
