@@ -316,6 +316,7 @@
                 for (const campo of inputsConCambios) {
                     if (campo.value !== campo.dataset.valorGuardado) {
                         evento.preventDefault();
+                        evento.stopImmediatePropagation();
                         alert('Tenés cambios de cantidad o precio sin guardar. Apretá "Actualizar" en esa línea antes de confirmar la compra.');
                         campo.focus();
                         return;
@@ -324,4 +325,8 @@
             });
         })();
     </script>
+
+    @if (auth()->user()->role === 'cajero_vendedor')
+        @include('partials.modal-cobro-qr', ['formId' => 'form_cerrar_carrito'])
+    @endif
 @endsection

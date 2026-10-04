@@ -38,7 +38,7 @@
     <div class="bg-white rounded-lg shadow p-4">
         <p class="text-lg font-semibold mb-4">Total: ${{ number_format($pedido->total, 2, ',', '.') }}</p>
 
-        <form method="POST" action="{{ route('caja.cobrar', $pedido) }}">
+        <form id="form_cobrar_caja" method="POST" action="{{ route('caja.cobrar', $pedido) }}">
             @csrf
 
             @include('partials.formulario-cobro', ['pedido' => $pedido, 'empresa' => $empresa, 'clientes' => $clientes])
@@ -48,4 +48,6 @@
             </button>
         </form>
     </div>
+
+    @include('partials.modal-cobro-qr', ['formId' => 'form_cobrar_caja'])
 @endsection

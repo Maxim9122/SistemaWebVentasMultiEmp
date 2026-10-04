@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\Facturacion\EmisionComprobanteService;
 use App\Services\MercadoPago\MercadoPagoQrService;
 use App\Services\ProcesadorDeCobro;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -179,7 +180,7 @@ class CarritoController extends Controller
         ProcesadorDeCobro $procesador,
         EmisionComprobanteService $emisor,
         MercadoPagoQrService $qrService,
-    ): RedirectResponse|View {
+    ): RedirectResponse|View|JsonResponse {
         $this->autorizar($request, $pedido);
         $this->asegurarEsCarrito($pedido);
 
@@ -213,6 +214,15 @@ class CarritoController extends Controller
                     );
                 } catch (\RuntimeException $e) {
                     abort(409, $e->getMessage());
+                }
+
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'intento_id' => $intento->id,
+                        'monto' => (float) $intento->monto,
+                        'estado_url' => route('caja.mercadopago.estado', $intento),
+                        'redirect_url' => route('carritos.index'),
+                    ]);
                 }
 
                 return view('caja.esperando-pago-qr', ['intento' => $intento]);

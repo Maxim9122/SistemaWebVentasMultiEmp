@@ -102,7 +102,7 @@ class CajaController extends Controller
      * el pedido se queda tal cual está (sin stock/numero_venta tocados)
      * hasta que el webhook confirme el pago real.
      */
-    private function iniciarCobroQr(RegistrarCobroRequest $request, Pedido $pedido, float $monto, MercadoPagoQrService $qrService): View
+    private function iniciarCobroQr(RegistrarCobroRequest $request, Pedido $pedido, float $monto, MercadoPagoQrService $qrService): View|JsonResponse
     {
         try {
             $intento = $qrService->iniciarIntento(
@@ -127,6 +127,15 @@ class CajaController extends Controller
             abort(409, $e->getMessage());
         }
 
+        if ($request->wantsJson()) {
+            return response()->json([
+                'intento_id' => $intento->id,
+                'monto' => (float) $intento->monto,
+                'estado_url' => route('caja.mercadopago.estado', $intento),
+                'redirect_url' => route('caja.index'),
+            ]);
+        }
+
         return view('caja.esperando-pago-qr', ['intento' => $intento]);
     }
 
@@ -138,6 +147,10 @@ class CajaController extends Controller
 
         if ($intento->expirado()) {
             $intento->update(['estado' => IntentoPagoMercadopago::ESTADO_EXPIRADO]);
+        }
+
+        if ($intento->estado === IntentoPagoMercadopago::ESTADO_APROBADO) {
+            $this->marcarComprobanteListoSiCorresponde($intento);
         }
 
         return response()->json(['estado' => $intento->estado]);
@@ -198,6 +211,28 @@ class CajaController extends Controller
     {
         if (! $pedido->esEnCaja()) {
             abort(404);
+        }
+    }
+
+    /**
+     * El cobro por QR se confirma via webhook, sin request del cajero de por
+     * medio, asi que el flash de "pedido_comprobante_listo_id" (que dispara
+     * el modal de impresion en layouts/app.blade.php) no se puede setear ahi
+     * — se setea aca, en el primer polling del cajero que ve el intento ya
+     * aprobado, para que el modal aparezca apenas vuelva a cargar una pagina.
+     */
+    private function marcarComprobanteListoSiCorresponde(IntentoPagoMercadopago $intento): void
+    {
+        $pedido = $intento->pedido?->load('factura');
+
+        if (! $pedido) {
+            return;
+        }
+
+        $tipoComprobante = $intento->montos_json['tipo_comprobante'] ?? null;
+
+        if ($tipoComprobante === 'remito' || $pedido->factura?->estado === Factura::ESTADO_APROBADA) {
+            session()->flash('pedido_comprobante_listo_id', $pedido->id);
         }
     }
 }
