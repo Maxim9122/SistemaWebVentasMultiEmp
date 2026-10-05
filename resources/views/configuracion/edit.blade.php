@@ -371,6 +371,17 @@
             @if ($empresa->credencialMercadoPago?->tienePosConfigurado())
                 <p class="text-sm text-emerald-700 mb-3">Conectado y configurado — este es el QR fijo para imprimir en el mostrador:</p>
                 <img src="{{ $empresa->credencialMercadoPago->mp_qr_image_url }}" alt="QR de cobro de Mercado Pago" class="w-48 h-48 border rounded mb-3">
+                <div class="flex items-center gap-4 mb-1">
+                    <a href="{{ route('configuracion.mercadopago.qr-descargar') }}" class="inline-block rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
+                        Descargar QR
+                    </a>
+                    <a href="{{ route('configuracion.mercadopago.conectar') }}" class="text-sm text-slate-600 hover:underline">
+                        Cambiar cuenta de Mercado Pago
+                    </a>
+                </div>
+                <p class="text-xs text-slate-400 mt-2">
+                    Cambiar de cuenta pide tu contraseña de nuevo y va a pedirte configurar la caja otra vez (el QR actual deja de funcionar apenas conectes la cuenta nueva).
+                </p>
             @elseif ($empresa->credencialMercadoPago?->estaActiva())
                 <p class="text-sm text-amber-700 mb-3">Cuenta conectada — falta configurar la caja para generar el QR. Cargá la dirección del local (Mercado Pago la necesita para los cálculos impositivos):</p>
                 <form method="POST" action="{{ route('configuracion.mercadopago.configurar-pos') }}" class="space-y-3 max-w-md">

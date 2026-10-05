@@ -7,7 +7,9 @@ use App\Services\MercadoPago\MercadoPagoOAuthService;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\View\View;
 
 class MercadoPagoConfiguracionController extends Controller
@@ -102,5 +104,27 @@ class MercadoPagoConfiguracionController extends Controller
         }
 
         return back()->with('status', 'Caja configurada — ya podés imprimir el QR.');
+    }
+
+    /**
+     * La imagen del QR vive en un dominio de Mercado Pago — un <a download>
+     * apuntando directo ahí no siempre dispara la descarga real (depende de
+     * los headers CORS del lado de ellos, fuera de nuestro control). Se
+     * trae acá y se reenvía con Content-Disposition: attachment para que
+     * el botón de descargar funcione siempre, sin importar el navegador.
+     */
+    public function descargarQr(Request $request): Response
+    {
+        $credencial = $request->user()->empresa->credencialMercadoPago;
+
+        if (! $credencial || ! $credencial->tienePosConfigurado()) {
+            abort(404);
+        }
+
+        $imagen = Http::get($credencial->mp_qr_image_url)->throw();
+
+        return response($imagen->body())
+            ->header('Content-Type', $imagen->header('Content-Type') ?: 'image/png')
+            ->header('Content-Disposition', 'attachment; filename="qr-mercadopago.png"');
     }
 }

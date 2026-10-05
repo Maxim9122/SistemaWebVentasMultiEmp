@@ -200,6 +200,8 @@ Route::middleware('auth')->group(function () {
                 ->name('configuracion.mercadopago.callback');
             Route::post('/configuracion/mercadopago/configurar-pos', [MercadoPagoConfiguracionController::class, 'configurarPos'])
                 ->name('configuracion.mercadopago.configurar-pos');
+            Route::get('/configuracion/mercadopago/qr-descargar', [MercadoPagoConfiguracionController::class, 'descargarQr'])
+                ->name('configuracion.mercadopago.qr-descargar');
 
             Route::get('/egresos', [EgresoController::class, 'index'])->name('egresos.index');
 

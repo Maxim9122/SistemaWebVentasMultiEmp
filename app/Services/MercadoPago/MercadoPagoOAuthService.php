@@ -70,6 +70,19 @@ class MercadoPagoOAuthService
                     ? now()->addSeconds((int) $respuesta['expires_in'])
                     : null,
                 'estado' => CredencialMercadoPago::ESTADO_ACTIVA,
+                // La Sucursal/Caja/QR quedan atadas a la cuenta de Mercado
+                // Pago que las creó — si esto es una reconexión (cambio de
+                // cuenta), el store_id/pos_id viejo pertenece a OTRA cuenta
+                // y usarlo con el access_token nuevo lo rechaza Mercado
+                // Pago. Se resetean siempre para forzar "Configurar caja y
+                // generar QR" de nuevo, en vez de dejar un QR que ya no
+                // funciona mostrado como si estuviera bien.
+                'mp_store_id' => null,
+                'mp_pos_id' => null,
+                'mp_external_store_id' => null,
+                'mp_external_pos_id' => null,
+                'mp_qr_image_url' => null,
+                'mp_store_location' => null,
             ],
         );
     }
