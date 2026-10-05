@@ -7,11 +7,34 @@ use App\Services\MercadoPago\MercadoPagoOAuthService;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\View\View;
 
 class MercadoPagoConfiguracionController extends Controller
 {
-    public function conectar(Request $request, MercadoPagoOAuthService $oauth): RedirectResponse
+    /**
+     * Conectar (o reconectar) la cuenta de Mercado Pago redirige el cobro de
+     * TODAS las ventas futuras a quien sea que se autentique del otro lado —
+     * es la acción más sensible de todo este módulo. Por eso no alcanza con
+     * tener la sesión abierta: pide confirmar la contraseña de nuevo antes
+     * de mandar a Mercado Pago, para que una sesión de admin dejada abierta
+     * (o robada) no alcance sola para desviar los cobros a otra cuenta.
+     */
+    public function conectar(Request $request): View
     {
+        return view('configuracion.mercadopago-confirmar-password', [
+            'sandbox' => $request->boolean('sandbox'),
+        ]);
+    }
+
+    public function conectarConfirmado(Request $request, MercadoPagoOAuthService $oauth): RedirectResponse
+    {
+        $request->validate(['password' => ['required', 'string']]);
+
+        if (! Hash::check($request->input('password'), $request->user()->password)) {
+            return back()->withErrors(['password' => 'Contraseña incorrecta.']);
+        }
+
         return redirect()->away(
             $oauth->urlDeAutorizacion($request->user()->empresa, $request->boolean('sandbox'))
         );

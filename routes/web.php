@@ -193,6 +193,9 @@ Route::middleware('auth')->group(function () {
 
             Route::get('/configuracion/mercadopago/conectar', [MercadoPagoConfiguracionController::class, 'conectar'])
                 ->name('configuracion.mercadopago.conectar');
+            Route::post('/configuracion/mercadopago/conectar', [MercadoPagoConfiguracionController::class, 'conectarConfirmado'])
+                ->middleware('throttle:5,1')
+                ->name('configuracion.mercadopago.conectar.confirmar');
             Route::get('/configuracion/mercadopago/callback', [MercadoPagoConfiguracionController::class, 'callback'])
                 ->name('configuracion.mercadopago.callback');
             Route::post('/configuracion/mercadopago/configurar-pos', [MercadoPagoConfiguracionController::class, 'configurarPos'])
