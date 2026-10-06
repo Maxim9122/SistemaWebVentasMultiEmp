@@ -3,6 +3,7 @@
 namespace App\Services\MercadoPago;
 
 use App\Models\CredencialMercadoPago;
+use Illuminate\Support\Str;
 
 /**
  * Orquesta el alta única de Sucursal + Caja (POS) en Mercado Pago — se
@@ -26,8 +27,20 @@ class MercadoPagoCuentaService
         // NO (confirmado contra el sandbox real: "does not meet the
         // expected format" con guiones, funciona solo alfanumérico) — por
         // eso van con formatos distintos acá, no es un descuido.
-        $externalStoreId = "empresa-{$credencial->empresa_id}";
-        $externalPosId = "empresa{$credencial->empresa_id}caja1";
+        //
+        // El sufijo random es a propósito: el external_id tiene que ser
+        // único PARA SIEMPRE dentro de la cuenta de Mercado Pago que lo
+        // crea, incluso si esta empresa reconecta su cuenta más adelante
+        // (manejarCallback() resetea los IDs locales al reconectar, pero
+        // la Sucursal/Caja VIEJA sigue existiendo del lado de Mercado
+        // Pago) — un id fijo tipo "empresa-{id}" chocaría con el intento
+        // anterior ("external id ... is already assigned to this user",
+        // confirmado real). No hace falta que sea predecible: una vez
+        // creado, el id numérico que devuelve Mercado Pago queda guardado
+        // acá abajo y es lo único que se vuelve a usar después.
+        $sufijo = Str::lower(Str::random(6));
+        $externalStoreId = "empresa-{$credencial->empresa_id}-{$sufijo}";
+        $externalPosId = "empresa{$credencial->empresa_id}caja1{$sufijo}";
 
         $store = $this->cliente->crearStore($credencial->access_token, $credencial->mp_user_id, [
             'name' => $nombreEmpresa,
