@@ -119,17 +119,22 @@ class MercadoPagoApiClient
     }
 
     /**
-     * Reembolso total de una orden ya pagada (sin body — un reembolso
-     * parcial llevaría `transactions: [['id' => ..., 'amount' => ...]]`,
-     * pero no lo necesitamos: la devolución es siempre de toda la venta).
-     * Mercado Pago acepta esto hasta 360 días después del pago.
+     * Reembolso total de una orden ya pagada (un reembolso parcial llevaría
+     * `transactions: [['id' => ..., 'amount' => ...]]`, pero no lo
+     * necesitamos: la devolución es siempre de toda la venta). Mercado
+     * Pago acepta esto hasta 360 días después del pago.
+     *
+     * OJO: el body va como `(object) []`, no `[]` — Laravel/Guzzle
+     * serializa un array vacío como `[]` en JSON, y Mercado Pago rechaza
+     * eso con "expected object, but got array" (confirmado real,
+     * probando contra la API). Hace falta forzar que sea un objeto `{}`.
      */
     public function reembolsarOrden(string $accessToken, string $ordenId): array
     {
         return Http::withToken($accessToken)
             ->acceptJson()
             ->withHeaders(['X-Idempotency-Key' => (string) Str::uuid()])
-            ->post(self::BASE_URL."/v1/orders/{$ordenId}/refund")
+            ->post(self::BASE_URL."/v1/orders/{$ordenId}/refund", (object) [])
             ->throw()
             ->json();
     }
