@@ -8,7 +8,7 @@
     <link rel="manifest" href="{{ asset('manifest.json') }}">
     <link rel="apple-touch-icon" href="{{ asset('icons/icon-192.png') }}">
     <meta name="theme-color" content="#0f172a">
-    <script src="https://cdn.tailwindcss.com"></script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col">
     <header class="shrink-0 bg-slate-900 text-white px-6 py-4 flex items-center justify-center gap-2">
