@@ -117,4 +117,20 @@ class MercadoPagoApiClient
             ->throw()
             ->json();
     }
+
+    /**
+     * Reembolso total de una orden ya pagada (sin body — un reembolso
+     * parcial llevaría `transactions: [['id' => ..., 'amount' => ...]]`,
+     * pero no lo necesitamos: la devolución es siempre de toda la venta).
+     * Mercado Pago acepta esto hasta 360 días después del pago.
+     */
+    public function reembolsarOrden(string $accessToken, string $ordenId): array
+    {
+        return Http::withToken($accessToken)
+            ->acceptJson()
+            ->withHeaders(['X-Idempotency-Key' => (string) Str::uuid()])
+            ->post(self::BASE_URL."/v1/orders/{$ordenId}/refund")
+            ->throw()
+            ->json();
+    }
 }

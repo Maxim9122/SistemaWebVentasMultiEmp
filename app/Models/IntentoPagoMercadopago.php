@@ -41,6 +41,8 @@ class IntentoPagoMercadopago extends Model
         'estado',
         'expira_at',
         'montos_json',
+        'reembolsado_at',
+        'reembolsado_por',
     ];
 
     protected function casts(): array
@@ -49,6 +51,7 @@ class IntentoPagoMercadopago extends Model
             'monto' => 'decimal:2',
             'expira_at' => 'datetime',
             'montos_json' => 'array',
+            'reembolsado_at' => 'datetime',
         ];
     }
 
@@ -67,11 +70,30 @@ class IntentoPagoMercadopago extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    public function reembolsadoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reembolsado_por');
+    }
+
     public function expirado(): bool
     {
         return $this->estado === self::ESTADO_PENDIENTE
             && $this->expira_at !== null
             && now()->greaterThan($this->expira_at);
+    }
+
+    /**
+     * El cobro de Mercado Pago que de verdad cerró esta venta (aprobado,
+     * sin reembolsar todavía) — es el único que tiene sentido devolver. Un
+     * pedido solo puede tener un intento aprobado a la vez (el guard de
+     * "un solo QR pendiente" por empresa ya lo garantiza indirectamente).
+     */
+    public static function aprobadoReembolsableParaPedido(int $pedidoId): ?self
+    {
+        return self::where('pedido_id', $pedidoId)
+            ->where('estado', self::ESTADO_APROBADO)
+            ->whereNull('reembolsado_at')
+            ->first();
     }
 
     /**

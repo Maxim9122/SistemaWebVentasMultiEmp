@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ConfirmarReaperturaCobroVentaRequest;
 use App\Http\Requests\EditarItemsVentaRequest;
+use App\Models\IntentoPagoMercadopago;
 use App\Models\Pedido;
 use App\Models\Producto;
 use App\Services\EnvioTicketService;
 use App\Services\Facturacion\ComprobantePdfService;
 use App\Services\Facturacion\EmisionComprobanteService;
 use App\Services\Facturacion\EmisionNotaCreditoService;
+use App\Services\MercadoPago\MercadoPagoQrService;
 use App\Services\ProcesadorDeCobro;
 use App\Services\ReportePdfService;
 use Illuminate\Database\Eloquent\Builder;
@@ -126,6 +128,10 @@ class VentaController extends Controller
             ]),
             'puedeEditar' => $this->puedeEditar($request),
             'puedeAnular' => $this->puedeAnularFactura($request),
+            'intentoMercadopago' => IntentoPagoMercadopago::where('pedido_id', $pedido->id)
+                ->where('estado', IntentoPagoMercadopago::ESTADO_APROBADO)
+                ->with('reembolsadoPor')
+                ->first(),
             'ticketUrlFirmada' => $tieneComprobanteListo
                 ? URL::temporarySignedRoute(
                     'ticket.publico',
@@ -495,6 +501,21 @@ class VentaController extends Controller
         $emisor->emitir($notaCredito);
 
         return redirect()->route('ventas.show', $pedido)->with('status', 'Se reintentó la emisión de la nota de crédito.');
+    }
+
+    public function reembolsarMercadoPago(Request $request, Pedido $pedido, MercadoPagoQrService $qrService): RedirectResponse
+    {
+        $this->autorizar($request, $pedido);
+        $this->asegurarCobrado($pedido);
+        $this->asegurarPuedeAnular($request);
+
+        try {
+            $qrService->reembolsarPedido($pedido, $request->user());
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['reembolso_mercadopago' => $e->getMessage()]);
+        }
+
+        return redirect()->route('ventas.show', $pedido)->with('status', 'Se devolvió el pago por Mercado Pago.');
     }
 
     private function autorizar(Request $request, Pedido $pedido): void

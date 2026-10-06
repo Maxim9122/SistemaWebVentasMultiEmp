@@ -6,6 +6,7 @@ use App\Models\Empresa;
 use App\Models\IntentoPagoMercadopago;
 use App\Models\Pedido;
 use App\Models\User;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Str;
 
 class MercadoPagoQrService
@@ -93,6 +94,42 @@ class MercadoPagoQrService
         }
 
         $intento->update(['estado' => IntentoPagoMercadopago::ESTADO_CANCELADO]);
+    }
+
+    /**
+     * Devuelve al comprador el total que pagó por Mercado Pago en esta
+     * venta — ej: el cliente se arrepiente y quiere la plata de vuelta.
+     * Es independiente de la nota de crédito/anulación de factura
+     * (ProcesadorDeCobro::anularVenta): esta acción SOLO reembolsa el
+     * dinero del lado de Mercado Pago, no toca stock ni AFIP — las dos
+     * cosas pueden hacerse juntas o por separado según el caso.
+     */
+    public function reembolsarPedido(Pedido $pedido, User $usuario): void
+    {
+        $intento = IntentoPagoMercadopago::aprobadoReembolsableParaPedido($pedido->id);
+
+        if (! $intento) {
+            throw new \RuntimeException('No hay ningún cobro por Mercado Pago para devolver en esta venta (o ya se devolvió antes).');
+        }
+
+        $credencial = $intento->empresa->credencialMercadoPago;
+
+        if (! $credencial || ! $intento->mp_merchant_order_id) {
+            throw new \RuntimeException('Falta la información de la orden de Mercado Pago — no se puede reembolsar automáticamente, hacelo desde la cuenta de Mercado Pago de la empresa.');
+        }
+
+        try {
+            $this->cliente->reembolsarOrden($credencial->access_token, $intento->mp_merchant_order_id);
+        } catch (RequestException $e) {
+            $detalle = $e->response->json('message') ?? $e->response->json('causes.0.description') ?? $e->response->body();
+
+            throw new \RuntimeException("Mercado Pago rechazó el reembolso: {$detalle}");
+        }
+
+        $intento->update([
+            'reembolsado_at' => now(),
+            'reembolsado_por' => $usuario->id,
+        ]);
     }
 
     /**

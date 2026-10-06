@@ -260,6 +260,12 @@
             @if ($pedido->monto_transferencia)
                 <p>Transferencia: ${{ number_format($pedido->monto_transferencia, 2, ',', '.') }} ({{ $pedido->ajuste_transferencia_porcentaje > 0 ? '+' : '' }}{{ $pedido->ajuste_transferencia_porcentaje }}%)</p>
             @endif
+            @if ($pedido->monto_mercadopago)
+                <p>Mercado Pago: ${{ number_format($pedido->monto_mercadopago, 2, ',', '.') }} ({{ $pedido->ajuste_mercadopago_porcentaje > 0 ? '+' : '' }}{{ $pedido->ajuste_mercadopago_porcentaje }}%)</p>
+            @endif
+            @if ($pedido->monto_fiado)
+                <p>Fiado: ${{ number_format($pedido->monto_fiado, 2, ',', '.') }}</p>
+            @endif
         </div>
         <div class="border-t mt-3 pt-3 flex justify-between text-sm">
             <span class="text-slate-500">Total productos</span>
@@ -269,6 +275,30 @@
             <span>Total cobrado</span>
             <span>${{ number_format($pedido->total_cobrado, 2, ',', '.') }}</span>
         </div>
+
+        @if ($intentoMercadopago)
+            <div class="mt-3 pt-3 border-t">
+                @if ($intentoMercadopago->reembolsado_at)
+                    <p class="text-xs font-medium rounded px-2 py-1 inline-block bg-slate-200 text-slate-700">
+                        Devuelto por Mercado Pago el {{ $intentoMercadopago->reembolsado_at->format('d/m/Y H:i') }}
+                        @if ($intentoMercadopago->reembolsadoPor)
+                            por {{ $intentoMercadopago->reembolsadoPor->name }}
+                        @endif
+                    </p>
+                @elseif ($puedeAnular)
+                    <button type="button" id="btn_reembolsar_mp" class="text-xs rounded px-3 py-1.5 border border-red-300 text-red-700 hover:border-red-400">
+                        Devolver por Mercado Pago
+                    </button>
+                    <form id="form_reembolsar_mp" method="POST" action="{{ route('ventas.reembolsarMercadoPago', $pedido) }}" class="hidden">
+                        @csrf
+                    </form>
+                @endif
+
+                @error('reembolso_mercadopago')
+                    <p class="text-sm text-red-600 mt-2">{{ $message }}</p>
+                @enderror
+            </div>
+        @endif
     </div>
 
     @if ($pedido->modificaciones->isNotEmpty())
@@ -346,6 +376,42 @@
 
                 document.getElementById('modal_anular_factura_confirmar').addEventListener('click', function () {
                     formMotivo.value = motivoInput.value.trim();
+                    form.submit();
+                });
+            })();
+        </script>
+    @endif
+
+    @if ($intentoMercadopago && ! $intentoMercadopago->reembolsado_at && $puedeAnular)
+        @include('partials.modal-confirmacion', [
+            'id' => 'modal_reembolsar_mp',
+            'titulo' => 'Devolver por Mercado Pago',
+            'mensaje' => 'Se le va a devolver $'.number_format($intentoMercadopago->monto, 2, ',', '.').' al comprador a través de Mercado Pago. Esta acción no se puede deshacer. ¿Confirmás?',
+            'textoConfirmar' => 'Sí, devolver',
+            'claseConfirmar' => 'bg-red-600 hover:bg-red-700',
+        ])
+
+        <script>
+            (function () {
+                var btnReembolsar = document.getElementById('btn_reembolsar_mp');
+                var modal = document.getElementById('modal_reembolsar_mp');
+                var form = document.getElementById('form_reembolsar_mp');
+
+                if (!btnReembolsar) {
+                    return;
+                }
+
+                btnReembolsar.addEventListener('click', function () {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                });
+
+                document.getElementById('modal_reembolsar_mp_cancelar').addEventListener('click', function () {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                });
+
+                document.getElementById('modal_reembolsar_mp_confirmar').addEventListener('click', function () {
                     form.submit();
                 });
             })();

@@ -300,6 +300,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/{pedido}/remito/imprimir', [VentaController::class, 'imprimirRemito'])->name('imprimirRemito');
             Route::post('/{pedido}/anular', [VentaController::class, 'anularFactura'])->name('anularFactura');
             Route::post('/{pedido}/reintentar-nota-credito', [VentaController::class, 'reintentarNotaCredito'])->name('reintentarNotaCredito');
+            Route::post('/{pedido}/reembolsar-mercadopago', [VentaController::class, 'reembolsarMercadoPago'])->name('reembolsarMercadoPago');
             Route::get('/{pedido}/nota-credito.pdf', [VentaController::class, 'notaCreditoPdf'])->name('notaCreditoPdf');
             Route::get('/{pedido}/nota-credito/imprimir', [VentaController::class, 'imprimirNotaCredito'])->name('imprimirNotaCredito');
         });
