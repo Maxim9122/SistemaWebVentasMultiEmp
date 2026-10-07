@@ -46,12 +46,11 @@ manda. La barra nunca sale impresa: @media print la oculta. --}}
             En PC esto se abre en pestaña nueva de verdad: window.close() la
             cierra y el usuario vuelve a ver, debajo, la página desde donde
             vino (Caja, Carritos o Ventas), tal cual estaba.
-            En el celular muchos navegadores ignoran window.close() en
-            silencio (no pasa nada, no tira error) porque no abren una
-            pestaña "de verdad" — por eso, si seguimos acá 150ms después de
-            intentarlo, asumimos que no cerró y navegamos a mano a
-            $volverUrl (que ya viene resuelta a Caja/Carritos/Ventas según
-            desde dónde se cobró — ver VentaController::volverUrlDesde()).
+            En el celular NO se intenta cerrar nada: según el navegador,
+            window.close() ahí puede no hacer nada o cerrar de más (hasta el
+            navegador entero), así que directamente se navega a $volverUrl
+            (ya resuelta a Caja/Carritos/Ventas según desde dónde se cobró —
+            ver VentaController::volverUrlDesde()).
         --}}
         <button type="button" onclick="volverComprobante(this)">&larr; Volver</button>
         <button type="button" class="imprimir" onclick="window.print()">Imprimir</button>
@@ -59,9 +58,18 @@ manda. La barra nunca sale impresa: @media print la oculta. --}}
     <script>
         function volverComprobante(boton) {
             boton.disabled = true;
+
+            var destino = @json($volverUrl ?? url()->previous());
+            var esMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+            if (esMobile) {
+                window.location.href = destino;
+                return;
+            }
+
             window.close();
             setTimeout(function () {
-                window.location.href = @json($volverUrl ?? url()->previous());
+                window.location.href = destino;
             }, 150);
         }
     </script>
