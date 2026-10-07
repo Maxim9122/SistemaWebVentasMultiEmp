@@ -299,6 +299,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/{pedido}/comprobante/imprimir', [VentaController::class, 'imprimirComprobante'])->name('imprimirComprobante');
             Route::get('/{pedido}/remito/imprimir', [VentaController::class, 'imprimirRemito'])->name('imprimirRemito');
             Route::post('/{pedido}/anular', [VentaController::class, 'anularFactura'])->name('anularFactura');
+            Route::post('/{pedido}/anular-remito', [VentaController::class, 'anularRemito'])->name('anularRemito');
             Route::post('/{pedido}/reintentar-nota-credito', [VentaController::class, 'reintentarNotaCredito'])->name('reintentarNotaCredito');
             Route::post('/{pedido}/reembolsar-mercadopago', [VentaController::class, 'reembolsarMercadoPago'])->name('reembolsarMercadoPago');
             Route::get('/{pedido}/nota-credito.pdf', [VentaController::class, 'notaCreditoPdf'])->name('notaCreditoPdf');

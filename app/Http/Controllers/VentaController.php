@@ -503,6 +503,23 @@ class VentaController extends Controller
         return redirect()->route('ventas.show', $pedido)->with('status', 'Se reintentó la emisión de la nota de crédito.');
     }
 
+    public function anularRemito(Request $request, Pedido $pedido, ProcesadorDeCobro $procesador): RedirectResponse
+    {
+        $this->autorizar($request, $pedido);
+        $this->asegurarCobrado($pedido);
+        $this->asegurarPuedeAnular($request);
+
+        $motivo = $request->validate(['motivo' => ['required', 'string', 'max:1000']])['motivo'];
+
+        try {
+            $procesador->anularRemito($pedido, $request->user(), $motivo);
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['anular' => $e->getMessage()]);
+        }
+
+        return redirect()->route('ventas.show', $pedido)->with('status', 'Remito anulado.');
+    }
+
     public function reembolsarMercadoPago(Request $request, Pedido $pedido, MercadoPagoQrService $qrService): RedirectResponse
     {
         $this->autorizar($request, $pedido);

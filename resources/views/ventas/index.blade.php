@@ -85,6 +85,9 @@
                         <td class="px-4 py-2">{{ $venta->factura?->cliente_nombre ?? $venta->cliente_nombre }}</td>
                         <td class="px-4 py-2 text-slate-500">
                             {{ $venta->tipo_comprobante === 'factura' ? 'Factura '.$venta->factura?->tipo_factura : 'Remito' }}
+                            @if ($venta->estaAnulado())
+                                <span class="text-xs font-medium rounded px-1.5 py-0.5 bg-red-100 text-red-800">Anulado</span>
+                            @endif
                         </td>
                         <td class="px-4 py-2 text-slate-500">{{ $venta->vendedor->name }}</td>
                         <td class="px-4 py-2 text-slate-500">{{ $venta->cajero->name ?? '—' }}</td>

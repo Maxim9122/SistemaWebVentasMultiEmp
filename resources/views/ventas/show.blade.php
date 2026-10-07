@@ -123,11 +123,43 @@
                 @endif
             @endif
         @else
-            <p class="text-xs font-medium rounded px-2 py-1 inline-block bg-slate-200 text-slate-700 mb-2">Remito</p>
+            <p @class([
+                'text-xs font-medium rounded px-2 py-1 inline-block mb-2',
+                'bg-red-100 text-red-800' => $pedido->estaAnulado(),
+                'bg-slate-200 text-slate-700' => ! $pedido->estaAnulado(),
+            ])>
+                Remito{{ $pedido->estaAnulado() ? ' — Anulado' : '' }}
+            </p>
             <p class="font-medium">{{ $pedido->cliente_nombre }}</p>
             <a href="{{ route('ventas.imprimirRemito', $pedido) }}" target="_blank" class="inline-block mt-2 text-xs rounded px-3 py-1.5 border border-slate-300 hover:border-slate-400">
                 Ver / imprimir remito
             </a>
+
+            @if ($pedido->estaAnulado())
+                <div class="mt-4 pt-4 border-t text-sm">
+                    <p class="text-slate-500">
+                        Anulado el {{ $pedido->anulado_at->format('d/m/Y H:i') }} por {{ $pedido->anuladoPor->name ?? '—' }}
+                    </p>
+                    <p class="text-slate-500">Motivo: {{ $pedido->motivo_anulacion }}</p>
+                </div>
+            @elseif ($puedeAnular)
+                <div class="mt-4 pt-4 border-t">
+                    <button type="button" id="btn_anular_remito" class="text-xs rounded px-3 py-1.5 border border-red-300 text-red-700 hover:border-red-400">
+                        Anular remito
+                    </button>
+                    <div id="bloque_anular_remito" class="hidden mt-2">
+                        <label for="motivo_anular_remito" class="block text-xs font-medium mb-1">Motivo de la anulación</label>
+                        <textarea id="motivo_anular_remito" rows="2" class="w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500"></textarea>
+                        <button type="button" id="btn_confirmar_anular_remito" class="mt-2 text-xs rounded px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white">
+                            Anular remito
+                        </button>
+                    </div>
+                    <form id="form_anular_remito" method="POST" action="{{ route('ventas.anularRemito', $pedido) }}" class="hidden">
+                        @csrf
+                        <input type="hidden" name="motivo" id="form_anular_remito_motivo">
+                    </form>
+                </div>
+            @endif
         @endif
     </div>
 
@@ -379,6 +411,55 @@
                 });
 
                 document.getElementById('modal_anular_factura_confirmar').addEventListener('click', function () {
+                    formMotivo.value = motivoInput.value.trim();
+                    form.submit();
+                });
+            })();
+        </script>
+
+        @include('partials.modal-confirmacion', [
+            'id' => 'modal_anular_remito',
+            'titulo' => 'Anular remito',
+            'mensaje' => 'Se va a devolver el stock vendido (si la empresa lo controla). Esta acción no se puede deshacer. ¿Confirmás?',
+            'textoConfirmar' => 'Sí, anular',
+            'claseConfirmar' => 'bg-red-600 hover:bg-red-700',
+        ])
+
+        <script>
+            (function () {
+                var btnAnular = document.getElementById('btn_anular_remito');
+                var bloque = document.getElementById('bloque_anular_remito');
+                var btnConfirmarBloque = document.getElementById('btn_confirmar_anular_remito');
+                var motivoInput = document.getElementById('motivo_anular_remito');
+                var modal = document.getElementById('modal_anular_remito');
+                var form = document.getElementById('form_anular_remito');
+                var formMotivo = document.getElementById('form_anular_remito_motivo');
+
+                if (!btnAnular) {
+                    return;
+                }
+
+                btnAnular.addEventListener('click', function () {
+                    bloque.classList.remove('hidden');
+                    btnAnular.classList.add('hidden');
+                });
+
+                btnConfirmarBloque.addEventListener('click', function () {
+                    if (!motivoInput.value.trim()) {
+                        motivoInput.focus();
+                        return;
+                    }
+
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                });
+
+                document.getElementById('modal_anular_remito_cancelar').addEventListener('click', function () {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                });
+
+                document.getElementById('modal_anular_remito_confirmar').addEventListener('click', function () {
                     formMotivo.value = motivoInput.value.trim();
                     form.submit();
                 });

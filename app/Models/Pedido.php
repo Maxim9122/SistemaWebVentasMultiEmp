@@ -60,6 +60,9 @@ class Pedido extends Model
         'ajuste_transferencia_porcentaje',
         'ajuste_mercadopago_porcentaje',
         'total_cobrado',
+        'anulado_at',
+        'anulado_por',
+        'motivo_anulacion',
     ];
 
     protected function casts(): array
@@ -78,6 +81,7 @@ class Pedido extends Model
             'ajuste_transferencia_porcentaje' => 'decimal:2',
             'ajuste_mercadopago_porcentaje' => 'decimal:2',
             'total_cobrado' => 'decimal:2',
+            'anulado_at' => 'datetime',
         ];
     }
 
@@ -94,6 +98,11 @@ class Pedido extends Model
     public function cajero(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cobrado_por');
+    }
+
+    public function anuladoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'anulado_por');
     }
 
     public function caja(): BelongsTo
@@ -155,6 +164,11 @@ class Pedido extends Model
     public function esPresupuesto(): bool
     {
         return $this->estado === self::ESTADO_PRESUPUESTO;
+    }
+
+    public function estaAnulado(): bool
+    {
+        return $this->anulado_at !== null;
     }
 
     public function recalcularTotal(): void

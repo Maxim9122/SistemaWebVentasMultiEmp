@@ -212,6 +212,49 @@ class ProcesadorDeCobro
     }
 
     /**
+     * Anula una venta cobrada con Remito (sin factura/AFIP de por medio, a
+     * diferencia de anularVenta()): devuelve el stock de todo lo vendido (si
+     * la empresa controla stock) y marca el pedido como anulado. No toca
+     * monto_X/total_cobrado — igual que anularVenta(), la plata ya cobrada
+     * en su momento no se revierte sola acá; si hace falta devolverla (ej.
+     * efectivo en mano, o por Mercado Pago), es una acción aparte. Tira
+     * \RuntimeException si el pedido no está cobrado, si no es un Remito, o
+     * si ya estaba anulado.
+     */
+    public function anularRemito(Pedido $pedido, User $usuario, string $motivo): void
+    {
+        DB::transaction(function () use ($pedido, $usuario, $motivo) {
+            $pedidoActual = Pedido::where('id', $pedido->id)->lockForUpdate()->first();
+
+            if (! $pedidoActual->esCobrado()) {
+                throw new \RuntimeException('Solo se pueden anular ventas cobradas.');
+            }
+
+            if ($pedidoActual->tipo_comprobante !== 'remito') {
+                throw new \RuntimeException('Esta venta tiene factura — anulala desde "Anular factura", no desde acá.');
+            }
+
+            if ($pedidoActual->estaAnulado()) {
+                throw new \RuntimeException('Esta venta ya estaba anulada.');
+            }
+
+            $empresa = $pedidoActual->empresa;
+
+            if ($empresa->controla_stock) {
+                foreach ($this->necesidadesStock($pedidoActual->items) as $productoId => $cantidad) {
+                    Producto::where('id', $productoId)->lockForUpdate()->increment('stock', $cantidad);
+                }
+            }
+
+            $pedidoActual->update([
+                'anulado_at' => now(),
+                'anulado_por' => $usuario->id,
+                'motivo_anulacion' => $motivo,
+            ]);
+        });
+    }
+
+    /**
      * Cotiza cada línea propuesta contra el catálogo (nombre, precio vía
      * Producto::precioParaCantidad() según la cantidad pedida, subtotal). No
      * persiste nada ni bloquea filas — sirve para previsualizar el total
