@@ -240,6 +240,14 @@
                         abrirModal();
                         habilitarBoton();
 
+                        // Si el carrito ya no existe más como tal (lo
+                        // cerraron desde otro dispositivo mientras tanto),
+                        // el servidor manda a dónde ir — no tiene sentido
+                        // dejar al cajero reintentando sobre un carrito muerto.
+                        if (datos.redirect_url) {
+                            setTimeout(function () { window.location.href = datos.redirect_url; }, 2000);
+                        }
+
                         return;
                     }
 

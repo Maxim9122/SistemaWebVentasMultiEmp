@@ -49,9 +49,13 @@ class CarritoController extends Controller
         return redirect()->route('carritos.show', $this->crearCarrito($usuario));
     }
 
-    public function show(Request $request, Pedido $pedido): View
+    public function show(Request $request, Pedido $pedido): View|RedirectResponse
     {
         $this->autorizar($request, $pedido);
+
+        if ($redirect = $this->redirigirSiNoEsCarritoVigente($request, $pedido)) {
+            return $redirect;
+        }
 
         $otrosCarritos = Pedido::query()
             ->where('vendedor_id', $request->user()->id)
@@ -79,7 +83,10 @@ class CarritoController extends Controller
     public function renombrar(Request $request, Pedido $pedido): RedirectResponse
     {
         $this->autorizar($request, $pedido);
-        $this->asegurarEsCarrito($pedido);
+
+        if ($redirect = $this->redirigirSiNoEsCarritoVigente($request, $pedido)) {
+            return $redirect;
+        }
 
         $request->validate(['cliente_nombre' => ['nullable', 'string', 'max:255']]);
 
@@ -93,7 +100,10 @@ class CarritoController extends Controller
     public function agregarItem(AgregarItemCarritoRequest $request, Pedido $pedido): RedirectResponse
     {
         $this->autorizar($request, $pedido);
-        $this->asegurarEsCarrito($pedido);
+
+        if ($redirect = $this->redirigirSiNoEsCarritoVigente($request, $pedido)) {
+            return $redirect;
+        }
 
         $producto = Producto::findOrFail($request->validated('producto_id'));
         $cantidad = (int) $request->validated('cantidad');
@@ -139,7 +149,11 @@ class CarritoController extends Controller
     public function actualizarItem(AgregarItemCarritoRequest $request, Pedido $pedido, PedidoItem $item): RedirectResponse
     {
         $this->autorizar($request, $pedido);
-        $this->asegurarEsCarrito($pedido);
+
+        if ($redirect = $this->redirigirSiNoEsCarritoVigente($request, $pedido)) {
+            return $redirect;
+        }
+
         $this->autorizarItem($pedido, $item);
 
         $cantidad = (int) $request->validated('cantidad');
@@ -167,7 +181,11 @@ class CarritoController extends Controller
     public function quitarItem(Request $request, Pedido $pedido, PedidoItem $item): RedirectResponse
     {
         $this->autorizar($request, $pedido);
-        $this->asegurarEsCarrito($pedido);
+
+        if ($redirect = $this->redirigirSiNoEsCarritoVigente($request, $pedido)) {
+            return $redirect;
+        }
+
         $this->autorizarItem($pedido, $item);
 
         $item->delete();
@@ -184,7 +202,10 @@ class CarritoController extends Controller
         MercadoPagoQrService $qrService,
     ): RedirectResponse|View|JsonResponse {
         $this->autorizar($request, $pedido);
-        $this->asegurarEsCarrito($pedido);
+
+        if ($redirect = $this->redirigirSiNoEsCarritoVigente($request, $pedido)) {
+            return $redirect;
+        }
 
         $destino = $request->validated('destino');
         $usuario = $request->user();
@@ -276,7 +297,10 @@ class CarritoController extends Controller
     public function cancelar(Request $request, Pedido $pedido): RedirectResponse
     {
         $this->autorizar($request, $pedido);
-        $this->asegurarEsCarrito($pedido);
+
+        if ($redirect = $this->redirigirSiNoEsCarritoVigente($request, $pedido)) {
+            return $redirect;
+        }
 
         $pedido->update(['estado' => Pedido::ESTADO_CANCELADO]);
 
@@ -350,10 +374,28 @@ class CarritoController extends Controller
         }
     }
 
-    private function asegurarEsCarrito(Pedido $pedido): void
+    /**
+     * El mismo usuario puede tener este carrito abierto en dos pestañas o
+     * dos dispositivos a la vez (ej. PC y celular con la misma sesión de
+     * cajero_vendedor) — si lo cerró/cobró/canceló desde uno, el otro sigue
+     * mostrando la página vieja hasta que se recarga o se intenta una
+     * acción. Antes eso tiraba un 404 crudo; ahora se trata como lo que es
+     * (alguien más ya resolvió este carrito, no hay nada "no encontrado") y
+     * se manda a un carrito nuevo y vigente para seguir vendiendo sin
+     * fricción.
+     */
+    private function redirigirSiNoEsCarritoVigente(Request $request, Pedido $pedido): RedirectResponse|JsonResponse|null
     {
-        if (! $pedido->esCarrito()) {
-            abort(404);
+        if ($pedido->esCarrito()) {
+            return null;
         }
+
+        $mensaje = 'Este carrito ya se cerró — probablemente lo cobraste desde otro dispositivo o pestaña. Te armamos uno nuevo para seguir vendiendo.';
+
+        if ($request->wantsJson()) {
+            return response()->json(['redirect_url' => route('carritos.index'), 'message' => $mensaje], 409);
+        }
+
+        return redirect()->route('carritos.index')->with('status', $mensaje);
     }
 }
