@@ -12,3 +12,23 @@
         </div>
     </div>
 </div>
+<script>
+    (function () {
+        // Deshabilita el botón un momento tras el click, para que un doble
+        // click/toque no dispare la acción dos veces (ej. reembolsos o
+        // anulaciones que tardan un ratito en responder). No es permanente
+        // porque este mismo modal también se usa para exportar Excel/PDF,
+        // donde el usuario puede querer volver a confirmar sin recargar.
+        var boton = document.getElementById('{{ $id }}_confirmar');
+
+        boton.addEventListener('click', function () {
+            boton.disabled = true;
+            boton.classList.add('opacity-50', 'cursor-not-allowed');
+
+            setTimeout(function () {
+                boton.disabled = false;
+                boton.classList.remove('opacity-50', 'cursor-not-allowed');
+            }, 2000);
+        });
+    })();
+</script>
