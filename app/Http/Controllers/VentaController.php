@@ -52,7 +52,14 @@ class VentaController extends Controller
             'fechaFiltradaManualmente' => $fechaFiltradaManualmente,
             'vendedorId' => $vendedorId,
             'cajeroId' => $cajeroId,
-            'usuariosParaFiltro' => User::where('empresa_id', $request->user()->empresa_id)->orderBy('name')->get(['id', 'name']),
+            // Admin nunca puede ser vendedor_id ni cobrado_por de una venta
+            // (Carritos y Caja tienen sus propios middlewares de rol que lo
+            // excluyen) — listar solo los roles que de verdad pueden
+            // aparecer ahí, para no ofrecer un filtro que nunca matchea nada.
+            'usuariosParaFiltro' => User::where('empresa_id', $request->user()->empresa_id)
+                ->whereIn('role', ['vendedor', 'cajero', 'cajero_vendedor'])
+                ->orderBy('name')
+                ->get(['id', 'name']),
             // La recaudación por medio de pago es información sensible del
             // negocio (cuánto entró de cada forma) — solo el admin la ve.
             // Se calcula del mismo query ya filtrado, sin paginar, para que
