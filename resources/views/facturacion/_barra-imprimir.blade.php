@@ -42,7 +42,11 @@ manda. La barra nunca sale impresa: @media print la oculta. --}}
         }
     </style>
     <div class="barra-imprimir">
-        <button type="button" onclick="window.opener ? window.close() : history.back()">&larr; Volver</button>
+        @if ($volverUrl ?? null)
+            <a href="{{ $volverUrl }}" style="text-decoration:none;display:inline-flex;align-items:center;font-family:sans-serif;font-size:14px;font-weight:600;padding:8px 14px;border-radius:6px;border:1px solid #475569;background:transparent;color:#fff;">&larr; Volver</a>
+        @else
+            <button type="button" onclick="window.opener ? window.close() : history.back()">&larr; Volver</button>
+        @endif
         <button type="button" class="imprimir" onclick="window.print()">Imprimir</button>
     </div>
 @endif

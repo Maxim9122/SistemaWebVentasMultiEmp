@@ -74,6 +74,7 @@ class ComprobantePdfService
             // venta fiada (total o parcialmente) imprimía $0 o de menos.
             importe: (float) $pedido->total,
             modoWeb: $modoWeb,
+            volverUrl: $modoWeb ? route('ventas.show', $pedido) : null,
         );
     }
 
@@ -108,6 +109,7 @@ class ComprobantePdfService
             importe: (float) $notaCredito->importe_acreditado,
             referenciaAsociada: "Anula Factura {$factura->tipo_factura} Nro {$factura->numero_comprobante}",
             modoWeb: $modoWeb,
+            volverUrl: $modoWeb ? route('ventas.show', $pedido) : null,
         );
     }
 
@@ -124,6 +126,7 @@ class ComprobantePdfService
             'empresa' => $empresa,
             'pedido' => $pedido,
             'modoWeb' => $modoWeb,
+            'volverUrl' => $modoWeb ? route('ventas.show', $pedido) : null,
         ])->render();
     }
 
@@ -140,6 +143,7 @@ class ComprobantePdfService
             'empresa' => $empresa,
             'pedido' => $pedido,
             'modoWeb' => $modoWeb,
+            'volverUrl' => $modoWeb ? route('presupuestos.show', $pedido) : null,
         ])->render();
     }
 
@@ -164,6 +168,7 @@ class ComprobantePdfService
             'empresa' => $empresa,
             'pago' => $pago,
             'modoWeb' => $modoWeb,
+            'volverUrl' => $modoWeb ? route('creditos.index', ['cliente_id' => $pago->cliente_id]) : null,
         ])->render();
     }
 
@@ -193,6 +198,7 @@ class ComprobantePdfService
         float $importe,
         ?string $referenciaAsociada = null,
         bool $modoWeb = false,
+        ?string $volverUrl = null,
     ): string {
         $credencial = $empresa->credencialFacturacion;
         $puntoVenta = $credencial?->punto_venta;
@@ -218,6 +224,7 @@ class ComprobantePdfService
             'referenciaAsociada' => $referenciaAsociada,
             'qr' => $qr,
             'modoWeb' => $modoWeb,
+            'volverUrl' => $volverUrl,
         ])->render();
     }
 
