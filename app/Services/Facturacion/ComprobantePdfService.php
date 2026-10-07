@@ -54,7 +54,7 @@ class ComprobantePdfService
      * usuario tenga configurado algo distinto a Chrome/el navegador como
      * lector de PDF por defecto en su compu.
      */
-    public function generarFacturaHtml(Factura $factura, Pedido $pedido, bool $modoWeb = false, ?string $volverUrl = null): string
+    public function generarFacturaHtml(Factura $factura, Pedido $pedido, bool $modoWeb = false): string
     {
         return $this->generar(
             empresa: $factura->empresa,
@@ -74,7 +74,12 @@ class ComprobantePdfService
             // venta fiada (total o parcialmente) imprimía $0 o de menos.
             importe: (float) $pedido->total,
             modoWeb: $modoWeb,
-            volverUrl: $modoWeb ? ($volverUrl ?? route('ventas.show', $pedido)) : null,
+            // El botón "Volver" de estos comprobantes siempre manda a
+            // Carritos (igual que tocar "Carritos" en el menú), sin
+            // importar desde dónde se imprimió — así lo pidió el usuario,
+            // porque en el uso real siempre se vuelve a vender después de
+            // imprimir, nunca se queda mirando la venta vieja.
+            volverUrl: $modoWeb ? route('carritos.index') : null,
         );
     }
 
@@ -90,7 +95,7 @@ class ComprobantePdfService
         );
     }
 
-    public function generarNotaCreditoHtml(NotaCredito $notaCredito, Pedido $pedido, bool $modoWeb = false, ?string $volverUrl = null): string
+    public function generarNotaCreditoHtml(NotaCredito $notaCredito, Pedido $pedido, bool $modoWeb = false): string
     {
         $factura = $notaCredito->factura;
 
@@ -109,7 +114,7 @@ class ComprobantePdfService
             importe: (float) $notaCredito->importe_acreditado,
             referenciaAsociada: "Anula Factura {$factura->tipo_factura} Nro {$factura->numero_comprobante}",
             modoWeb: $modoWeb,
-            volverUrl: $modoWeb ? ($volverUrl ?? route('ventas.show', $pedido)) : null,
+            volverUrl: $modoWeb ? route('carritos.index') : null,
         );
     }
 
@@ -118,7 +123,7 @@ class ComprobantePdfService
         return $this->renderizarComprobante($this->generarRemitoHtml($pedido), $pedido);
     }
 
-    public function generarRemitoHtml(Pedido $pedido, bool $modoWeb = false, ?string $volverUrl = null): string
+    public function generarRemitoHtml(Pedido $pedido, bool $modoWeb = false): string
     {
         $empresa = $pedido->empresa;
 
@@ -126,7 +131,7 @@ class ComprobantePdfService
             'empresa' => $empresa,
             'pedido' => $pedido,
             'modoWeb' => $modoWeb,
-            'volverUrl' => $modoWeb ? ($volverUrl ?? route('ventas.show', $pedido)) : null,
+            'volverUrl' => $modoWeb ? route('carritos.index') : null,
         ])->render();
     }
 

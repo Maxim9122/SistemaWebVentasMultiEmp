@@ -43,14 +43,16 @@ manda. La barra nunca sale impresa: @media print la oculta. --}}
     </style>
     <div class="barra-imprimir">
         {{--
+            $volverUrl la decide cada controller/servicio que arma este
+            comprobante (para factura/remito/NC siempre es Carritos, igual
+            que tocar "Carritos" en el menú — para presupuesto y pago de
+            crédito es su propia página, ver ComprobantePdfService).
             En PC esto se abre en pestaña nueva de verdad: window.close() la
             cierra y el usuario vuelve a ver, debajo, la página desde donde
-            vino (Caja, Carritos o Ventas), tal cual estaba.
+            vino, tal cual estaba.
             En el celular NO se intenta cerrar nada: según el navegador,
             window.close() ahí puede no hacer nada o cerrar de más (hasta el
-            navegador entero), así que directamente se navega a $volverUrl
-            (ya resuelta a Caja/Carritos/Ventas según desde dónde se cobró —
-            ver VentaController::volverUrlDesde()).
+            navegador entero), así que directamente se navega a $volverUrl.
         --}}
         <button type="button" onclick="volverComprobante(this)">&larr; Volver</button>
         <button type="button" class="imprimir" onclick="window.print()">Imprimir</button>

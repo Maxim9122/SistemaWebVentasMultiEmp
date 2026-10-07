@@ -1,16 +1,6 @@
 @php
     $esFactura = $pedidoListo->tipo_comprobante === 'factura' && $pedidoListo->factura;
-    // El modal aparece en la página a la que ya redirigió el cobro (Caja o
-    // Carritos, nunca Ventas) — se le avisa a la vista de impresión para que
-    // el botón "Volver" regrese ahí y no a la venta. Ver
-    // VentaController::volverUrlDesde().
-    $origen = match (true) {
-        request()->routeIs('caja.index') => 'caja',
-        request()->routeIs('carritos.index') => 'carritos',
-        default => null,
-    };
-    $urlDescarga = ($esFactura ? route('ventas.imprimirComprobante', $pedidoListo) : route('ventas.imprimirRemito', $pedidoListo))
-        .($origen ? '?origen='.$origen : '');
+    $urlDescarga = $esFactura ? route('ventas.imprimirComprobante', $pedidoListo) : route('ventas.imprimirRemito', $pedidoListo);
 @endphp
 <div id="modal_comprobante_listo" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
     <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
