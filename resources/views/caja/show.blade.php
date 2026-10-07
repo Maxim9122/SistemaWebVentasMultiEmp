@@ -15,6 +15,7 @@
                 Editar pedido
             </a>
         </div>
+        <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-slate-50 text-slate-500 text-left">
                 <tr>
@@ -33,6 +34,7 @@
                 @endforeach
             </tbody>
         </table>
+        </div>
     </div>
 
     <div class="bg-white rounded-lg shadow p-4">

@@ -77,6 +77,7 @@
         </div>
 
         <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-slate-50 text-slate-500 text-left">
                     <tr>
@@ -109,6 +110,7 @@
                     @endforelse
                 </tbody>
             </table>
+            </div>
         </div>
 
         <div class="mt-4">
@@ -131,6 +133,7 @@
                         Comprobante: {{ $item->pedido->tipo_comprobante === 'factura' ? 'Factura '.$item->pedido->factura?->tipo_factura : 'Remito' }}
                         · Medio de pago: {{ ucfirst($item->pedido->forma_pago ?? '—') }}
                     </p>
+                    <div class="overflow-x-auto">
                     <table class="w-full text-sm mb-3">
                         <thead class="text-slate-500 text-left">
                             <tr>
@@ -151,6 +154,7 @@
                             @endforeach
                         </tbody>
                     </table>
+                    </div>
                     <p class="text-right font-medium mb-3">Total cobrado: ${{ number_format($item->pedido->total_cobrado, 2, ',', '.') }}</p>
                     <a href="{{ route('ventas.show', $item->pedido) }}" class="text-sm text-slate-600 hover:underline">Ver venta completa &rarr;</a>
                 </div>

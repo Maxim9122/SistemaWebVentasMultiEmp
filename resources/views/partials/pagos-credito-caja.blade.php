@@ -34,6 +34,7 @@
             <button type="button" id="{{ $idUnico }}_btn_cerrar" class="text-slate-400 hover:text-slate-600">&times;</button>
         </div>
 
+        <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-slate-50 text-slate-500 text-left">
                 <tr>
@@ -69,6 +70,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 

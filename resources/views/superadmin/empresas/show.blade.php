@@ -98,6 +98,7 @@
                 </form>
 
                 @if ($empresa->pagosAbono->isNotEmpty())
+                    <div class="overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead class="text-slate-500 text-left">
                             <tr>
@@ -122,6 +123,7 @@
                             @endforeach
                         </tbody>
                     </table>
+                    </div>
                 @else
                     <p class="text-sm text-slate-500">Todavía no se registró ningún pago — vigente en período de gracia hasta el {{ $empresa->vigenciaAbonoHasta()->format('d/m/Y') }}.</p>
                 @endif

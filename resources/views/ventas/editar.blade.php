@@ -35,6 +35,7 @@
         @csrf
 
         <div class="bg-white rounded-lg shadow overflow-hidden mb-4">
+            <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-slate-50 text-slate-500 text-left">
                     <tr>
@@ -74,6 +75,7 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
         </div>
 
         <div class="bg-white rounded-lg shadow p-4 mb-4 flex items-center justify-end">

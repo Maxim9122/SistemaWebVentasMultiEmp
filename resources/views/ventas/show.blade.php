@@ -221,6 +221,7 @@
     @endif
 
     <div class="bg-white rounded-lg shadow overflow-hidden mb-4">
+        <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-slate-50 text-slate-500 text-left">
                 <tr>
@@ -246,6 +247,7 @@
                 @endforeach
             </tbody>
         </table>
+        </div>
     </div>
 
     <div class="bg-white rounded-lg shadow p-4 mb-4">
@@ -306,6 +308,7 @@
             <div class="px-4 py-3 border-b bg-slate-50">
                 <p class="font-medium">Historial de modificaciones</p>
             </div>
+            <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-slate-50 text-slate-500 text-left">
                     <tr>
@@ -328,6 +331,7 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
         </div>
     @endif
 

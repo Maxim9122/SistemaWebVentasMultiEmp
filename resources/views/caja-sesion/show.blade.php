@@ -98,6 +98,7 @@
         @if ($ultimasCerradas->isNotEmpty())
             <div class="bg-white rounded-lg shadow overflow-hidden">
                 <p class="px-4 py-2 text-sm font-medium border-b bg-slate-50">Últimas cajas cerradas</p>
+                <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead class="bg-slate-50 text-slate-500 text-left">
                         <tr>
@@ -126,6 +127,7 @@
                         @endforeach
                     </tbody>
                 </table>
+                </div>
             </div>
         @endif
     @endif
