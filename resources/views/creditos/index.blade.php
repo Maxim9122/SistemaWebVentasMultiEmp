@@ -234,6 +234,7 @@
         <p class="px-4 py-2 text-sm font-medium border-b bg-slate-50">
             Ventas fiadas {{ $cliente ? 'de '.$cliente->nombre : '' }}
         </p>
+        <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-slate-50 text-slate-500 text-left">
                 <tr>
@@ -290,6 +291,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
 
         <div id="bloque_seleccion_fiadas" class="hidden p-4 border-t bg-slate-50 flex flex-wrap items-end gap-3">
             <p class="text-sm w-full">
