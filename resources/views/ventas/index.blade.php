@@ -20,6 +20,13 @@
                 <input type="date" id="fecha_hasta" name="fecha_hasta" value="{{ $fechaHasta }}"
                     class="rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
             </div>
+
+            {{-- Vendedor/cajero van en una fila propia abajo (ver después de
+            este form) para no amontonar todos los filtros juntos — pero
+            viajan como inputs ocultos acá así "Buscar" los sigue incluyendo. --}}
+            <input type="hidden" name="vendedor_id" value="{{ $vendedorId }}">
+            <input type="hidden" name="cajero_id" value="{{ $cajeroId }}">
+
             <button type="submit" class="inline-flex items-center gap-1.5 rounded px-3 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
                     <circle cx="11" cy="11" r="7"/>
@@ -27,7 +34,7 @@
                 </svg>
                 Buscar
             </button>
-            @if ($numero !== '' || $fechaFiltradaManualmente)
+            @if ($numero !== '' || $fechaFiltradaManualmente || $vendedorId || $cajeroId)
                 <a href="{{ route('ventas.index', ['por_pagina' => $porPagina]) }}" class="text-sm text-slate-500 hover:underline pb-2">
                     Limpiar
                 </a>
@@ -35,7 +42,7 @@
         </form>
 
         <div class="flex items-center gap-3">
-            <a href="{{ route('ventas.exportarPdf', ['numero' => $numero, 'fecha_desde' => $fechaDesde, 'fecha_hasta' => $fechaHasta]) }}" target="_blank"
+            <a href="{{ route('ventas.exportarPdf', ['numero' => $numero, 'fecha_desde' => $fechaDesde, 'fecha_hasta' => $fechaHasta, 'vendedor_id' => $vendedorId, 'cajero_id' => $cajeroId]) }}" target="_blank"
                 class="inline-flex items-center gap-1.5 rounded px-3 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
                     <path d="M12 4v10m0 0-3.5-3.5M12 14l3.5-3.5"/>
@@ -50,6 +57,8 @@
                 <input type="hidden" name="numero" value="{{ $numero }}">
                 <input type="hidden" name="fecha_desde" value="{{ $fechaDesde }}">
                 <input type="hidden" name="fecha_hasta" value="{{ $fechaHasta }}">
+                <input type="hidden" name="vendedor_id" value="{{ $vendedorId }}">
+                <input type="hidden" name="cajero_id" value="{{ $cajeroId }}">
                 <label for="por_pagina" class="text-slate-500">Mostrar</label>
                 <select id="por_pagina" name="por_pagina" onchange="this.form.submit()"
                     class="rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
@@ -60,6 +69,62 @@
             </form>
         </div>
     </div>
+
+    {{-- Fila propia para vendedor/cajero, separada de la de arriba a pedido
+    (fecha/N° son los filtros que más se usan, estos quedan abajo). --}}
+    <form method="GET" action="{{ route('ventas.index') }}" class="mb-4 flex flex-wrap items-end gap-2">
+        <input type="hidden" name="numero" value="{{ $numero }}">
+        <input type="hidden" name="fecha_desde" value="{{ $fechaDesde }}">
+        <input type="hidden" name="fecha_hasta" value="{{ $fechaHasta }}">
+        <div>
+            <label for="vendedor_id" class="block text-xs text-slate-500 mb-1">Vendedor</label>
+            <select id="vendedor_id" name="vendedor_id" onchange="this.form.submit()"
+                class="rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                <option value="">Todos</option>
+                @foreach ($usuariosParaFiltro as $usuario)
+                    <option value="{{ $usuario->id }}" @selected($vendedorId === $usuario->id)>{{ $usuario->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div>
+            <label for="cajero_id" class="block text-xs text-slate-500 mb-1">Cajero</label>
+            <select id="cajero_id" name="cajero_id" onchange="this.form.submit()"
+                class="rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                <option value="">Todos</option>
+                @foreach ($usuariosParaFiltro as $usuario)
+                    <option value="{{ $usuario->id }}" @selected($cajeroId === $usuario->id)>{{ $usuario->name }}</option>
+                @endforeach
+            </select>
+        </div>
+    </form>
+
+    @if ($totales)
+        <div class="bg-white rounded-lg shadow p-4 mb-4">
+            <p class="text-sm text-slate-500 mb-3">Recaudación del período filtrado</p>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                <div>
+                    <p class="text-slate-500">Efectivo</p>
+                    <p class="font-medium">${{ number_format($totales['efectivo'], 2, ',', '.') }}</p>
+                </div>
+                <div>
+                    <p class="text-slate-500">Tarjeta</p>
+                    <p class="font-medium">${{ number_format($totales['tarjeta'], 2, ',', '.') }}</p>
+                </div>
+                <div>
+                    <p class="text-slate-500">Transferencia</p>
+                    <p class="font-medium">${{ number_format($totales['transferencia'], 2, ',', '.') }}</p>
+                </div>
+                <div>
+                    <p class="text-slate-500">Mercado Pago</p>
+                    <p class="font-medium">${{ number_format($totales['mercadopago'], 2, ',', '.') }}</p>
+                </div>
+                <div>
+                    <p class="text-slate-500">Total general</p>
+                    <p class="font-semibold text-lg">${{ number_format($totales['general'], 2, ',', '.') }}</p>
+                </div>
+            </div>
+        </div>
+    @endif
 
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <div class="overflow-x-auto">

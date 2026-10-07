@@ -7,6 +7,7 @@ use App\Http\Requests\EditarItemsVentaRequest;
 use App\Models\IntentoPagoMercadopago;
 use App\Models\Pedido;
 use App\Models\Producto;
+use App\Models\User;
 use App\Services\EnvioTicketService;
 use App\Services\Facturacion\ComprobantePdfService;
 use App\Services\Facturacion\EmisionComprobanteService;
@@ -32,13 +33,15 @@ class VentaController extends Controller
             $porPagina = 10;
         }
 
-        [$numero, $fechaDesde, $fechaHasta, $fechaFiltradaManualmente] = $this->filtrosDesde($request);
+        [$numero, $fechaDesde, $fechaHasta, $fechaFiltradaManualmente, $vendedorId, $cajeroId] = $this->filtrosDesde($request);
 
-        $ventas = $this->ventasFiltradas($request, $numero, $fechaDesde, $fechaHasta)
+        $ventas = $this->ventasFiltradas($request, $numero, $fechaDesde, $fechaHasta, $vendedorId, $cajeroId)
             ->with(['vendedor', 'cajero', 'factura'])
             ->orderByDesc('cobrado_at')
             ->paginate($porPagina)
             ->withQueryString();
+
+        $esAdmin = $request->user()->role === 'admin';
 
         return view('ventas.index', [
             'ventas' => $ventas,
@@ -47,7 +50,41 @@ class VentaController extends Controller
             'fechaDesde' => $fechaDesde,
             'fechaHasta' => $fechaHasta,
             'fechaFiltradaManualmente' => $fechaFiltradaManualmente,
+            'vendedorId' => $vendedorId,
+            'cajeroId' => $cajeroId,
+            'usuariosParaFiltro' => User::where('empresa_id', $request->user()->empresa_id)->orderBy('name')->get(['id', 'name']),
+            // La recaudación por medio de pago es información sensible del
+            // negocio (cuánto entró de cada forma) — solo el admin la ve.
+            // Se calcula del mismo query ya filtrado, sin paginar, para que
+            // siempre refleje exactamente lo que se está mirando en la tabla.
+            'totales' => $esAdmin
+                ? $this->totalesPorMedio($this->ventasFiltradas($request, $numero, $fechaDesde, $fechaHasta, $vendedorId, $cajeroId))
+                : null,
         ]);
+    }
+
+    /**
+     * @return array{efectivo: float, tarjeta: float, transferencia: float, mercadopago: float, general: float}
+     */
+    private function totalesPorMedio(Builder $query): array
+    {
+        $fila = $query->selectRaw('
+            COALESCE(SUM(monto_efectivo), 0) as efectivo,
+            COALESCE(SUM(monto_tarjeta), 0) as tarjeta,
+            COALESCE(SUM(monto_transferencia), 0) as transferencia,
+            COALESCE(SUM(monto_mercadopago), 0) as mercadopago
+        ')->first();
+
+        $totales = [
+            'efectivo' => (float) $fila->efectivo,
+            'tarjeta' => (float) $fila->tarjeta,
+            'transferencia' => (float) $fila->transferencia,
+            'mercadopago' => (float) $fila->mercadopago,
+        ];
+
+        $totales['general'] = round(array_sum($totales), 2);
+
+        return $totales;
     }
 
     /**
@@ -56,9 +93,9 @@ class VentaController extends Controller
      */
     public function exportarPdf(Request $request, ReportePdfService $reportes): Response
     {
-        [$numero, $fechaDesde, $fechaHasta] = $this->filtrosDesde($request);
+        [$numero, $fechaDesde, $fechaHasta, , $vendedorId, $cajeroId] = $this->filtrosDesde($request);
 
-        $ventas = $this->ventasFiltradas($request, $numero, $fechaDesde, $fechaHasta)
+        $ventas = $this->ventasFiltradas($request, $numero, $fechaDesde, $fechaHasta, $vendedorId, $cajeroId)
             ->with(['vendedor', 'cajero', 'factura'])
             ->orderBy('cobrado_at')
             ->get();
@@ -74,7 +111,7 @@ class VentaController extends Controller
     }
 
     /**
-     * @return array{0: string, 1: string, 2: string, 3: bool}
+     * @return array{0: string, 1: string, 2: string, 3: bool, 4: ?int, 5: ?int}
      */
     private function filtrosDesde(Request $request): array
     {
@@ -82,18 +119,28 @@ class VentaController extends Controller
         $fechaDesde = $request->input('fecha_desde', now()->format('Y-m-d'));
         $fechaHasta = $request->input('fecha_hasta', now()->format('Y-m-d'));
         $fechaFiltradaManualmente = $request->has('fecha_desde') || $request->has('fecha_hasta');
+        $vendedorId = $request->filled('vendedor_id') ? (int) $request->input('vendedor_id') : null;
+        $cajeroId = $request->filled('cajero_id') ? (int) $request->input('cajero_id') : null;
 
-        return [$numero, $fechaDesde, $fechaHasta, $fechaFiltradaManualmente];
+        return [$numero, $fechaDesde, $fechaHasta, $fechaFiltradaManualmente, $vendedorId, $cajeroId];
     }
 
-    private function ventasFiltradas(Request $request, string $numero, ?string $fechaDesde, ?string $fechaHasta): Builder
-    {
+    private function ventasFiltradas(
+        Request $request,
+        string $numero,
+        ?string $fechaDesde,
+        ?string $fechaHasta,
+        ?int $vendedorId = null,
+        ?int $cajeroId = null,
+    ): Builder {
         return Pedido::query()
             ->where('empresa_id', $request->user()->empresa_id)
             ->where('estado', Pedido::ESTADO_COBRADO)
             ->when($numero !== '', fn ($q) => $q->where('numero_venta', (int) $numero))
             ->when($fechaDesde, fn ($q) => $q->whereDate('cobrado_at', '>=', $fechaDesde))
-            ->when($fechaHasta, fn ($q) => $q->whereDate('cobrado_at', '<=', $fechaHasta));
+            ->when($fechaHasta, fn ($q) => $q->whereDate('cobrado_at', '<=', $fechaHasta))
+            ->when($vendedorId, fn ($q) => $q->where('vendedor_id', $vendedorId))
+            ->when($cajeroId, fn ($q) => $q->where('cobrado_por', $cajeroId));
     }
 
     private function descripcionFiltroVentas(string $numero, ?string $fechaDesde, ?string $fechaHasta): string
