@@ -337,7 +337,7 @@ class VentaController extends Controller
 
         $pedido->load(['items', 'vendedor', 'cajero']);
 
-        return response($pdf->generarFacturaHtml($factura, $pedido, modoWeb: true));
+        return response($pdf->generarFacturaHtml($factura, $pedido, modoWeb: true, volverUrl: $this->volverUrlDesde($request, $pedido)));
     }
 
     public function imprimirNotaCredito(Request $request, Pedido $pedido, ComprobantePdfService $pdf): Response
@@ -353,7 +353,7 @@ class VentaController extends Controller
 
         $pedido->load(['items', 'vendedor', 'cajero']);
 
-        return response($pdf->generarNotaCreditoHtml($notaCredito, $pedido, modoWeb: true));
+        return response($pdf->generarNotaCreditoHtml($notaCredito, $pedido, modoWeb: true, volverUrl: $this->volverUrlDesde($request, $pedido)));
     }
 
     public function imprimirRemito(Request $request, Pedido $pedido, ComprobantePdfService $pdf): Response
@@ -367,7 +367,25 @@ class VentaController extends Controller
 
         $pedido->load(['items', 'vendedor', 'cajero']);
 
-        return response($pdf->generarRemitoHtml($pedido, modoWeb: true));
+        return response($pdf->generarRemitoHtml($pedido, modoWeb: true, volverUrl: $this->volverUrlDesde($request, $pedido)));
+    }
+
+    /**
+     * El botón "Volver" de estas vistas de impresión necesita saber a qué
+     * página regresar: normalmente a la venta (ventas.show), pero cuando el
+     * link viene del modal de "¿imprimir el comprobante?" que aparece justo
+     * después de cobrar (ver modal-comprobante-listo.blade.php), esa página
+     * ya no es Ventas sino Caja o Carritos — de donde se cobró realmente.
+     * Se usa una lista blanca de valores cortos (no una URL cruda por query
+     * string) para no abrir la puerta a un open redirect.
+     */
+    private function volverUrlDesde(Request $request, Pedido $pedido): string
+    {
+        return match ($request->query('origen')) {
+            'caja' => route('caja.index'),
+            'carritos' => route('carritos.index'),
+            default => route('ventas.show', $pedido),
+        };
     }
 
     public function notaCreditoPdf(Request $request, Pedido $pedido, ComprobantePdfService $pdf): Response
