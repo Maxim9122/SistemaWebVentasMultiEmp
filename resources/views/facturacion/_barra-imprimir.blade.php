@@ -42,7 +42,7 @@ manda. La barra nunca sale impresa: @media print la oculta. --}}
         }
     </style>
     <div class="barra-imprimir">
-        <button type="button" onclick="history.back()">&larr; Volver</button>
+        <button type="button" onclick="window.opener ? window.close() : history.back()">&larr; Volver</button>
         <button type="button" class="imprimir" onclick="window.print()">Imprimir</button>
     </div>
 @endif
