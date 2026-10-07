@@ -42,11 +42,27 @@ manda. La barra nunca sale impresa: @media print la oculta. --}}
         }
     </style>
     <div class="barra-imprimir">
-        @if ($volverUrl ?? null)
-            <a href="{{ $volverUrl }}" style="text-decoration:none;display:inline-flex;align-items:center;font-family:sans-serif;font-size:14px;font-weight:600;padding:8px 14px;border-radius:6px;border:1px solid #475569;background:transparent;color:#fff;">&larr; Volver</a>
-        @else
-            <button type="button" onclick="window.opener ? window.close() : history.back()">&larr; Volver</button>
-        @endif
+        {{--
+            En PC esto se abre en pestaña nueva de verdad: window.close() la
+            cierra y el usuario vuelve a ver, debajo, la página desde donde
+            vino (Caja, Carritos o Ventas), tal cual estaba.
+            En el celular muchos navegadores ignoran window.close() en
+            silencio (no pasa nada, no tira error) porque no abren una
+            pestaña "de verdad" — por eso, si seguimos acá 150ms después de
+            intentarlo, asumimos que no cerró y navegamos a mano a
+            $volverUrl (que ya viene resuelta a Caja/Carritos/Ventas según
+            desde dónde se cobró — ver VentaController::volverUrlDesde()).
+        --}}
+        <button type="button" onclick="volverComprobante(this)">&larr; Volver</button>
         <button type="button" class="imprimir" onclick="window.print()">Imprimir</button>
     </div>
+    <script>
+        function volverComprobante(boton) {
+            boton.disabled = true;
+            window.close();
+            setTimeout(function () {
+                window.location.href = @json($volverUrl ?? url()->previous());
+            }, 150);
+        }
+    </script>
 @endif
