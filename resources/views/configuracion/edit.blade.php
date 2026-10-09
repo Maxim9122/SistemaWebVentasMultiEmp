@@ -326,9 +326,40 @@
                         funcionando sin cortes).
                     </p>
                 @elseif ($empresa->credencialFacturacion?->estado === \App\Models\CredencialFacturacion::ESTADO_PENDIENTE_ONBOARDING)
-                    <p class="text-sm text-amber-700 mb-3">
+                    <p id="facturacion_pendiente_aviso" class="text-sm text-amber-700 mb-3">
                         Se inició la configuración pero todavía no se completó. Si el link venció, volvé a iniciar el proceso.
+                        Si ya subiste el certificado, esto se va a actualizar solo en unos segundos.
                     </p>
+                    <script>
+                        (function () {
+                            // Mientras la credencial está "pendiente_onboarding", el webhook
+                            // que la activa llega en segundo plano (desde la pestaña del
+                            // onboarding, que ya se cerró o está aparte) — se consulta cada
+                            // pocos segundos y, apenas pasa a activa, se recarga la página
+                            // sola en vez de depender de que el usuario la actualice a mano.
+                            var intentos = 0;
+                            var maximoIntentos = 40; // ~3 minutos a 5s cada uno, después se deja de insistir
+
+                            var intervalo = setInterval(function () {
+                                intentos++;
+
+                                if (intentos > maximoIntentos) {
+                                    clearInterval(intervalo);
+                                    return;
+                                }
+
+                                fetch("{{ route('configuracion.facturacion.estado') }}", { headers: { 'Accept': 'application/json' } })
+                                    .then(function (respuesta) { return respuesta.ok ? respuesta.json() : null; })
+                                    .then(function (datos) {
+                                        if (datos && datos.activa) {
+                                            clearInterval(intervalo);
+                                            window.location.reload();
+                                        }
+                                    })
+                                    .catch(function () {});
+                            }, 5000);
+                        })();
+                    </script>
                 @else
                     <p class="text-slate-500 text-sm mb-3">
                         Conectá tu certificado AFIP para poder emitir comprobantes con CAE automáticamente al cobrar.

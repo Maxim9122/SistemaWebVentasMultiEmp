@@ -2,14 +2,33 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CredencialFacturacion;
 use App\Services\Facturacion\Exceptions\CuitYaRegistradoException;
 use App\Services\Facturacion\OnboardingFacturacionService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class FacturacionElectronicaController extends Controller
 {
+    /**
+     * El onboarding real pasa por una pestaña aparte (el sitio de AFIP/la
+     * API de facturación) y se confirma por un webhook que llega en
+     * segundo plano — la pestaña de Configuración no se entera sola. Esto
+     * lo consulta la pantalla mientras está "pendiente_onboarding", para
+     * poder refrescarse sin que el usuario tenga que recargar a mano.
+     */
+    public function estado(Request $request): JsonResponse
+    {
+        $credencial = $request->user()->empresa->credencialFacturacion;
+
+        return response()->json([
+            'estado' => $credencial?->estado,
+            'activa' => $credencial?->estado === CredencialFacturacion::ESTADO_ACTIVA,
+        ]);
+    }
+
     public function iniciar(Request $request, OnboardingFacturacionService $onboarding): RedirectResponse
     {
         $empresa = $request->user()->empresa;

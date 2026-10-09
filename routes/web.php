@@ -188,6 +188,8 @@ Route::middleware('auth')->group(function () {
 
             Route::post('/configuracion/facturacion-electronica', [FacturacionElectronicaController::class, 'iniciar'])
                 ->name('configuracion.facturacion.iniciar');
+            Route::get('/configuracion/facturacion-electronica/estado', [FacturacionElectronicaController::class, 'estado'])
+                ->name('configuracion.facturacion.estado');
 
             Route::get('/configuracion/mercadopago/conectar', [MercadoPagoConfiguracionController::class, 'conectar'])
                 ->name('configuracion.mercadopago.conectar');
