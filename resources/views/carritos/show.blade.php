@@ -25,6 +25,17 @@
                 </button>
             </form>
         @endif
+
+        {{-- Solo para quien puede cobrar (cajero_vendedor) y todavía no abrió
+        su caja hoy — un vendedor puro no tiene caja que abrir. Para cerrar
+        hay que ir a "Mi caja": ahí se ve el detalle de lo cobrado antes de
+        declarar el cierre, no es un atajo de un solo paso como abrir. --}}
+        @if (auth()->user()->role === 'cajero_vendedor' && ! auth()->user()->cajaAbierta())
+            <button type="button" id="btn_abrir_caja_carritos"
+                class="rounded px-3 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white">
+                Abrir caja
+            </button>
+        @endif
     </div>
 
     <div class="bg-white rounded-lg shadow overflow-hidden mb-4">
@@ -334,5 +345,7 @@
             'redirectUrl' => route('carritos.index'),
             'intentoQrPendiente' => $intentoQrPendiente,
         ])
+
+        @include('partials.modal-abrir-caja')
     @endif
 @endsection
