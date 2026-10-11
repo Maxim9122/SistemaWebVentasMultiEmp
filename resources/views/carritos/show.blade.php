@@ -196,6 +196,12 @@
             const hidden = document.getElementById('producto_id_seleccionado');
             const lista = document.getElementById('resultados_producto');
             const cantidadInput = document.getElementById('cantidad');
+
+            // Acá empieza siempre la próxima venta — reforzado a mano
+            // además del atributo autofocus del HTML, porque después de
+            // cobrar (redirect a carritos.index -> carritos.show de un
+            // carrito nuevo) el foco no siempre termina quedando ahí solo.
+            input.focus();
             const form = document.getElementById('form_agregar_producto');
 
             let resultados = [];

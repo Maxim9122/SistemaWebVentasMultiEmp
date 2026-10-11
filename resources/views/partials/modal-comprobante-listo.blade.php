@@ -30,11 +30,33 @@
     (function () {
         var modal = document.getElementById('modal_comprobante_listo');
         var cerrar = document.getElementById('modal_comprobante_listo_cerrar');
+        var imprimir = modal.querySelector('a[target="_blank"]');
+
+        // En Carritos, el buscador de productos es de donde siempre arranca
+        // la próxima venta — si este modal aparece encima (recién cobrada
+        // una venta), al cerrarlo (o al mandar a imprimir, que abre en otra
+        // pestaña y deja esta tal cual) el foco tiene que volver ahí. No
+        // existe en otras pantallas (ej. Caja), por eso el "?." — ahí este
+        // código simplemente no hace nada.
+        function volverAlBuscador() {
+            document.getElementById('buscador_producto')?.focus();
+        }
+
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+
         cerrar.addEventListener('click', function () {
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+            volverAlBuscador();
         });
+
+        if (imprimir) {
+            imprimir.addEventListener('click', function () {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                volverAlBuscador();
+            });
+        }
     })();
 </script>
