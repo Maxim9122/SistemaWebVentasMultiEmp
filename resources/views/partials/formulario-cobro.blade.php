@@ -183,6 +183,7 @@
         const ajustes = @json($ajustes);
         const clientes = @json($clientesParaBuscador);
         const fiadoHabilitado = @json($fiadoHabilitado);
+        const mpHabilitado = @json($mpHabilitado);
 
         const $ = (sufijo) => document.getElementById(prefijo + sufijo);
 
@@ -497,6 +498,41 @@
                 }
 
                 actualizarVisibilidadCondicionIva();
+            });
+        }
+
+        // --- atajos de teclado: Ctrl+M elige Mercado Pago, Ctrl+Enter confirma ---
+        // Mismo criterio que el resto: si la empresa no tiene Mercado Pago
+        // habilitado, no hay nada para seleccionar y el atajo no hace nada.
+        if (mpHabilitado) {
+            document.addEventListener('keydown', function (evento) {
+                if (!evento.ctrlKey || evento.altKey || evento.shiftKey) {
+                    return;
+                }
+
+                const tecla = evento.key.toLowerCase();
+
+                if (tecla === 'm') {
+                    evento.preventDefault();
+
+                    if (modoDividido) {
+                        // Mismo efecto que tocar "Pagar con un solo medio".
+                        modoDividido = false;
+                        pagoSimple.classList.remove('hidden');
+                        pagoDividido.classList.add('hidden');
+                        toggleDividir.textContent = 'Dividir en varios medios';
+                    }
+
+                    selectSimple.value = 'mercadopago';
+                    actualizarSimple();
+                } else if (tecla === 'enter') {
+                    // requestSubmit() (no submit()) para que el listener de
+                    // modal-cobro-qr.blade.php, que escucha el evento
+                    // "submit" de este mismo form, lo siga interceptando
+                    // igual que con un click normal en "Confirmar cobro".
+                    evento.preventDefault();
+                    selectSimple.closest('form')?.requestSubmit();
+                }
             });
         }
     })();
