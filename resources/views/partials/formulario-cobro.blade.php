@@ -213,6 +213,12 @@
         const hiddenFiado = $('_monto_fiado');
         const textoRestante = $('_texto_restante');
         const desglose = $('_desglose');
+        const formCobro = selectSimple.closest('form');
+
+        // Clave de localStorage para recordar la selección de este carrito
+        // puntual (medio de pago, factura, cliente) mientras se arma la
+        // venta — ver guardarBorrador()/aplicarBorrador() más abajo.
+        const storageKeyBorrador = 'borrador_cobro_' + {{ (int) $pedido->id }};
 
         let modoDividido = false;
 
@@ -232,6 +238,7 @@
                 : 'Total a cobrar: ' + formatearMoneda(ajustado) + detalle;
 
             actualizarVisibilidadCliente();
+            guardarBorrador();
         }
 
         function actualizarDividido() {
@@ -288,6 +295,7 @@
                 : '';
 
             actualizarVisibilidadCliente();
+            guardarBorrador();
         }
 
         toggleDividir.addEventListener('click', function () {
@@ -390,6 +398,12 @@
             }
         }
 
+        // Se lee ANTES de actualizarSimple() porque esa llamada (como
+        // cualquier otra que cambia el medio/comprobante) ya guarda su
+        // propio estado por defecto — si se leyera después, pisaría el
+        // borrador real con los valores iniciales antes de poder usarlo.
+        const borradorLeido = leerBorrador();
+
         actualizarSimple();
 
         if (selectComprobante) {
@@ -436,6 +450,7 @@
                 indiceActivoCliente = -1;
                 renderizarClientes();
                 actualizarVisibilidadCondicionIva();
+                guardarBorrador();
             }
 
             inputCliente.addEventListener('input', function () {
@@ -504,6 +519,7 @@
                 }
 
                 actualizarVisibilidadCondicionIva();
+                guardarBorrador();
             });
         }
 
@@ -562,5 +578,141 @@
                 selectSimple.closest('form')?.requestSubmit();
             }
         });
+
+        // --- borrador: recordar la selección mientras se arma el carrito ---
+        // Vive en localStorage (no en el servidor): es puramente un estado
+        // de UI, no hace falta una columna nueva en la base para esto. Se
+        // guarda por pedido.id, así que nunca se mezcla con otro carrito.
+        // No hace falta borrarlo a mano cuando la venta se confirma: una vez
+        // que el pedido deja de ser un carrito vigente (cobrado, programado
+        // o cancelado), CarritoController ya redirige lejos de esta página
+        // antes de que este script vuelva a cargar — el borrador queda
+        // inerte, nunca se vuelve a leer. La única limpieza explícita que
+        // hace falta es la de "Cancelar carrito" (ver carritos/show.blade.php,
+        // que sí puede volver a mostrar esta misma pantalla antes) y la del
+        // pago QR aprobado (ver el evento "cobro:confirmado" más abajo).
+        function leerBorrador() {
+            try {
+                const guardado = localStorage.getItem(storageKeyBorrador);
+                return guardado ? JSON.parse(guardado) : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function guardarBorrador() {
+            try {
+                const tipoFacturaInput = formCobro ? formCobro.querySelector('input[name="tipo_factura"]:checked') : null;
+                const selectCondicionIva = $('_cliente_condicion_iva');
+
+                localStorage.setItem(storageKeyBorrador, JSON.stringify({
+                    tipoComprobante: selectComprobante ? selectComprobante.value : null,
+                    modoDividido: modoDividido,
+                    medioSimple: selectSimple.value,
+                    montos: {
+                        efectivo: inputEfectivo.value,
+                        tarjeta: inputTarjeta.value,
+                        transferencia: inputTransferencia.value,
+                        mercadopago: inputMercadopago ? inputMercadopago.value : '',
+                        fiado: inputFiado ? inputFiado.value : '',
+                    },
+                    clienteId: hiddenCliente ? hiddenCliente.value : '',
+                    clienteTexto: inputCliente ? inputCliente.value : '',
+                    nuevoClienteVisible: formNuevoCliente ? !formNuevoCliente.classList.contains('hidden') : false,
+                    clienteNombre: $('_cliente_nombre') ? $('_cliente_nombre').value : '',
+                    clienteCuit: $('_cliente_cuit') ? $('_cliente_cuit').value : '',
+                    clienteTelefono: $('_cliente_telefono') ? $('_cliente_telefono').value : '',
+                    tipoFactura: tipoFacturaInput ? tipoFacturaInput.value : null,
+                    condicionIva: selectCondicionIva ? selectCondicionIva.value : null,
+                }));
+            } catch (e) {
+                // Almacenamiento bloqueado (modo privado, cuota llena, etc.)
+                // — el formulario sigue funcionando igual, solo no recuerda
+                // nada entre recargas.
+            }
+        }
+
+        function aplicarBorrador(estado) {
+            if (estado.tipoComprobante && selectComprobante) {
+                selectComprobante.value = estado.tipoComprobante;
+            }
+
+            if (estado.modoDividido) {
+                modoDividido = true;
+                pagoSimple.classList.add('hidden');
+                pagoDividido.classList.remove('hidden');
+                toggleDividir.textContent = 'Pagar con un solo medio';
+
+                if (estado.montos) {
+                    inputEfectivo.value = estado.montos.efectivo || '';
+                    inputTarjeta.value = estado.montos.tarjeta || '';
+                    inputTransferencia.value = estado.montos.transferencia || '';
+                    if (inputMercadopago) inputMercadopago.value = estado.montos.mercadopago || '';
+                    if (inputFiado) inputFiado.value = estado.montos.fiado || '';
+                }
+
+                actualizarDividido();
+            } else if (estado.medioSimple) {
+                selectSimple.value = estado.medioSimple;
+                actualizarSimple();
+            }
+
+            if (estado.nuevoClienteVisible && formNuevoCliente) {
+                formNuevoCliente.classList.remove('hidden');
+                if (toggleNuevoCliente) toggleNuevoCliente.textContent = 'Buscar cliente existente';
+
+                const campoNombre = $('_cliente_nombre');
+                const campoCuit = $('_cliente_cuit');
+                const campoTelefono = $('_cliente_telefono');
+                if (campoNombre) campoNombre.value = estado.clienteNombre || '';
+                if (campoCuit) campoCuit.value = estado.clienteCuit || '';
+                if (campoTelefono) campoTelefono.value = estado.clienteTelefono || '';
+            } else if (estado.clienteId && hiddenCliente) {
+                // Se vuelve a buscar en la lista actual (no se confía ciego en
+                // lo guardado) por si el cliente se desactivó mientras tanto.
+                const clienteGuardado = clientes.find(function (c) { return String(c.id) === String(estado.clienteId); });
+
+                if (clienteGuardado) {
+                    hiddenCliente.value = clienteGuardado.id;
+                    inputCliente.value = estado.clienteTexto || clienteGuardado.nombre;
+                }
+            }
+
+            if (estado.tipoFactura && formCobro) {
+                const radio = formCobro.querySelector('input[name="tipo_factura"][value="' + estado.tipoFactura + '"]');
+                if (radio) radio.checked = true;
+            }
+
+            actualizarVisibilidadCliente();
+
+            if (estado.condicionIva) {
+                const selectCondicionIva = $('_cliente_condicion_iva');
+                if (selectCondicionIva && bloqueCondicionIva && !bloqueCondicionIva.classList.contains('hidden')) {
+                    selectCondicionIva.value = estado.condicionIva;
+                }
+            }
+
+            guardarBorrador();
+        }
+
+        if (borradorLeido) {
+            aplicarBorrador(borradorLeido);
+        }
+
+        if (formCobro) {
+            formCobro.addEventListener('input', guardarBorrador);
+            formCobro.addEventListener('change', guardarBorrador);
+
+            // Lo dispara modal-cobro-qr.blade.php justo antes de redirigir
+            // por un pago ya aprobado — ahí sí hay que limpiar: a diferencia
+            // de cobrar/programar normal, cancelar un cobro QR deja el
+            // carrito intacto para reintentar, así que no alcanza con el
+            // razonamiento de "la página ya no se vuelve a cargar".
+            formCobro.addEventListener('cobro:confirmado', function () {
+                try {
+                    localStorage.removeItem(storageKeyBorrador);
+                } catch (e) {}
+            });
+        }
     })();
 </script>

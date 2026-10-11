@@ -169,7 +169,7 @@
             </button>
         </form>
 
-        <form method="POST" action="{{ route('carritos.cancelar', $pedido) }}">
+        <form method="POST" action="{{ route('carritos.cancelar', $pedido) }}" id="form_cancelar_carrito">
             @csrf
             <button type="submit" class="rounded px-4 py-2 text-sm font-medium text-red-600 hover:underline">
                 Cancelar carrito
@@ -335,6 +335,25 @@
                         return;
                     }
                 }
+            });
+        })();
+
+        (function () {
+            // Al cancelar el carrito de verdad se termina (CarritoController
+            // lo marca como cancelado) — a diferencia de cobrar/programar, acá
+            // sí conviene borrar el borrador de forma explícita, porque
+            // "Cancelar" puede volver a traer a esta misma pantalla si algo
+            // falla antes de llegar al servidor (ej. sin conexión).
+            const formCancelar = document.getElementById('form_cancelar_carrito');
+
+            if (! formCancelar) {
+                return;
+            }
+
+            formCancelar.addEventListener('submit', function () {
+                try {
+                    localStorage.removeItem('borrador_cobro_' + {{ (int) $pedido->id }});
+                } catch (e) {}
             });
         })();
     </script>

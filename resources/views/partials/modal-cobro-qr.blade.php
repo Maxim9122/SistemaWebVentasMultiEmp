@@ -167,6 +167,12 @@
                     }
 
                     if (datos.estado === 'aprobado') {
+                        // Señal genérica para quien quiera reaccionar a que
+                        // esta venta ya se confirmó de verdad — hoy la usa
+                        // formulario-cobro.blade.php para borrar el borrador
+                        // guardado de este carrito (ver ahí). No pasa nada
+                        // si no hay nadie escuchando (ej. en Caja).
+                        form.dispatchEvent(new CustomEvent('cobro:confirmado'));
                         window.location.href = redirectUrl;
 
                         return;
