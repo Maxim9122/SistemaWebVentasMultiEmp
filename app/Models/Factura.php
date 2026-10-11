@@ -27,6 +27,7 @@ class Factura extends Model
         'cliente_id',
         'cliente_nombre',
         'cliente_cuit',
+        'cliente_condicion_iva',
         'tipo_factura',
         'numero_comprobante',
         'comprobante_externo_id',

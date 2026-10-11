@@ -195,6 +195,7 @@ class MercadoPagoWebhookService
                 ] : null,
                 $montos['tipo_factura'] ?? null,
                 (float) ($montos['monto_fiado'] ?? 0),
+                $montos['cliente_condicion_iva'] ?? null,
             );
         } catch (\RuntimeException $e) {
             // Mercado Pago YA acreditó el pago de verdad, pero algo local

@@ -116,6 +116,14 @@ class EmisionNotaCreditoService
             'comprobante_asociado_id' => (int) $factura->comprobante_externo_id,
         ];
 
+        // Misma condición frente al IVA que se usó en la factura original —
+        // si no se conocía en ese momento, tampoco se manda acá.
+        $codigoCondicionIva = CondicionIva::codigoAfip($factura->cliente_condicion_iva);
+
+        if ($codigoCondicionIva !== null) {
+            $body['cliente_condicion_iva'] = $codigoCondicionIva;
+        }
+
         try {
             $response = $this->client->emitirComprobante($credencial->api_key, 'nc-'.$notaCredito->id, $body);
         } catch (\Throwable $e) {

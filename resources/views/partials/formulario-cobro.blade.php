@@ -2,7 +2,7 @@
     $soloMedioPago = $soloMedioPago ?? false;
     $fiadoHabilitado = $empresa->permite_fiado && ! $soloMedioPago;
     $mpHabilitado = $empresa->pagoQrHabilitado() && ! $soloMedioPago;
-    $clientesParaBuscador = $clientes->map(fn ($c) => ['id' => $c->id, 'nombre' => $c->nombre, 'cuit' => $c->cuit])->values();
+    $clientesParaBuscador = $clientes->map(fn ($c) => ['id' => $c->id, 'nombre' => $c->nombre, 'cuit' => $c->cuit, 'condicion_iva' => $c->condicion_iva])->values();
     $ajustes = [
         'efectivo' => (float) $empresa->ajuste_efectivo_porcentaje,
         'tarjeta' => (float) $empresa->ajuste_tarjeta_porcentaje,
@@ -149,6 +149,27 @@
                         <p class="text-sm text-slate-600">Factura C</p>
                         <input type="hidden" name="tipo_factura" value="C">
                     @endif
+                </div>
+            @endif
+
+            @if ($empresa->facturacionHabilitada())
+                {{-- Solo se muestra cuando el cliente elegido (o el que se está
+                cargando nuevo) todavía no tiene esta condición guardada — ver
+                actualizarVisibilidadCondicionIva() más abajo. Si se completa
+                acá, ProcesadorDeCobro::cobrar() la graba en el cliente para
+                que la próxima venta no la vuelva a pedir. --}}
+                <div id="{{ $idUnico }}_bloque_condicion_iva" class="hidden">
+                    <label for="{{ $idUnico }}_cliente_condicion_iva" class="block text-sm font-medium mb-1">
+                        Condición del cliente frente al IVA
+                    </label>
+                    <select name="cliente_condicion_iva" id="{{ $idUnico }}_cliente_condicion_iva"
+                        class="w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                        <option value="">Sin especificar</option>
+                        @foreach (\App\Services\Facturacion\CondicionIva::OPCIONES as $clave => $etiqueta)
+                            <option value="{{ $clave }}">{{ $etiqueta }}</option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-slate-400 mt-1">Este cliente todavía no la tiene cargada — queda guardada para la próxima vez.</p>
                 </div>
             @endif
         </div>
@@ -301,6 +322,7 @@
         const selectComprobante = $('_tipo_comprobante');
         const bloqueCliente = $('_bloque_cliente');
         const bloqueTipoFactura = $('_bloque_tipo_factura');
+        const bloqueCondicionIva = $('_bloque_condicion_iva');
         const notaCliente = $('_nota_cliente');
 
         function actualizarVisibilidadCliente() {
@@ -323,6 +345,41 @@
                 } else {
                     notaCliente.textContent = 'Obligatorio para Factura A. Para B/C, dejalo vacío para facturar a Consumidor Final.';
                 }
+            }
+
+            actualizarVisibilidadCondicionIva();
+        }
+
+        // Se consultan los elementos con $() en cada llamada (en vez de
+        // guardarlos en una const acá arriba) porque esta función se dispara
+        // desde actualizarVisibilidadCliente() ya en el primer render
+        // (actualizarSimple() más abajo), antes de que existan las consts de
+        // la sección "buscador de cliente" más adelante en este mismo script.
+        function actualizarVisibilidadCondicionIva() {
+            if (!bloqueCondicionIva) return;
+
+            const esFactura = selectComprobante && selectComprobante.value === 'factura';
+            const campoCliente = $('_cliente_id');
+            const clienteIdActual = campoCliente ? campoCliente.value : '';
+            const formNuevo = $('_form_nuevo_cliente');
+            const nuevoClienteVisible = !!formNuevo && !formNuevo.classList.contains('hidden');
+
+            let faltaCondicion = false;
+
+            if (nuevoClienteVisible) {
+                // Un cliente recién cargado nunca tiene esto guardado todavía.
+                faltaCondicion = true;
+            } else if (clienteIdActual) {
+                const clienteSeleccionado = clientes.find(function (c) { return String(c.id) === String(clienteIdActual); });
+                faltaCondicion = !!clienteSeleccionado && !clienteSeleccionado.condicion_iva;
+            }
+
+            const mostrar = esFactura && faltaCondicion;
+            bloqueCondicionIva.classList.toggle('hidden', !mostrar);
+
+            if (!mostrar) {
+                const select = $('_cliente_condicion_iva');
+                if (select) select.value = '';
             }
         }
 
@@ -371,6 +428,7 @@
                 resultadosCliente = [];
                 indiceActivoCliente = -1;
                 renderizarClientes();
+                actualizarVisibilidadCondicionIva();
             }
 
             inputCliente.addEventListener('input', function () {
@@ -383,6 +441,7 @@
                 }).slice(0, 8);
 
                 renderizarClientes();
+                actualizarVisibilidadCondicionIva();
             });
 
             inputCliente.addEventListener('keydown', function (evento) {
@@ -436,6 +495,8 @@
                     hiddenCliente.value = '';
                     inputCliente.value = '';
                 }
+
+                actualizarVisibilidadCondicionIva();
             });
         }
     })();

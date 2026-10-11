@@ -22,6 +22,7 @@ class Cliente extends Model
         'garante',
         'activo',
         'fecha_promesa_pago',
+        'condicion_iva',
     ];
 
     protected function casts(): array

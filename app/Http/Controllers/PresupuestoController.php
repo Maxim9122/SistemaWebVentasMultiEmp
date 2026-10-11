@@ -266,6 +266,7 @@ class PresupuestoController extends Controller
                 ] : null,
                 $request->validated('tipo_factura'),
                 (float) ($request->validated('monto_fiado') ?: 0),
+                $request->validated('cliente_condicion_iva'),
             );
         } catch (\RuntimeException $e) {
             return back()->withErrors(['stock' => $e->getMessage()]);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\Facturacion\CondicionIva;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -39,6 +40,7 @@ class GuardarClienteRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255'],
             'direccion' => ['nullable', 'string', 'max:255'],
             'garante' => ['nullable', 'string', 'max:255'],
+            'condicion_iva' => ['nullable', Rule::in(array_keys(CondicionIva::OPCIONES))],
         ];
     }
 }

@@ -32,6 +32,10 @@ class ProcesadorDeCobro
      * @param  float  $montoFiado  Parte del total que queda a crédito (no se cobra ahora). No es un
      *                             medio de pago más: no tiene ajuste, no suma a total_cobrado (no es
      *                             plata que entró a la caja), y exige un cliente identificado.
+     * @param  ?string  $clienteCondicionIva  Clave de App\Services\Facturacion\CondicionIva — respaldo que
+     *                             se usa SOLO si el cliente (nuevo o ya existente) todavía no tiene esta
+     *                             condición guardada. Si se usa, también queda grabada en el cliente para
+     *                             que la próxima venta no la vuelva a pedir.
      * @return Factura|null  La factura recién creada (si tipoComprobante='factura'), para que el caller
      *                       dispare la emisión del comprobante DESPUÉS de esta transacción (sin locks activos).
      */
@@ -44,8 +48,9 @@ class ProcesadorDeCobro
         ?array $clienteNuevo = null,
         ?string $tipoFactura = null,
         float $montoFiado = 0.0,
+        ?string $clienteCondicionIva = null,
     ): ?Factura {
-        return DB::transaction(function () use ($pedido, $cajero, $montos, $tipoComprobante, $clienteId, $clienteNuevo, $tipoFactura, $montoFiado) {
+        return DB::transaction(function () use ($pedido, $cajero, $montos, $tipoComprobante, $clienteId, $clienteNuevo, $tipoFactura, $montoFiado, $clienteCondicionIva) {
             $pedidoActual = Pedido::where('id', $pedido->id)->lockForUpdate()->first();
 
             if (in_array($pedidoActual->estado, [Pedido::ESTADO_COBRADO, Pedido::ESTADO_CANCELADO], true)) {
@@ -122,6 +127,15 @@ class ProcesadorDeCobro
 
             $cliente = $clienteIdFinal ? Cliente::find($clienteIdFinal) : null;
 
+            // Si el cliente (nuevo recién creado, o uno ya existente) no
+            // tenía la condición frente al IVA guardada y se mandó una desde
+            // el formulario de cobro para completar el hueco, se la graba
+            // acá — así a la próxima venta de este cliente ya no hace falta
+            // volver a preguntarla.
+            if ($cliente && ! $cliente->condicion_iva && $clienteCondicionIva) {
+                $cliente->update(['condicion_iva' => $clienteCondicionIva]);
+            }
+
             $factura = null;
 
             if ($tipoComprobante === 'factura') {
@@ -131,6 +145,7 @@ class ProcesadorDeCobro
                     'cliente_id' => $clienteIdFinal,
                     'cliente_nombre' => $cliente->nombre ?? Pedido::CLIENTE_POR_DEFECTO,
                     'cliente_cuit' => $cliente->cuit ?? null,
+                    'cliente_condicion_iva' => $cliente->condicion_iva ?? $clienteCondicionIva,
                     'tipo_factura' => $tipoFactura,
                 ]);
             }

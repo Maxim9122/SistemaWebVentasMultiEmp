@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Concerns;
 
 use App\Models\Pedido;
+use App\Services\Facturacion\CondicionIva;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -35,6 +36,10 @@ trait ValidaCobro
             'cliente_cuit' => ['nullable', 'string', 'max:20'],
             'cliente_telefono' => ['nullable', 'string', 'max:50'],
             'tipo_factura' => ['nullable', Rule::in(Pedido::TIPOS_FACTURA)],
+            // Solo se usa como respaldo cuando el cliente elegido (o el
+            // nuevo que se está cargando) todavía no tiene este dato
+            // guardado — ver formulario-cobro.blade.php.
+            'cliente_condicion_iva' => ['nullable', Rule::in(array_keys(CondicionIva::OPCIONES))],
         ];
     }
 

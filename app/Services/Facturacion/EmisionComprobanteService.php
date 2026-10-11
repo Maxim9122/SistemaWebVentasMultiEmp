@@ -92,6 +92,16 @@ class EmisionComprobanteService
             'iva_detalle' => $esMonotributo ? [] : $this->iva->detalleParaComprobante($importe),
         ];
 
+        // Campo opcional — si no se conoce la condición del cliente frente
+        // al IVA, no se manda nada y la API sigue con su comportamiento de
+        // siempre (Factura A fuerza Responsable Inscripto igual; B/C quedan
+        // en Consumidor Final).
+        $codigoCondicionIva = CondicionIva::codigoAfip($factura->cliente_condicion_iva);
+
+        if ($codigoCondicionIva !== null) {
+            $body['cliente_condicion_iva'] = $codigoCondicionIva;
+        }
+
         try {
             $response = $this->client->emitirComprobante($credencial->api_key, 'venta-'.$pedido->id, $body);
         } catch (\Throwable $e) {

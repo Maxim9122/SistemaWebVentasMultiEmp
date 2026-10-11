@@ -19,6 +19,17 @@
                     class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
             </div>
 
+            <div>
+                <label for="condicion_iva" class="block text-sm font-medium mb-1">Condición frente al IVA</label>
+                <select id="condicion_iva" name="condicion_iva" class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                    <option value="">Sin especificar</option>
+                    @foreach (\App\Services\Facturacion\CondicionIva::OPCIONES as $clave => $etiqueta)
+                        <option value="{{ $clave }}" @selected(old('condicion_iva') === $clave)>{{ $etiqueta }}</option>
+                    @endforeach
+                </select>
+                <p class="text-xs text-slate-400 mt-1">Opcional — si no la cargás acá, te la va a pedir al facturarle por primera vez.</p>
+            </div>
+
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label for="telefono" class="block text-sm font-medium mb-1">Teléfono</label>

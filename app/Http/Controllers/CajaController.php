@@ -79,6 +79,7 @@ class CajaController extends Controller
                 ] : null,
                 $request->validated('tipo_factura'),
                 (float) ($request->validated('monto_fiado') ?: 0),
+                $request->validated('cliente_condicion_iva'),
             );
         } catch (\RuntimeException $e) {
             return back()->withErrors(['stock' => $e->getMessage()]);
@@ -122,6 +123,7 @@ class CajaController extends Controller
                     'cliente_cuit' => $request->validated('cliente_cuit'),
                     'cliente_telefono' => $request->validated('cliente_telefono'),
                     'tipo_factura' => $request->validated('tipo_factura'),
+                    'cliente_condicion_iva' => $request->validated('cliente_condicion_iva'),
                 ],
             );
         } catch (\RuntimeException $e) {
