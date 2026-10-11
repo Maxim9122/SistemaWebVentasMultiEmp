@@ -86,6 +86,39 @@
     <div id="{{ $idUnico }}_desglose" class="mt-2 text-sm text-slate-600"></div>
 </div>
 
+{{-- Solo se abre cuando el medio elegido es efectivo (modo simple, no
+dividido) — ahí sí tiene sentido preguntar con cuánto paga el cliente y
+calcular el vuelto. Nombre fijo (sin $idUnico) a propósito: este parcial
+se incluye una sola vez por página, y así coincide con el patrón que ya
+usan el resto de los modales (modal_abrir_caja, modal_cobro_qr), incluida
+la protección para que otros atajos de teclado no interfieran mientras
+este está abierto. --}}
+<div id="modal_pago_efectivo" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/50 p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+        <h2 class="text-lg font-semibold mb-1">Pago en efectivo</h2>
+        <p class="text-sm text-slate-500 mb-4">Total a cobrar: <span id="modal_pago_efectivo_total" class="font-medium text-slate-900"></span></p>
+
+        <label for="modal_pago_efectivo_recibido" class="block text-sm font-medium mb-1">¿Con cuánto paga el cliente?</label>
+        <input type="number" id="modal_pago_efectivo_recibido" step="0.01" min="0" inputmode="decimal"
+            class="w-full rounded border border-slate-300 text-lg focus:border-slate-500 focus:ring-slate-500">
+
+        <div class="mt-3 pt-3 border-t">
+            <p class="text-sm text-slate-500">Vuelto</p>
+            <p id="modal_pago_efectivo_vuelto" class="text-2xl font-semibold"></p>
+        </div>
+
+        <div class="flex gap-2 justify-end mt-5">
+            <button type="button" id="modal_pago_efectivo_cancelar" class="rounded px-4 py-2 text-sm font-medium text-slate-600 hover:underline">
+                Cancelar
+            </button>
+            <button type="button" id="modal_pago_efectivo_confirmar" class="rounded bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 text-sm font-medium">
+                Confirmar compra
+            </button>
+        </div>
+        <p class="text-xs text-slate-400 mt-2">Ctrl + Enter también confirma.</p>
+    </div>
+</div>
+
 @unless ($soloMedioPago)
     <div class="mb-4">
         <label for="{{ $idUnico }}_tipo_comprobante" class="block text-sm font-medium mb-1">Comprobante</label>
@@ -296,6 +329,117 @@
 
             actualizarVisibilidadCliente();
             guardarBorrador();
+        }
+
+        // --- modal "con cuánto paga" (solo efectivo, medio simple) ---
+        const modalPagoEfectivo = document.getElementById('modal_pago_efectivo');
+        const inputRecibidoEfectivo = document.getElementById('modal_pago_efectivo_recibido');
+        const textoTotalEfectivo = document.getElementById('modal_pago_efectivo_total');
+        const textoVueltoEfectivo = document.getElementById('modal_pago_efectivo_vuelto');
+        const btnConfirmarEfectivo = document.getElementById('modal_pago_efectivo_confirmar');
+        const btnCancelarEfectivo = document.getElementById('modal_pago_efectivo_cancelar');
+
+        function aplicaModalPagoEfectivo() {
+            return !!modalPagoEfectivo && !modoDividido && selectSimple.value === 'efectivo';
+        }
+
+        function modalPagoEfectivoVisible() {
+            return !!modalPagoEfectivo && !modalPagoEfectivo.classList.contains('hidden');
+        }
+
+        function actualizarVueltoEfectivo() {
+            const totalAjustado = calcularAjustado(total, 'efectivo');
+            const recibido = parseFloat(inputRecibidoEfectivo.value) || 0;
+            const vuelto = Math.round((recibido - totalAjustado) * 100) / 100;
+            const alcanza = recibido >= totalAjustado;
+
+            textoVueltoEfectivo.textContent = formatearMoneda(alcanza ? vuelto : 0);
+            textoVueltoEfectivo.className = 'text-2xl font-semibold ' + (alcanza ? 'text-emerald-600' : 'text-red-600');
+
+            if (btnConfirmarEfectivo) {
+                btnConfirmarEfectivo.disabled = !alcanza;
+            }
+        }
+
+        function abrirModalPagoEfectivo() {
+            if (!modalPagoEfectivo) return;
+
+            textoTotalEfectivo.textContent = formatearMoneda(calcularAjustado(total, 'efectivo'));
+            inputRecibidoEfectivo.value = '';
+            actualizarVueltoEfectivo();
+
+            modalPagoEfectivo.classList.remove('hidden');
+            modalPagoEfectivo.classList.add('flex');
+            inputRecibidoEfectivo.focus();
+        }
+
+        function cerrarModalPagoEfectivo() {
+            if (!modalPagoEfectivo) return;
+            modalPagoEfectivo.classList.add('hidden');
+            modalPagoEfectivo.classList.remove('flex');
+        }
+
+        // Dispara la confirmación REAL del formulario — a propósito llama a
+        // requestSubmit() directo en vez de simular un click en el botón de
+        // "Confirmar Compra": así nunca vuelve a pasar por el listener de
+        // ese botón (más abajo), que es el que decide si corresponde abrir
+        // este modal. El resto de los chequeos ya existentes (cambios sin
+        // guardar, cobro QR) siguen corriendo igual, porque sí escuchan el
+        // evento "submit" del form, que esto sí dispara de verdad.
+        function confirmarPagoEfectivo() {
+            const totalAjustado = calcularAjustado(total, 'efectivo');
+            const recibido = parseFloat(inputRecibidoEfectivo.value) || 0;
+
+            if (recibido < totalAjustado) {
+                inputRecibidoEfectivo.focus();
+                return;
+            }
+
+            cerrarModalPagoEfectivo();
+            formCobro.requestSubmit();
+        }
+
+        if (inputRecibidoEfectivo) {
+            inputRecibidoEfectivo.addEventListener('input', actualizarVueltoEfectivo);
+
+            // Este input vive técnicamente adentro del <form> (aunque se
+            // vea como una ventana aparte) — sin esto, un Enter suelto
+            // (sin Ctrl) dispararía el envío nativo del formulario antes
+            // de validar nada. El caso con Ctrl ya lo resuelve el atajo
+            // global de más abajo, por eso acá solo se atiende el Enter
+            // suelto (si se manejaran los dos acá, Ctrl+Enter terminaría
+            // llamando a confirmarPagoEfectivo() dos veces).
+            inputRecibidoEfectivo.addEventListener('keydown', function (evento) {
+                if (evento.key === 'Enter' && !evento.ctrlKey) {
+                    evento.preventDefault();
+                    confirmarPagoEfectivo();
+                }
+            });
+        }
+
+        if (btnCancelarEfectivo) {
+            btnCancelarEfectivo.addEventListener('click', cerrarModalPagoEfectivo);
+        }
+
+        if (btnConfirmarEfectivo) {
+            btnConfirmarEfectivo.addEventListener('click', confirmarPagoEfectivo);
+        }
+
+        // Intercepta el click en "Confirmar Compra"/"Confirmar cobro" (el
+        // botón real de submit, que cada pantalla nombra distinto) — si
+        // corresponde, abre el modal en vez de dejar que el form se mande
+        // solo. requestSubmit() desde el modal NO dispara este listener de
+        // nuevo (no es un click en el botón), así que no hace falta ninguna
+        // bandera para "esta vez sí dejar pasar".
+        const btnSubmitCobro = formCobro ? formCobro.querySelector('button[type="submit"]') : null;
+
+        if (btnSubmitCobro) {
+            btnSubmitCobro.addEventListener('click', function (evento) {
+                if (aplicaModalPagoEfectivo()) {
+                    evento.preventDefault();
+                    abrirModalPagoEfectivo();
+                }
+            });
         }
 
         toggleDividir.addEventListener('click', function () {
@@ -555,11 +699,21 @@
                 return;
             }
 
-            if (dentroDeOtroModalAbierto(document.activeElement)) {
+            const tecla = evento.key.toLowerCase();
+
+            // Si el modal de "con cuánto paga" ya está abierto, Ctrl+Enter
+            // confirma DESDE AHÍ — se chequea antes que nada (incluso antes
+            // del guard de "otro modal" de abajo, que si no lo bloquearía,
+            // porque este modal también se llama "modal_...").
+            if (tecla === 'enter' && modalPagoEfectivoVisible()) {
+                evento.preventDefault();
+                confirmarPagoEfectivo();
                 return;
             }
 
-            const tecla = evento.key.toLowerCase();
+            if (dentroDeOtroModalAbierto(document.activeElement)) {
+                return;
+            }
 
             if (tecla === 'e') {
                 evento.preventDefault();
@@ -570,11 +724,17 @@
                 evento.preventDefault();
                 elegirMedioSimple('mercadopago');
             } else if (tecla === 'enter') {
+                evento.preventDefault();
+
+                if (aplicaModalPagoEfectivo()) {
+                    abrirModalPagoEfectivo();
+                    return;
+                }
+
                 // requestSubmit() (no submit()) para que el listener de
                 // modal-cobro-qr.blade.php, que escucha el evento "submit"
                 // de este mismo form, lo siga interceptando igual que con
                 // un click normal en "Confirmar cobro".
-                evento.preventDefault();
                 selectSimple.closest('form')?.requestSubmit();
             }
         });
