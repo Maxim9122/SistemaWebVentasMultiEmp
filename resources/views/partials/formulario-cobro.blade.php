@@ -166,7 +166,7 @@
                         class="w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
                         <option value="">Sin especificar</option>
                         @foreach (\App\Services\Facturacion\CondicionIva::OPCIONES as $clave => $etiqueta)
-                            <option value="{{ $clave }}">{{ $etiqueta }}</option>
+                            <option value="{{ $clave }}" @selected($clave === 'consumidor_final')>{{ $etiqueta }}</option>
                         @endforeach
                     </select>
                     <p class="text-xs text-slate-400 mt-1">Este cliente todavía no la tiene cargada — queda guardada para la próxima vez.</p>
