@@ -59,7 +59,9 @@ class CajaSesionController extends Controller
             'nota_apertura' => $datos['nota_apertura'] ?? null,
         ]);
 
-        return redirect()->route('caja-sesion.show')->with('status', 'Caja abierta.');
+        // back() en vez de una ruta fija: si se abrió desde "Mi caja" vuelve
+        // ahí, si se abrió desde el modal de Carritos se queda en Carritos.
+        return back()->with('status', 'Caja abierta.');
     }
 
     public function cerrar(Request $request): RedirectResponse
