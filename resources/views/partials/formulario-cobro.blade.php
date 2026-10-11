@@ -515,18 +515,25 @@
             actualizarSimple();
         }
 
-        const formCobro = selectSimple.closest('form');
+        // No alcanza con exigir que el foco esté DENTRO del form de cobro:
+        // en Carritos, el buscador de productos vive en su propio form
+        // aparte (form_agregar_producto), separado del de cobro, y los
+        // atajos tienen que funcionar igual escribiendo ahí. Lo que
+        // realmente hay que evitar es interferir con OTRO modal abierto en
+        // la misma página (ej. "Abrir caja", que tiene su propia nota y su
+        // propio submit) — eso sí se detecta mirando si el foco está
+        // adentro de algún <div id="modal_..."> que esté visible.
+        function dentroDeOtroModalAbierto(elemento) {
+            const modal = elemento && elemento.closest ? elemento.closest('[id^="modal_"]') : null;
+            return !!modal && !modal.classList.contains('hidden');
+        }
 
         document.addEventListener('keydown', function (evento) {
             if (!evento.ctrlKey || evento.altKey || evento.shiftKey) {
                 return;
             }
 
-            // Si el foco está en otro formulario de la misma página (ej. el
-            // modal de "Abrir caja", que tiene su propia nota y su propio
-            // submit), no interferir — estos atajos son solo para ESTE form.
-            if (formCobro && document.activeElement && document.activeElement !== document.body
-                && !formCobro.contains(document.activeElement)) {
+            if (dentroDeOtroModalAbierto(document.activeElement)) {
                 return;
             }
 
