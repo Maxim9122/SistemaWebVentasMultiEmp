@@ -379,8 +379,14 @@
             bloqueCondicionIva.classList.toggle('hidden', !mostrar);
 
             if (!mostrar) {
+                // Al cargar la página esto corre una vez antes de que se
+                // elija "Factura" o un cliente — si acá se reseteara a ''
+                // (vacío), pisaría el "Consumidor Final" que ya viene
+                // marcado por defecto en el HTML, y el desplegable quedaría
+                // en "Sin especificar" la primera vez que se muestre de
+                // verdad. Por eso el valor de reposo es el mismo default.
                 const select = $('_cliente_condicion_iva');
-                if (select) select.value = '';
+                if (select) select.value = 'consumidor_final';
             }
         }
 
