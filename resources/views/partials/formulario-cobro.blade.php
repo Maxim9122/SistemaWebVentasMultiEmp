@@ -515,8 +515,18 @@
             actualizarSimple();
         }
 
+        const formCobro = selectSimple.closest('form');
+
         document.addEventListener('keydown', function (evento) {
             if (!evento.ctrlKey || evento.altKey || evento.shiftKey) {
+                return;
+            }
+
+            // Si el foco está en otro formulario de la misma página (ej. el
+            // modal de "Abrir caja", que tiene su propia nota y su propio
+            // submit), no interferir — estos atajos son solo para ESTE form.
+            if (formCobro && document.activeElement && document.activeElement !== document.body
+                && !formCobro.contains(document.activeElement)) {
                 return;
             }
 
