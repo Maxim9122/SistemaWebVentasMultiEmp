@@ -263,8 +263,11 @@
                 rellenarSiVacio(inputMarca, datos.marca);
                 rellenarSiVacio(inputCategoria, datos.categoria);
 
-                if (! datos.nombre) {
+                if (! datos.nombre && !datos.marca && !datos.categoria) {
                     avisoSinDatos.textContent = 'Código cargado — no encontramos más datos para completar automáticamente. Completá nombre, marca, categoría y precio a mano.';
+                    avisoSinDatos.classList.remove('hidden');
+                } else if (! datos.nombre) {
+                    avisoSinDatos.textContent = 'Código cargado — encontramos categoría/marca pero no el nombre. Completalo a mano, el resto ya quedó cargado.';
                     avisoSinDatos.classList.remove('hidden');
                 }
             }

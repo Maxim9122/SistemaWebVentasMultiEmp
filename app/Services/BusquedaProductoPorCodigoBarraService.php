@@ -106,7 +106,13 @@ class BusquedaProductoPorCodigoBarraService
             [$datos, $error] = $this->consultarFuente($fuente, $codigo);
             $huboError = $huboError || $error;
 
-            if ($datos !== null && $datos['nombre']) {
+            // "Encontrado" es que la fuente identificó el código (status=1
+            // del lado de la API), no que tenga el nombre puntualmente — son
+            // bases colaborativas, y es común que alguien haya cargado el
+            // código con la categoría pero sin el nombre. Si pasa eso, se
+            // usa lo que haya en vez de descartar la coincidencia entera y
+            // seguir buscando en una fuente con, probablemente, peor dato.
+            if ($datos !== null && ($datos['nombre'] || $datos['marca'] || $datos['categoria'])) {
                 return ['datos' => [...$datos, 'fuente_nombre' => $fuente], 'encontrado' => true, 'hubo_error' => $huboError];
             }
         }
