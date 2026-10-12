@@ -25,9 +25,18 @@
             <button type="button" id="escaner_cerrar" class="text-sm text-slate-500 hover:underline">Cerrar</button>
         </div>
 
-        <div id="aviso_codigo_existente" class="hidden mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800"></div>
+        <div class="flex items-start gap-2 mb-4">
+            <input type="checkbox" id="carga_por_lote" name="carga_por_lote" value="1" form="form_producto"
+                @checked($cargaPorLotePreseleccionada) class="mt-0.5 rounded border-slate-300">
+            <label for="carga_por_lote" class="text-sm text-slate-600">
+                Cargar varios productos del mismo proveedor y categoría — al guardar, te deja acá mismo con esos dos campos ya puestos para el siguiente.
+            </label>
+        </div>
 
-        <form method="POST" action="{{ route('productos.store') }}" class="space-y-4">
+        <div id="aviso_codigo_existente" class="hidden mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800"></div>
+        <div id="aviso_sin_datos_web" class="hidden mb-4 rounded border border-slate-300 bg-slate-50 p-3 text-sm text-slate-600"></div>
+
+        <form method="POST" action="{{ route('productos.store') }}" class="space-y-4" id="form_producto">
             @csrf
             <input type="hidden" id="escaneo_continuo" name="escaneo_continuo" value="0">
 
@@ -45,7 +54,7 @@
                 </div>
                 <div>
                     <label for="categoria" class="block text-sm font-medium mb-1">Categoría</label>
-                    <input id="categoria" name="categoria" type="text" value="{{ old('categoria') }}"
+                    <input id="categoria" name="categoria" type="text" value="{{ old('categoria', $categoriaPreseleccionada) }}"
                         class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
                 </div>
             </div>
@@ -95,7 +104,7 @@
                     class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
                     <option value="">— Sin proveedor —</option>
                     @foreach ($proveedores as $proveedor)
-                        <option value="{{ $proveedor->id }}" @selected(old('proveedor_id') == $proveedor->id)>{{ $proveedor->nombre }}</option>
+                        <option value="{{ $proveedor->id }}" @selected(old('proveedor_id', $proveedorIdPreseleccionado) == $proveedor->id)>{{ $proveedor->nombre }}</option>
                     @endforeach
                 </select>
             </div>
@@ -123,6 +132,7 @@
             const btnBuscarManual = document.getElementById('escaner_buscar_manual');
             const btnCerrar = document.getElementById('escaner_cerrar');
             const avisoExistente = document.getElementById('aviso_codigo_existente');
+            const avisoSinDatos = document.getElementById('aviso_sin_datos_web');
             const inputEscaneoContinuo = document.getElementById('escaneo_continuo');
 
             const inputNombre = document.getElementById('nombre');
@@ -147,6 +157,7 @@
 
             function aplicarResultado(codigo, datos) {
                 rellenarSiVacio(inputCodigo, codigo);
+                avisoSinDatos.classList.add('hidden');
 
                 if (datos.existe_en_mi_empresa) {
                     avisoExistente.innerHTML = 'Ya tenés este código cargado como "' + datos.producto_existente.nombre +
@@ -161,6 +172,11 @@
                 rellenarSiVacio(inputNombre, datos.nombre);
                 rellenarSiVacio(inputMarca, datos.marca);
                 rellenarSiVacio(inputCategoria, datos.categoria);
+
+                if (! datos.nombre) {
+                    avisoSinDatos.textContent = 'Código cargado — no encontramos más datos para completar automáticamente. Completá nombre, marca, categoría y precio a mano.';
+                    avisoSinDatos.classList.remove('hidden');
+                }
             }
 
             function buscarCodigo(codigo) {

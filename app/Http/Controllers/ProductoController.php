@@ -292,23 +292,40 @@ class ProductoController extends Controller
         return view('productos.create', [
             'proveedores' => $this->proveedoresParaSelect($request),
             'abrirEscaner' => $request->boolean('escanear'),
+            'cargaPorLotePreseleccionada' => $request->boolean('carga_por_lote'),
+            'proveedorIdPreseleccionado' => $request->filled('proveedor_id') ? (int) $request->input('proveedor_id') : null,
+            'categoriaPreseleccionada' => (string) $request->input('categoria', ''),
         ]);
     }
 
     public function store(GuardarProductoRequest $request): RedirectResponse
     {
-        Producto::create([
+        $producto = Producto::create([
             ...$request->validated(),
             'empresa_id' => $request->user()->empresa_id,
             'activo' => true,
         ]);
 
-        // Si venía escaneando (ver productos/create.blade.php), lo mandamos
-        // de nuevo al alta con la cámara abierta en vez del listado — así
-        // puede cargar varios productos seguidos sin fricción.
-        if ($request->boolean('escaneo_continuo')) {
-            return redirect()->route('productos.create', ['escanear' => 1])
-                ->with('status', 'Producto creado — podés seguir escaneando.');
+        $escaneando = $request->boolean('escaneo_continuo');
+        $cargaPorLote = $request->boolean('carga_por_lote');
+
+        // Si venía escaneando y/o cargando varios productos seguidos para el
+        // mismo proveedor y categoría (ver productos/create.blade.php), lo
+        // mandamos de nuevo al alta en vez del listado — con la cámara
+        // abierta si estaba escaneando, y con proveedor/categoría ya
+        // precargados (tal como quedaron en este producto) si estaba en modo
+        // "varios del mismo proveedor y categoría".
+        if ($escaneando || $cargaPorLote) {
+            $parametros = $escaneando ? ['escanear' => 1] : [];
+
+            if ($cargaPorLote) {
+                $parametros['carga_por_lote'] = 1;
+                $parametros['proveedor_id'] = $producto->proveedor_id;
+                $parametros['categoria'] = $producto->categoria;
+            }
+
+            return redirect()->route('productos.create', $parametros)
+                ->with('status', 'Producto creado — podés seguir cargando.');
         }
 
         return redirect()->route('productos.index')->with('status', 'Producto creado.');
