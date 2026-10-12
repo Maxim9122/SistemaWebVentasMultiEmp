@@ -53,4 +53,8 @@ return [
         'secret_key' => env('RECAPTCHA_SECRET_KEY'),
     ],
 
+    'openfoodfacts' => [
+        'url' => env('OPENFOODFACTS_API_URL', 'https://world.openfoodfacts.org'),
+    ],
+
 ];

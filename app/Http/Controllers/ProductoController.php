@@ -8,9 +8,11 @@ use App\Models\GrupoProducto;
 use App\Models\Producto;
 use App\Models\Proveedor;
 use App\Models\ReposicionStock;
+use App\Services\BusquedaProductoPorCodigoBarraService;
 use App\Services\ExportadorProductosExcel;
 use App\Services\ReportePdfService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -289,6 +291,7 @@ class ProductoController extends Controller
     {
         return view('productos.create', [
             'proveedores' => $this->proveedoresParaSelect($request),
+            'abrirEscaner' => $request->boolean('escanear'),
         ]);
     }
 
@@ -300,7 +303,35 @@ class ProductoController extends Controller
             'activo' => true,
         ]);
 
+        // Si venía escaneando (ver productos/create.blade.php), lo mandamos
+        // de nuevo al alta con la cámara abierta en vez del listado — así
+        // puede cargar varios productos seguidos sin fricción.
+        if ($request->boolean('escaneo_continuo')) {
+            return redirect()->route('productos.create', ['escanear' => 1])
+                ->with('status', 'Producto creado — podés seguir escaneando.');
+        }
+
         return redirect()->route('productos.index')->with('status', 'Producto creado.');
+    }
+
+    /**
+     * Alta rápida por código de barras: busca si el código ya es un
+     * producto de esta empresa y, si no, intenta autocompletar
+     * nombre/marca/categoría desde la web (ver
+     * BusquedaProductoPorCodigoBarraService). El precio nunca se
+     * autocompleta, siempre queda manual. Nunca falla "ruidoso" — si la
+     * fuente externa no encuentra nada, el formulario de alta sigue
+     * funcionando vacío y 100% manual como siempre.
+     */
+    public function buscarPorCodigoBarra(Request $request, BusquedaProductoPorCodigoBarraService $servicio): JsonResponse
+    {
+        $datos = $request->validate([
+            'codigo' => ['required', 'string', 'max:255'],
+        ]);
+
+        return response()->json(
+            $servicio->buscar($datos['codigo'], $request->user()->empresa_id)
+        );
     }
 
     public function edit(Request $request, Producto $producto): View
