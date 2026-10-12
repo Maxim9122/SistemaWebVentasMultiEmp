@@ -55,16 +55,6 @@ Route::get('/comprobantes/compartido/{pedido}/{tipo}', TicketPublicoController::
     ->name('ticket.publico')
     ->middleware('signed');
 
-// TEMPORAL: diagnóstico del escaneo de código de barras en producción —
-// se saca en el próximo commit.
-Route::get('/__debug/escaneo/{codigo}', function (string $codigo) {
-    return response()->json([
-        'resultado' => app(\App\Services\BusquedaProductoPorCodigoBarraService::class)->buscar($codigo, 999999999),
-        'clase_cliente' => get_class(app(\App\Services\OpenFacts\OpenFactsApiClient::class)),
-        'config_openbeautyfacts' => config('services.openbeautyfacts.url'),
-    ]);
-});
-
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
