@@ -57,4 +57,12 @@ return [
         'url' => env('OPENFOODFACTS_API_URL', 'https://world.openfoodfacts.org'),
     ],
 
+    'openbeautyfacts' => [
+        'url' => env('OPENBEAUTYFACTS_API_URL', 'https://world.openbeautyfacts.org'),
+    ],
+
+    'openproductsfacts' => [
+        'url' => env('OPENPRODUCTSFACTS_API_URL', 'https://world.openproductsfacts.org'),
+    ],
+
 ];
