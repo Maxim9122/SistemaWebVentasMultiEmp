@@ -103,6 +103,9 @@ Route::middleware('auth')->group(function () {
             Route::match(['GET', 'POST'], '/exportar-pdf', [ProductoController::class, 'exportarPdf'])->name('exportarPdf');
             Route::get('/nuevo', [ProductoController::class, 'create'])->name('create');
             Route::post('/', [ProductoController::class, 'store'])->name('store');
+            Route::post('/buscar-codigo-barra', [ProductoController::class, 'buscarPorCodigoBarra'])
+                ->middleware('throttle:30,1')
+                ->name('buscarCodigoBarra');
             Route::get('/{producto}/editar', [ProductoController::class, 'edit'])->name('edit');
             Route::put('/{producto}', [ProductoController::class, 'update'])->name('update');
             Route::post('/ajustar-precio-busqueda', [ProductoController::class, 'ajustarPrecioBusqueda'])->name('ajustarPrecioBusqueda');
