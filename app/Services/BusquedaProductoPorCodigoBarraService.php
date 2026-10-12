@@ -29,7 +29,7 @@ class BusquedaProductoPorCodigoBarraService
     /**
      * @return array{
      *     existe_en_mi_empresa: bool,
-     *     producto_existente: array{id: int, nombre: string}|null,
+     *     producto_existente: array<string, mixed>|null,
      *     nombre: ?string,
      *     marca: ?string,
      *     categoria: ?string,
@@ -40,12 +40,21 @@ class BusquedaProductoPorCodigoBarraService
     {
         $productoExistente = Producto::where('empresa_id', $empresaId)
             ->where('codigo', $codigo)
-            ->first(['id', 'nombre']);
+            ->first([
+                'id', 'nombre', 'codigo', 'marca', 'categoria', 'precio', 'costo', 'stock', 'unidad', 'proveedor_id',
+                'cantidad_minima_1', 'precio_cantidad_1', 'cantidad_minima_2', 'precio_cantidad_2',
+                'cantidad_minima_3', 'precio_cantidad_3',
+            ]);
 
         if ($productoExistente) {
+            // Se manda el producto completo (no solo id/nombre) para que, si
+            // el usuario elige "Actualizarlo" en vez de crear uno nuevo, el
+            // formulario se pueda precargar con sus datos reales en vez de
+            // arriesgarse a pisarlos con lo que haya quedado del escaneo
+            // (ver aplicarResultado() en create.blade.php).
             return [
                 'existe_en_mi_empresa' => true,
-                'producto_existente' => ['id' => $productoExistente->id, 'nombre' => $productoExistente->nombre],
+                'producto_existente' => $productoExistente->toArray(),
                 'nombre' => null,
                 'marca' => null,
                 'categoria' => null,

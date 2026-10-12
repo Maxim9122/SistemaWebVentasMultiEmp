@@ -26,13 +26,26 @@ class GuardarProductoRequest extends FormRequest
     {
         $producto = $this->route('producto');
 
+        // Desde el alta por escaneo (ver ProductoController::store y
+        // productos/create.blade.php) el código puede coincidir a propósito
+        // con un producto ya existente — el usuario eligió explícitamente
+        // actualizarlo o ignorarlo, no es un error. Mismo criterio que en
+        // edit (ignorar el propio id), pero acá el id viene del frontend en
+        // vez de la ruta, así que se valida que sea de la empresa (abajo).
+        $idDuplicadoAIgnorar = $this->filled('modo_duplicados') ? $this->input('producto_duplicado_id') : null;
+
         return [
             'nombre' => ['required', 'string', 'max:255'],
             'codigo' => [
                 'nullable', 'string', 'max:255',
                 Rule::unique('productos', 'codigo')
                     ->where('empresa_id', $this->user()->empresa_id)
-                    ->ignore($producto?->id),
+                    ->ignore($producto?->id ?? $idDuplicadoAIgnorar),
+            ],
+            'modo_duplicados' => ['nullable', 'in:actualizar,ignorar,copiar'],
+            'producto_duplicado_id' => [
+                'nullable',
+                Rule::exists('productos', 'id')->where('empresa_id', $this->user()->empresa_id),
             ],
             'precio' => ['required', 'numeric', 'min:0'],
             'costo' => ['nullable', 'numeric', 'min:0'],

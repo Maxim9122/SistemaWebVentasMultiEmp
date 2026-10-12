@@ -33,12 +33,27 @@
             </label>
         </div>
 
-        <div id="aviso_codigo_existente" class="hidden mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800"></div>
+        <div id="aviso_codigo_existente" class="hidden mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+            <p class="font-medium mb-2">Este código ya es un producto de tu empresa: "<span id="aviso_codigo_existente_nombre"></span>". ¿Qué querés hacer?</p>
+            <label class="flex items-start gap-2 mb-1.5 cursor-pointer">
+                <input type="radio" name="modo_duplicados" value="actualizar" form="form_producto" class="mt-0.5" checked>
+                <span><strong>Actualizarlo</strong> — pisa nombre, precio, costo, stock, etc. con los datos de este formulario (ya lo precargamos con lo que tiene ahora, para que edites desde ahí).</span>
+            </label>
+            <label class="flex items-start gap-2 mb-1.5 cursor-pointer">
+                <input type="radio" name="modo_duplicados" value="ignorar" form="form_producto" class="mt-0.5">
+                <span><strong>Dejarlo como está</strong> — no crea ni cambia nada.</span>
+            </label>
+            <label class="flex items-start gap-2 cursor-pointer">
+                <input type="radio" name="modo_duplicados" value="copiar" form="form_producto" class="mt-0.5">
+                <span><strong>Crear una copia nueva</strong> — no toca el existente, crea otro con estos datos pero sin código (para no chocar con el que ya existe).</span>
+            </label>
+        </div>
         <div id="aviso_sin_datos_web" class="hidden mb-4 rounded border border-slate-300 bg-slate-50 p-3 text-sm text-slate-600"></div>
 
         <form method="POST" action="{{ route('productos.store') }}" class="space-y-4" id="form_producto">
             @csrf
             <input type="hidden" id="escaneo_continuo" name="escaneo_continuo" value="0">
+            <input type="hidden" id="producto_duplicado_id" name="producto_duplicado_id" value="">
 
             <div>
                 <label for="nombre" class="block text-sm font-medium mb-1">Nombre</label>
@@ -112,7 +127,7 @@
             @include('partials.campos-precio-por-cantidad', ['producto' => null])
 
             <div class="flex gap-2">
-                <button type="submit" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
+                <button type="submit" id="btn_guardar_producto" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
                     Crear producto
                 </button>
                 <a href="{{ route('productos.index') }}" class="rounded px-4 py-2 text-sm font-medium text-slate-600 hover:underline">
@@ -132,13 +147,23 @@
             const btnBuscarManual = document.getElementById('escaner_buscar_manual');
             const btnCerrar = document.getElementById('escaner_cerrar');
             const avisoExistente = document.getElementById('aviso_codigo_existente');
+            const avisoExistenteNombre = document.getElementById('aviso_codigo_existente_nombre');
             const avisoSinDatos = document.getElementById('aviso_sin_datos_web');
             const inputEscaneoContinuo = document.getElementById('escaneo_continuo');
+            const inputProductoDuplicadoId = document.getElementById('producto_duplicado_id');
+            const radiosModoDuplicados = document.querySelectorAll('input[name="modo_duplicados"]');
+            const btnGuardar = document.getElementById('btn_guardar_producto');
+            const textoBotonDefault = btnGuardar.textContent.trim();
 
             const inputNombre = document.getElementById('nombre');
             const inputCodigo = document.getElementById('codigo');
             const inputMarca = document.getElementById('marca');
             const inputCategoria = document.getElementById('categoria');
+            const inputPrecio = document.getElementById('precio');
+            const inputCosto = document.getElementById('costo');
+            const inputStock = document.getElementById('stock');
+            const inputUnidad = document.getElementById('unidad');
+            const selectProveedor = document.getElementById('proveedor_id');
 
             const token = document.querySelector('input[name="_token"]').value;
             const urlBuscar = {{ Js::from(route('productos.buscarCodigoBarra')) }};
@@ -155,19 +180,84 @@
                 }
             }
 
+            // A diferencia de rellenarSiVacio, esta pisa el valor que haya
+            // — se usa solo para precargar los datos REALES de un producto
+            // ya existente (ver abajo), nunca con datos adivinados de una
+            // fuente externa.
+            function rellenarSiempre(input, valor) {
+                if (! input) {
+                    return;
+                }
+
+                input.value = (valor === null || valor === undefined) ? '' : valor;
+            }
+
+            function textoSegunModoElegido() {
+                const elegido = document.querySelector('input[name="modo_duplicados"]:checked');
+
+                if (! elegido) {
+                    return textoBotonDefault;
+                }
+
+                return {
+                    actualizar: 'Actualizar producto',
+                    ignorar: 'Dejar como está',
+                    copiar: 'Crear copia nueva',
+                }[elegido.value] ?? textoBotonDefault;
+            }
+
+            function actualizarTextoBoton() {
+                btnGuardar.textContent = avisoExistente.classList.contains('hidden')
+                    ? textoBotonDefault
+                    : textoSegunModoElegido();
+            }
+
+            function limpiarEstadoDuplicado() {
+                avisoExistente.classList.add('hidden');
+                inputProductoDuplicadoId.value = '';
+                actualizarTextoBoton();
+            }
+
             function aplicarResultado(codigo, datos) {
                 rellenarSiVacio(inputCodigo, codigo);
                 avisoSinDatos.classList.add('hidden');
 
                 if (datos.existe_en_mi_empresa) {
-                    avisoExistente.innerHTML = 'Ya tenés este código cargado como "' + datos.producto_existente.nombre +
-                        '" — <a href="/productos/' + datos.producto_existente.id + '/editar" class="underline">ir a editarlo</a> en vez de crear uno nuevo.';
+                    const p = datos.producto_existente;
+
+                    avisoExistenteNombre.textContent = p.nombre;
+                    inputProductoDuplicadoId.value = p.id;
+                    radiosModoDuplicados.forEach((r) => { r.checked = r.value === 'actualizar'; });
                     avisoExistente.classList.remove('hidden');
+
+                    // Precargamos con los datos reales del producto existente
+                    // (no con lo que haya quedado del escaneo) — así, elijas
+                    // actualizarlo o copiarlo, el punto de partida es
+                    // correcto y nunca se arriesga a pisar algo con un campo
+                    // vacío.
+                    rellenarSiempre(inputNombre, p.nombre);
+                    rellenarSiempre(inputMarca, p.marca);
+                    rellenarSiempre(inputCategoria, p.categoria);
+                    rellenarSiempre(inputPrecio, p.precio);
+                    rellenarSiempre(inputCosto, p.costo);
+                    if (inputStock) {
+                        rellenarSiempre(inputStock, p.stock);
+                    }
+                    rellenarSiempre(inputUnidad, p.unidad);
+                    if (selectProveedor) {
+                        selectProveedor.value = p.proveedor_id ?? '';
+                    }
+                    [1, 2, 3].forEach((n) => {
+                        rellenarSiempre(document.getElementById('cantidad_minima_' + n), p['cantidad_minima_' + n]);
+                        rellenarSiempre(document.getElementById('precio_cantidad_' + n), p['precio_cantidad_' + n]);
+                    });
+
+                    actualizarTextoBoton();
 
                     return;
                 }
 
-                avisoExistente.classList.add('hidden');
+                limpiarEstadoDuplicado();
 
                 rellenarSiVacio(inputNombre, datos.nombre);
                 rellenarSiVacio(inputMarca, datos.marca);
@@ -178,6 +268,13 @@
                     avisoSinDatos.classList.remove('hidden');
                 }
             }
+
+            radiosModoDuplicados.forEach((radio) => radio.addEventListener('change', actualizarTextoBoton));
+
+            // Si después de un escaneo con duplicado el usuario cambia el
+            // código a mano, ese aviso ya no aplica — se descarta en vez de
+            // dejarlo pegado a un código distinto.
+            inputCodigo.addEventListener('input', limpiarEstadoDuplicado);
 
             function buscarCodigo(codigo) {
                 codigo = (codigo || '').trim();

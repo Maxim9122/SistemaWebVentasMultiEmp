@@ -300,11 +300,7 @@ class ProductoController extends Controller
 
     public function store(GuardarProductoRequest $request): RedirectResponse
     {
-        $producto = Producto::create([
-            ...$request->validated(),
-            'empresa_id' => $request->user()->empresa_id,
-            'activo' => true,
-        ]);
+        [$producto, $mensaje] = $this->guardarSegunModoDuplicado($request);
 
         $escaneando = $request->boolean('escaneo_continuo');
         $cargaPorLote = $request->boolean('carga_por_lote');
@@ -325,10 +321,66 @@ class ProductoController extends Controller
             }
 
             return redirect()->route('productos.create', $parametros)
-                ->with('status', 'Producto creado — podés seguir cargando.');
+                ->with('status', $mensaje.' Podés seguir cargando.');
         }
 
-        return redirect()->route('productos.index')->with('status', 'Producto creado.');
+        return redirect()->route('productos.index')->with('status', $mensaje);
+    }
+
+    /**
+     * Mismas 3 opciones que ya existen para duplicados al importar desde
+     * Excel (ver ProductoImportController::confirmar): si el alta por
+     * escaneo encontró un código que ya es un producto de esta empresa (ver
+     * BusquedaProductoPorCodigoBarraService), el usuario elige "actualizar"
+     * (pisa el producto existente con los datos del formulario), "ignorar"
+     * (lo deja como está, no crea ni toca nada) o "copiar" (crea uno nuevo
+     * sin código, para no chocar con el que ya existe) — mismas palabras y
+     * mismo criterio que el importador, por consistencia.
+     *
+     * @return array{0: Producto, 1: string}
+     */
+    private function guardarSegunModoDuplicado(GuardarProductoRequest $request): array
+    {
+        $modo = $request->input('modo_duplicados');
+        $productoDuplicadoId = $request->input('producto_duplicado_id');
+
+        if ($modo && $productoDuplicadoId) {
+            // GuardarProductoRequest ya validó que este id es de la empresa
+            // actual — se vuelve a filtrar acá antes de tocarlo, nunca se
+            // confía a ciegas en lo que mandó el navegador.
+            $productoExistente = Producto::where('empresa_id', $request->user()->empresa_id)
+                ->where('id', $productoDuplicadoId)
+                ->first();
+
+            if ($productoExistente) {
+                if ($modo === 'ignorar') {
+                    return [$productoExistente, 'No se hizo nada — el producto existente quedó como estaba.'];
+                }
+
+                if ($modo === 'actualizar') {
+                    $productoExistente->update($request->validated());
+
+                    return [$productoExistente, 'Producto actualizado.'];
+                }
+
+                $copia = Producto::create([
+                    ...$request->validated(),
+                    'empresa_id' => $request->user()->empresa_id,
+                    'activo' => true,
+                    'codigo' => null,
+                ]);
+
+                return [$copia, 'Se creó una copia nueva, sin código (para no chocar con el producto existente).'];
+            }
+        }
+
+        $producto = Producto::create([
+            ...$request->validated(),
+            'empresa_id' => $request->user()->empresa_id,
+            'activo' => true,
+        ]);
+
+        return [$producto, 'Producto creado.'];
     }
 
     /**
