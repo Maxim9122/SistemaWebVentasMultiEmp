@@ -243,6 +243,98 @@
             </div>
 
             <div class="border-t pt-5">
+                @php $balanzaActiva = old('balanza_activa', $empresa->balanza_activa); @endphp
+                <label class="flex items-start gap-2 text-sm cursor-pointer mb-3">
+                    <input type="checkbox" id="balanza_activa" name="balanza_activa" value="1"
+                        @checked($balanzaActiva) class="mt-0.5">
+                    <span>
+                        <span class="font-medium text-slate-900">Lector de código de balanza</span><br>
+                        <span class="text-slate-500">
+                            Si tu balanza imprime un código de barras con el precio o el peso ya calculado adentro
+                            (cambia en cada pesada, no es un código fijo de producto), configurá acá cómo leerlo —
+                            así al escanearlo en Carritos o Presupuestos se agrega solo, sin buscar nada a mano.
+                            Esto es aparte de la opción "por peso" que ya tenés: esa sigue andando igual para cuando
+                            escaneás un producto normal y tipeás el precio vos mismo.
+                        </span>
+                    </span>
+                </label>
+
+                <div id="campos_balanza" class="{{ $balanzaActiva ? '' : 'hidden' }} space-y-3 pl-6">
+                    <p class="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded p-2.5">
+                        Ejemplo: si tu balanza imprime <code class="font-mono">2012345067890</code> y eso significa
+                        "código de producto 12345, precio $67,89" — entonces el prefijo es <code class="font-mono">20</code>,
+                        el código de producto empieza en la posición 2 y tiene 5 dígitos, y el precio empieza en la
+                        posición 7, tiene 5 dígitos y 2 decimales. Las posiciones se cuentan desde 0 (el primer dígito es la posición 0).
+                    </p>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="balanza_prefijo" class="block text-sm font-medium mb-1">Prefijo</label>
+                            <input id="balanza_prefijo" name="balanza_prefijo" type="text" maxlength="4" inputmode="numeric" placeholder="20"
+                                value="{{ old('balanza_prefijo', $empresa->balanza_prefijo) }}"
+                                class="campo-balanza w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                        </div>
+                        <div>
+                            <label for="balanza_tipo_valor" class="block text-sm font-medium mb-1">El valor embebido es</label>
+                            <select id="balanza_tipo_valor" name="balanza_tipo_valor"
+                                class="campo-balanza w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                                <option value="precio" @selected(old('balanza_tipo_valor', $empresa->balanza_tipo_valor) === 'precio')>Precio ya calculado</option>
+                                <option value="peso" @selected(old('balanza_tipo_valor', $empresa->balanza_tipo_valor) === 'peso')>Peso (en kg, se multiplica por el precio por kg del producto)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="balanza_pos_codigo" class="block text-sm font-medium mb-1">Código de producto — posición</label>
+                            <input id="balanza_pos_codigo" name="balanza_pos_codigo" type="number" min="0" max="12"
+                                value="{{ old('balanza_pos_codigo', $empresa->balanza_pos_codigo) }}"
+                                class="campo-balanza w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                        </div>
+                        <div>
+                            <label for="balanza_largo_codigo" class="block text-sm font-medium mb-1">Código de producto — largo</label>
+                            <input id="balanza_largo_codigo" name="balanza_largo_codigo" type="number" min="1" max="13"
+                                value="{{ old('balanza_largo_codigo', $empresa->balanza_largo_codigo) }}"
+                                class="campo-balanza w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label for="balanza_pos_valor" class="block text-sm font-medium mb-1">Precio/peso — posición</label>
+                            <input id="balanza_pos_valor" name="balanza_pos_valor" type="number" min="0" max="12"
+                                value="{{ old('balanza_pos_valor', $empresa->balanza_pos_valor) }}"
+                                class="campo-balanza w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                        </div>
+                        <div>
+                            <label for="balanza_largo_valor" class="block text-sm font-medium mb-1">Precio/peso — largo</label>
+                            <input id="balanza_largo_valor" name="balanza_largo_valor" type="number" min="1" max="13"
+                                value="{{ old('balanza_largo_valor', $empresa->balanza_largo_valor) }}"
+                                class="campo-balanza w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                        </div>
+                        <div>
+                            <label for="balanza_decimales_valor" class="block text-sm font-medium mb-1">Decimales</label>
+                            <input id="balanza_decimales_valor" name="balanza_decimales_valor" type="number" min="0" max="5"
+                                value="{{ old('balanza_decimales_valor', $empresa->balanza_decimales_valor ?? 2) }}"
+                                class="campo-balanza w-full rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 border border-slate-200 rounded p-3">
+                        <p class="text-sm font-medium mb-2">Probar con un código real</p>
+                        <div class="flex gap-2 mb-2">
+                            <input type="text" id="balanza_codigo_prueba" inputmode="numeric" maxlength="13" placeholder="Pegá acá un código de 13 dígitos"
+                                class="flex-1 rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                            <button type="button" id="btn_probar_balanza" class="rounded px-3 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+                                Probar
+                            </button>
+                        </div>
+                        <p id="resultado_prueba_balanza" class="text-sm"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t pt-5">
                 <p class="font-medium text-slate-900 mb-1">Descuento / recargo por medio de pago</p>
                 <p class="text-slate-500 text-sm mb-3">Un número negativo es descuento, positivo es recargo. Dejá 0 si ese medio no ajusta el precio.</p>
                 <div class="grid grid-cols-4 gap-4">
@@ -531,6 +623,87 @@
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
                 form.submit();
+            });
+        })();
+    </script>
+
+    <script>
+        (function () {
+            const checkbox = document.getElementById('balanza_activa');
+            const campos = document.getElementById('campos_balanza');
+
+            if (!checkbox) return;
+
+            checkbox.addEventListener('change', function () {
+                campos.classList.toggle('hidden', !checkbox.checked);
+            });
+
+            const inputPrueba = document.getElementById('balanza_codigo_prueba');
+            const btnProbar = document.getElementById('btn_probar_balanza');
+            const resultado = document.getElementById('resultado_prueba_balanza');
+            const urlProbar = {{ Js::from(route('configuracion.balanza.probar')) }};
+            const token = document.querySelector('input[name="_token"]').value;
+
+            function formatearMoneda(monto) {
+                return '$' + Number(monto).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+
+            btnProbar.addEventListener('click', function () {
+                const codigo = inputPrueba.value.trim();
+
+                if (!/^\d{13}$/.test(codigo)) {
+                    resultado.textContent = 'Pegá un código de 13 dígitos (solo números) para probar.';
+                    resultado.className = 'text-sm text-amber-600';
+                    return;
+                }
+
+                const cuerpo = { codigo: codigo };
+                document.querySelectorAll('.campo-balanza').forEach(function (campo) {
+                    cuerpo[campo.id] = campo.value;
+                });
+
+                resultado.textContent = 'Probando...';
+                resultado.className = 'text-sm text-slate-500';
+
+                fetch(urlProbar, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                    },
+                    body: JSON.stringify(cuerpo),
+                })
+                    .then(function (respuesta) { return respuesta.json(); })
+                    .then(function (datos) {
+                        if (!datos.ok) {
+                            resultado.textContent = 'Ese código no coincide con el prefijo o las posiciones configuradas — revisá los valores de arriba.';
+                            resultado.className = 'text-sm text-red-600';
+                            return;
+                        }
+
+                        const tipoTexto = datos.tipo === 'peso'
+                            ? formatearMoneda(datos.valor) + ' kg'
+                            : formatearMoneda(datos.valor);
+
+                        let texto = 'Código de producto leído: "' + datos.codigo_producto + '" — '
+                            + (datos.tipo === 'peso' ? 'peso: ' : 'precio: ') + tipoTexto + '. ';
+
+                        if (datos.producto_encontrado) {
+                            texto += datos.producto_es_por_peso
+                                ? ('✓ Coincide con "' + datos.producto_encontrado + '" (ya está marcado "por peso", va a funcionar).')
+                                : ('⚠ Coincide con "' + datos.producto_encontrado + '", pero ese producto no está marcado como "por peso" (unidad = kg) — cambiale la unidad para que esto funcione.');
+                        } else {
+                            texto += '⚠ Ningún producto tiene ese código cargado — hay que crear o editar el producto pesable con código "' + datos.codigo_producto + '".';
+                        }
+
+                        resultado.textContent = texto;
+                        resultado.className = 'text-sm ' + (datos.producto_encontrado && datos.producto_es_por_peso ? 'text-emerald-700' : 'text-amber-700');
+                    })
+                    .catch(function () {
+                        resultado.textContent = 'No se pudo probar — revisá tu conexión e intentá de nuevo.';
+                        resultado.className = 'text-sm text-red-600';
+                    });
             });
         })();
     </script>

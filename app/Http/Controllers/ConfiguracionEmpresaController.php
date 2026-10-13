@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Empresa;
+use App\Models\Producto;
 use App\Services\Facturacion\Exceptions\CertificadoYaValidadoException;
 use App\Services\Facturacion\Exceptions\CuitYaRegistradoException;
 use App\Services\Facturacion\OnboardingFacturacionService;
+use App\Services\LectorCodigoBalanza;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -50,12 +53,35 @@ class ConfiguracionEmpresaController extends Controller
                 'required',
                 Rule::in([Empresa::IMPRESION_PREGUNTAR, Empresa::IMPRESION_AUTOMATICO, Empresa::IMPRESION_SIN_TICKET]),
             ],
+            'balanza_prefijo' => ['nullable', 'string', 'regex:/^\d{1,4}$/'],
+            'balanza_pos_codigo' => ['nullable', 'integer', 'min:0', 'max:12'],
+            'balanza_largo_codigo' => ['nullable', 'integer', 'min:1', 'max:13'],
+            'balanza_pos_valor' => ['nullable', 'integer', 'min:0', 'max:12'],
+            'balanza_largo_valor' => ['nullable', 'integer', 'min:1', 'max:13'],
+            'balanza_decimales_valor' => ['nullable', 'integer', 'between:0,5'],
+            'balanza_tipo_valor' => ['nullable', Rule::in([Empresa::BALANZA_VALOR_PRECIO, Empresa::BALANZA_VALOR_PESO])],
             'ajuste_efectivo_porcentaje' => ['required', 'numeric', 'between:-100,100'],
             'ajuste_tarjeta_porcentaje' => ['required', 'numeric', 'between:-100,100'],
             'ajuste_transferencia_porcentaje' => ['required', 'numeric', 'between:-100,100'],
             'ajuste_mercadopago_porcentaje' => ['required', 'numeric', 'between:-100,100'],
             'descuento_precio_empleado_porcentaje' => ['nullable', 'numeric', 'between:0,100'],
         ]);
+
+        $balanzaActiva = $request->boolean('balanza_activa');
+
+        if ($balanzaActiva) {
+            $faltantes = collect([
+                'balanza_prefijo', 'balanza_pos_codigo', 'balanza_largo_codigo', 'balanza_pos_valor', 'balanza_largo_valor', 'balanza_tipo_valor',
+            ])->filter(fn ($campo) => blank($datos[$campo] ?? null));
+
+            if ($faltantes->isNotEmpty()) {
+                return back()->withErrors(['balanza_activa' => 'Para activar el lector de balanza hay que completar todos sus campos.'])->withInput();
+            }
+
+            if (($datos['balanza_pos_codigo'] + $datos['balanza_largo_codigo']) > 13 || ($datos['balanza_pos_valor'] + $datos['balanza_largo_valor']) > 13) {
+                return back()->withErrors(['balanza_activa' => 'La posición + el largo de cada campo no puede pasarse de los 13 dígitos del código.'])->withInput();
+            }
+        }
 
         $empresa->update([
             ...$datos,
@@ -67,9 +93,65 @@ class ConfiguracionEmpresaController extends Controller
             'factura_habilitada' => $request->boolean('factura_habilitada'),
             'permite_fiado' => $request->boolean('permite_fiado'),
             'permite_pago_qr' => $request->boolean('permite_pago_qr'),
+            'balanza_activa' => $balanzaActiva,
+            'balanza_decimales_valor' => $datos['balanza_decimales_valor'] ?? 2,
         ]);
 
         return redirect()->route('configuracion.edit')->with('status', 'Configuración guardada.');
+    }
+
+    /**
+     * Probador en vivo del lector de balanza (ver LectorCodigoBalanza) —
+     * pega un código real impreso por la balanza y muestra qué
+     * interpretaría el sistema con los valores que hay tipeados en el
+     * formulario en ESE momento (no necesariamente los ya guardados), para
+     * poder calibrar las posiciones sin tener que guardar-probar-corregir
+     * una y otra vez.
+     */
+    public function probarCodigoBalanza(Request $request, LectorCodigoBalanza $lector): JsonResponse
+    {
+        $datos = $request->validate([
+            'codigo' => ['required', 'string'],
+            'balanza_prefijo' => ['required', 'string'],
+            'balanza_pos_codigo' => ['required', 'integer', 'min:0'],
+            'balanza_largo_codigo' => ['required', 'integer', 'min:1'],
+            'balanza_pos_valor' => ['required', 'integer', 'min:0'],
+            'balanza_largo_valor' => ['required', 'integer', 'min:1'],
+            'balanza_decimales_valor' => ['required', 'integer', 'min:0'],
+            'balanza_tipo_valor' => ['required', Rule::in([Empresa::BALANZA_VALOR_PRECIO, Empresa::BALANZA_VALOR_PESO])],
+        ]);
+
+        // Empresa "de mentira" (nunca se guarda) solo para reusar el mismo
+        // parser con los valores que el usuario está probando en el form.
+        $empresaDePrueba = new Empresa([
+            'balanza_activa' => true,
+            'balanza_prefijo' => $datos['balanza_prefijo'],
+            'balanza_pos_codigo' => $datos['balanza_pos_codigo'],
+            'balanza_largo_codigo' => $datos['balanza_largo_codigo'],
+            'balanza_pos_valor' => $datos['balanza_pos_valor'],
+            'balanza_largo_valor' => $datos['balanza_largo_valor'],
+            'balanza_decimales_valor' => $datos['balanza_decimales_valor'],
+            'balanza_tipo_valor' => $datos['balanza_tipo_valor'],
+        ]);
+
+        $resultado = $lector->parsear($empresaDePrueba, $datos['codigo']);
+
+        if (! $resultado) {
+            return response()->json(['ok' => false]);
+        }
+
+        $producto = Producto::where('empresa_id', $request->user()->empresa_id)
+            ->where('codigo', $resultado['codigo_producto'])
+            ->first(['nombre', 'unidad']);
+
+        return response()->json([
+            'ok' => true,
+            'codigo_producto' => $resultado['codigo_producto'],
+            'valor' => $resultado['valor'],
+            'tipo' => $resultado['tipo'],
+            'producto_encontrado' => $producto?->nombre,
+            'producto_es_por_peso' => $producto?->esPorPeso() ?? false,
+        ]);
     }
 
     public function actualizarDatos(Request $request, OnboardingFacturacionService $onboarding): RedirectResponse

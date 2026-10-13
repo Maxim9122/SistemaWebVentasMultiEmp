@@ -191,6 +191,7 @@
     <script>
         (function () {
             const urlBuscarProducto = {{ Js::from(route('carritos.buscarProducto')) }};
+            const urlBuscarCodigoBalanza = {{ Js::from(route('carritos.buscarCodigoBalanza')) }};
 
             const input = document.getElementById('buscador_producto');
             const hidden = document.getElementById('producto_id_seleccionado');
@@ -262,6 +263,36 @@
                     .then((respuesta) => respuesta.json())
                     .then((datos) => (miId === idPeticion ? datos : null))
                     .catch(() => null);
+            }
+
+            // Código "con peso o precio embebido" de balanza (ver
+            // Configuración → Lector de balanza) — si la empresa no lo
+            // configuró, o el texto no matchea el patrón, el servidor
+            // devuelve encontrado:false y acá seguimos con la búsqueda de
+            // siempre como si esto no existiera.
+            function buscarCodigoBalanza(codigo) {
+                return fetch(urlBuscarCodigoBalanza + '?codigo=' + encodeURIComponent(codigo), {
+                    headers: { 'Accept': 'application/json' },
+                })
+                    .then((respuesta) => respuesta.json())
+                    .catch(() => ({ encontrado: false }));
+            }
+
+            // A diferencia de seleccionar() (que solo marca el producto y
+            // deja que el cajero confirme), acá no hay nada más que
+            // decidir: el código ya trae el producto Y el precio exactos
+            // calculados por la balanza, así que se agrega derecho al
+            // carrito — mismo camino que un producto "por peso" cargado a
+            // mano (cantidad=1, precio_unitario tal cual).
+            function agregarPorBalanza(datos) {
+                hidden.value = datos.producto_id;
+                input.value = datos.nombre;
+                cantidadInput.value = 1;
+                inputPrecioUnitario.value = datos.precio;
+                resultados = [];
+                indiceActivo = -1;
+                renderizar();
+                form.requestSubmit();
             }
 
             function renderizar() {
@@ -344,30 +375,53 @@
                     // selecciona el producto, salta el foco a Cantidad (o a
                     // Precio si es por peso) — recién un segundo Enter ahí
                     // (submit nativo del form) lo agrega.
-                    buscarEnServidor(texto).then(function (datos) {
-                        if (datos === null) {
-                            return;
-                        }
+                    function buscarYSeleccionar() {
+                        buscarEnServidor(texto).then(function (datos) {
+                            if (datos === null) {
+                                return;
+                            }
 
-                        resultados = datos;
+                            resultados = datos;
 
-                        // Coincidencia exacta de código (lector de código de barras o el
-                        // código completo tipeado a mano) tiene prioridad sobre lo
-                        // resaltado en la lista — el servidor ya la devuelve primera.
-                        const texto_min = texto.toLowerCase();
-                        const productoEscaneado = resultados.find(function (producto) {
-                            return producto.codigo && producto.codigo.toLowerCase() === texto_min;
+                            // Coincidencia exacta de código (lector de código de barras o el
+                            // código completo tipeado a mano) tiene prioridad sobre lo
+                            // resaltado en la lista — el servidor ya la devuelve primera.
+                            const texto_min = texto.toLowerCase();
+                            const productoEscaneado = resultados.find(function (producto) {
+                                return producto.codigo && producto.codigo.toLowerCase() === texto_min;
+                            });
+
+                            const elegido = productoEscaneado
+                                || (indiceActivo >= 0 ? resultados[indiceActivo] : (resultados.length === 1 ? resultados[0] : null));
+
+                            if (elegido) {
+                                seleccionar(elegido);
+                            } else {
+                                renderizar();
+                            }
+                        });
+                    }
+
+                    // Un código de 13 dígitos puede ser de balanza — se
+                    // consulta primero; si no matchea nada (empresa sin
+                    // configurar, o un código de producto normal que
+                    // casualmente tiene 13 dígitos), sigue con la búsqueda
+                    // de siempre, sin ninguna diferencia visible.
+                    if (/^\d{13}$/.test(texto)) {
+                        buscarCodigoBalanza(texto).then(function (datos) {
+                            if (datos && datos.encontrado) {
+                                agregarPorBalanza(datos);
+
+                                return;
+                            }
+
+                            buscarYSeleccionar();
                         });
 
-                        const elegido = productoEscaneado
-                            || (indiceActivo >= 0 ? resultados[indiceActivo] : (resultados.length === 1 ? resultados[0] : null));
+                        return;
+                    }
 
-                        if (elegido) {
-                            seleccionar(elegido);
-                        } else {
-                            renderizar();
-                        }
-                    });
+                    buscarYSeleccionar();
 
                     return;
                 }

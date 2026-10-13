@@ -188,6 +188,9 @@ Route::middleware('auth')->group(function () {
             Route::put('/configuracion/datos-empresa', [ConfiguracionEmpresaController::class, 'actualizarDatos'])->name('configuracion.datos.update');
             Route::put('/configuracion/logo', [ConfiguracionEmpresaController::class, 'actualizarLogo'])->name('configuracion.logo.update');
             Route::delete('/configuracion/logo', [ConfiguracionEmpresaController::class, 'eliminarLogo'])->name('configuracion.logo.destroy');
+            Route::post('/configuracion/balanza/probar', [ConfiguracionEmpresaController::class, 'probarCodigoBalanza'])
+                ->middleware('throttle:60,1')
+                ->name('configuracion.balanza.probar');
 
             Route::post('/configuracion/facturacion-electronica', [FacturacionElectronicaController::class, 'iniciar'])
                 ->name('configuracion.facturacion.iniciar');
@@ -229,6 +232,9 @@ Route::middleware('auth')->group(function () {
             Route::get('/buscar-producto', [CarritoController::class, 'buscarProducto'])
                 ->middleware('throttle:120,1')
                 ->name('buscarProducto');
+            Route::get('/buscar-codigo-balanza', [CarritoController::class, 'buscarCodigoBalanza'])
+                ->middleware('throttle:120,1')
+                ->name('buscarCodigoBalanza');
             Route::get('/{pedido}', [CarritoController::class, 'show'])->name('show');
             Route::put('/{pedido}/nombre', [CarritoController::class, 'renombrar'])->name('renombrar');
             Route::post('/{pedido}/items', [CarritoController::class, 'agregarItem'])->name('items.store');
@@ -277,6 +283,9 @@ Route::middleware('auth')->group(function () {
             Route::get('/buscar-producto', [PresupuestoController::class, 'buscarProducto'])
                 ->middleware('throttle:120,1')
                 ->name('buscarProducto');
+            Route::get('/buscar-codigo-balanza', [PresupuestoController::class, 'buscarCodigoBalanza'])
+                ->middleware('throttle:120,1')
+                ->name('buscarCodigoBalanza');
             Route::get('/{pedido}', [PresupuestoController::class, 'show'])->name('show');
             Route::put('/{pedido}/cliente', [PresupuestoController::class, 'actualizarCliente'])->name('cliente.update');
             Route::post('/{pedido}/items', [PresupuestoController::class, 'agregarItem'])->name('items.store');

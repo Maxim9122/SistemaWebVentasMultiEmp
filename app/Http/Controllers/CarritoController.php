@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\AgregarItemCarritoRequest;
 use App\Http\Requests\CerrarCarritoRequest;
 use App\Models\Cliente;
+use App\Models\Empresa;
 use App\Models\Factura;
 use App\Models\IntentoPagoMercadopago;
 use App\Models\Pedido;
@@ -12,6 +13,7 @@ use App\Models\PedidoItem;
 use App\Models\Producto;
 use App\Models\User;
 use App\Services\Facturacion\EmisionComprobanteService;
+use App\Services\LectorCodigoBalanza;
 use App\Services\MercadoPago\MercadoPagoQrService;
 use App\Services\ProcesadorDeCobro;
 use Illuminate\Http\JsonResponse;
@@ -85,6 +87,53 @@ class CarritoController extends Controller
             'precio' => (float) $producto->precio,
             'es_por_peso' => $producto->esPorPeso(),
         ]));
+    }
+
+    /**
+     * Si el texto escaneado es un código "con peso o precio embebido" de
+     * balanza (ver LectorCodigoBalanza) y matchea un producto "por peso"
+     * de esta empresa, lo devuelve con el precio ya calculado para
+     * agregarlo directo al carrito, sin que el cajero tenga que buscar
+     * ni tipear nada — un código de producto normal, o una empresa que no
+     * configuró esto, simplemente no matchean nunca y no afectan en nada
+     * al buscador de siempre.
+     */
+    public function buscarCodigoBalanza(Request $request, LectorCodigoBalanza $lector): JsonResponse
+    {
+        $codigo = trim((string) $request->input('codigo', ''));
+        $empresa = $request->user()->empresa;
+
+        $resultado = $lector->parsear($empresa, $codigo);
+
+        if (! $resultado) {
+            return response()->json(['encontrado' => false]);
+        }
+
+        $producto = Producto::where('empresa_id', $empresa->id)
+            ->where('activo', true)
+            ->where('codigo', $resultado['codigo_producto'])
+            ->first(['id', 'nombre', 'precio', 'unidad']);
+
+        // Solo para productos "por peso" a propósito: ese camino ya
+        // descuenta cantidad=1 y toma precio_unitario tal cual, sin pedir
+        // el permiso de "cambiar precio de venta" — es justo lo que hace
+        // falta acá (el precio ya viene calculado por la balanza, no es
+        // una excepción al precio normal). Para un producto que no es por
+        // peso, se informa "no encontrado" y el cajero lo busca a mano.
+        if (! $producto || ! $producto->esPorPeso()) {
+            return response()->json(['encontrado' => false]);
+        }
+
+        $precio = $resultado['tipo'] === Empresa::BALANZA_VALOR_PESO
+            ? round($resultado['valor'] * (float) $producto->precio, 2)
+            : round($resultado['valor'], 2);
+
+        return response()->json([
+            'encontrado' => true,
+            'producto_id' => $producto->id,
+            'nombre' => $producto->nombre,
+            'precio' => $precio,
+        ]);
     }
 
     public function show(Request $request, Pedido $pedido): View|RedirectResponse

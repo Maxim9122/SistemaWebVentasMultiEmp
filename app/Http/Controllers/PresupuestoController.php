@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\EnvioTicketService;
 use App\Services\Facturacion\ComprobantePdfService;
 use App\Services\Facturacion\EmisionComprobanteService;
+use App\Services\LectorCodigoBalanza;
 use App\Services\ProcesadorDeCobro;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -131,6 +132,41 @@ class PresupuestoController extends Controller
             'precio' => (float) $producto->precio,
             'es_por_peso' => $producto->esPorPeso(),
         ]));
+    }
+
+    /**
+     * Mismo criterio que CarritoController::buscarCodigoBalanza — ver ahí.
+     */
+    public function buscarCodigoBalanza(Request $request, LectorCodigoBalanza $lector): JsonResponse
+    {
+        $codigo = trim((string) $request->input('codigo', ''));
+        $empresa = $request->user()->empresa;
+
+        $resultado = $lector->parsear($empresa, $codigo);
+
+        if (! $resultado) {
+            return response()->json(['encontrado' => false]);
+        }
+
+        $producto = Producto::where('empresa_id', $empresa->id)
+            ->where('activo', true)
+            ->where('codigo', $resultado['codigo_producto'])
+            ->first(['id', 'nombre', 'precio', 'unidad']);
+
+        if (! $producto || ! $producto->esPorPeso()) {
+            return response()->json(['encontrado' => false]);
+        }
+
+        $precio = $resultado['tipo'] === Empresa::BALANZA_VALOR_PESO
+            ? round($resultado['valor'] * (float) $producto->precio, 2)
+            : round($resultado['valor'], 2);
+
+        return response()->json([
+            'encontrado' => true,
+            'producto_id' => $producto->id,
+            'nombre' => $producto->nombre,
+            'precio' => $precio,
+        ]);
     }
 
     public function actualizarCliente(Request $request, Pedido $pedido): RedirectResponse

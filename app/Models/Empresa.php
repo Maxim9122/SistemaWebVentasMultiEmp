@@ -36,6 +36,14 @@ class Empresa extends Model
         'mostrar_modal_comprobante',
         'imprimir_automatico',
         'comportamiento_impresion',
+        'balanza_activa',
+        'balanza_prefijo',
+        'balanza_pos_codigo',
+        'balanza_largo_codigo',
+        'balanza_pos_valor',
+        'balanza_largo_valor',
+        'balanza_decimales_valor',
+        'balanza_tipo_valor',
         'ajuste_efectivo_porcentaje',
         'ajuste_tarjeta_porcentaje',
         'ajuste_transferencia_porcentaje',
@@ -66,6 +74,10 @@ class Empresa extends Model
 
     public const IMPRESION_SIN_TICKET = 'sin_ticket';
 
+    public const BALANZA_VALOR_PRECIO = 'precio';
+
+    public const BALANZA_VALOR_PESO = 'peso';
+
     protected function casts(): array
     {
         return [
@@ -77,6 +89,12 @@ class Empresa extends Model
             'factura_habilitada' => 'boolean',
             'mostrar_modal_comprobante' => 'boolean',
             'imprimir_automatico' => 'boolean',
+            'balanza_activa' => 'boolean',
+            'balanza_pos_codigo' => 'integer',
+            'balanza_largo_codigo' => 'integer',
+            'balanza_pos_valor' => 'integer',
+            'balanza_largo_valor' => 'integer',
+            'balanza_decimales_valor' => 'integer',
             'horario_laboral_habilitado' => 'boolean',
             'permite_fiado' => 'boolean',
             'permite_pago_qr' => 'boolean',
@@ -331,6 +349,24 @@ class Empresa extends Model
     public function noUsaTicket(): bool
     {
         return $this->comportamiento_impresion === self::IMPRESION_SIN_TICKET;
+    }
+
+    /**
+     * Si están cargados los 6 datos que hacen falta para interpretar el
+     * código de barras "con peso o precio embebido" que imprime la
+     * balanza de este comercio — ver LectorCodigoBalanza. El interruptor
+     * balanza_activa es aparte a propósito: deja guardar la configuración
+     * sin que ya empiece a interceptar escaneos mientras se está probando.
+     */
+    public function balanzaConfigurada(): bool
+    {
+        return $this->balanza_activa
+            && filled($this->balanza_prefijo)
+            && $this->balanza_pos_codigo !== null
+            && $this->balanza_largo_codigo !== null
+            && $this->balanza_pos_valor !== null
+            && $this->balanza_largo_valor !== null
+            && in_array($this->balanza_tipo_valor, [self::BALANZA_VALOR_PRECIO, self::BALANZA_VALOR_PESO], true);
     }
 
     public function esResponsableInscripto(): bool
