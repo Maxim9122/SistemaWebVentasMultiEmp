@@ -141,14 +141,14 @@
         @include('partials.ayuda-flotante')
     @endif
 
-    @if (session('pedido_comprobante_listo_id') && auth()->user()?->empresa?->mostrar_modal_comprobante)
+    @if (session('pedido_comprobante_listo_id') && auth()->user()?->empresa?->preguntaAntesDeImprimir())
         @php $pedidoListo = \App\Models\Pedido::with('factura')->find(session('pedido_comprobante_listo_id')); @endphp
         @if ($pedidoListo && ($pedidoListo->tipo_comprobante === 'remito' || $pedidoListo->factura?->cae))
             @include('partials.modal-comprobante-listo', ['pedidoListo' => $pedidoListo])
         @endif
     @endif
 
-    @if (session('pago_credito_comprobante_id') && auth()->user()?->empresa?->mostrar_modal_comprobante)
+    @if (session('pago_credito_comprobante_id') && auth()->user()?->empresa?->preguntaAntesDeImprimir())
         @php $pagoListo = \App\Models\PagoCredito::with('cliente')->find(session('pago_credito_comprobante_id')); @endphp
         @if ($pagoListo)
             @include('partials.modal-comprobante-pago-listo', ['pagoListo' => $pagoListo])

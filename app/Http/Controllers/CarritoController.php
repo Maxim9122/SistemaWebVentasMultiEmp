@@ -318,7 +318,14 @@ class CarritoController extends Controller
                 $emisor->emitir($factura, $pedido);
             }
 
-            if ($request->validated('tipo_comprobante') === 'remito' || $factura?->estado === Factura::ESTADO_APROBADA) {
+            // "Automático" imprime derecho sin preguntar, "preguntar" ofrece
+            // el cartel de siempre, "sin_ticket" no hace nada de esto — ver
+            // Empresa::comportamiento_impresion.
+            if ($usuario->empresa->imprimeAutomaticamente() && ($urlImprimir = $pedido->urlComprobanteParaImprimir())) {
+                return redirect($urlImprimir);
+            }
+
+            if ($usuario->empresa->preguntaAntesDeImprimir() && $pedido->tieneComprobanteImprimible()) {
                 session()->flash('pedido_comprobante_listo_id', $pedido->id);
             }
 

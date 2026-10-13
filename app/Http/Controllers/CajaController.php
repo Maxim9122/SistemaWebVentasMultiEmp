@@ -123,7 +123,16 @@ class CajaController extends Controller
             $emisor->emitir($factura, $pedido);
         }
 
-        if ($request->validated('tipo_comprobante') === 'remito' || $factura?->estado === Factura::ESTADO_APROBADA) {
+        $empresa = $request->user()->empresa;
+
+        // "Automático" imprime derecho sin preguntar, "preguntar" ofrece el
+        // cartel de siempre, "sin_ticket" no hace nada de esto — ver
+        // Empresa::comportamiento_impresion.
+        if ($empresa->imprimeAutomaticamente() && ($urlImprimir = $pedido->urlComprobanteParaImprimir())) {
+            return redirect($urlImprimir);
+        }
+
+        if ($empresa->preguntaAntesDeImprimir() && $pedido->tieneComprobanteImprimible()) {
             session()->flash('pedido_comprobante_listo_id', $pedido->id);
         }
 
@@ -279,8 +288,14 @@ class CajaController extends Controller
         }
 
         $tipoComprobante = $intento->montos_json['tipo_comprobante'] ?? null;
+        $hayComprobante = $tipoComprobante === 'remito' || $pedido->factura?->estado === Factura::ESTADO_APROBADA;
 
-        if ($tipoComprobante === 'remito' || $pedido->factura?->estado === Factura::ESTADO_APROBADA) {
+        // El cobro con QR se confirma por webhook, sin que el cajero esté
+        // mandando un request en ese momento — no hay una respuesta HTTP
+        // ahí para redirigir derecho a imprimir como en los demás cobros,
+        // así que acá "automático" se queda en no-op por ahora (igual que
+        // "sin_ticket"); solo "preguntar" ofrece el cartel, como siempre.
+        if ($hayComprobante && $pedido->empresa->preguntaAntesDeImprimir()) {
             session()->flash('pedido_comprobante_listo_id', $pedido->id);
         }
     }

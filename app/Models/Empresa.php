@@ -35,6 +35,7 @@ class Empresa extends Model
         'formato_comprobante',
         'mostrar_modal_comprobante',
         'imprimir_automatico',
+        'comportamiento_impresion',
         'ajuste_efectivo_porcentaje',
         'ajuste_tarjeta_porcentaje',
         'ajuste_transferencia_porcentaje',
@@ -58,6 +59,12 @@ class Empresa extends Model
     public const FORMATO_COMPROBANTE_TICKET = 'ticket';
 
     public const FORMATO_COMPROBANTE_A4 = 'a4';
+
+    public const IMPRESION_PREGUNTAR = 'preguntar';
+
+    public const IMPRESION_AUTOMATICO = 'automatico';
+
+    public const IMPRESION_SIN_TICKET = 'sin_ticket';
 
     protected function casts(): array
     {
@@ -309,6 +316,21 @@ class Empresa extends Model
     public function usaFormatoA4(): bool
     {
         return $this->formato_comprobante === self::FORMATO_COMPROBANTE_A4;
+    }
+
+    public function preguntaAntesDeImprimir(): bool
+    {
+        return $this->comportamiento_impresion === self::IMPRESION_PREGUNTAR;
+    }
+
+    public function imprimeAutomaticamente(): bool
+    {
+        return $this->comportamiento_impresion === self::IMPRESION_AUTOMATICO;
+    }
+
+    public function noUsaTicket(): bool
+    {
+        return $this->comportamiento_impresion === self::IMPRESION_SIN_TICKET;
     }
 
     public function esResponsableInscripto(): bool

@@ -431,16 +431,25 @@ este está abierto. --}}
         // solo. requestSubmit() desde el modal NO dispara este listener de
         // nuevo (no es un click en el botón), así que no hace falta ninguna
         // bandera para "esta vez sí dejar pasar".
-        const btnSubmitCobro = formCobro ? formCobro.querySelector('button[type="submit"]') : null;
+        //
+        // El botón vive AFUERA de este partial (lo pone la vista que lo
+        // incluye, más abajo en el HTML) — buscarlo ya mismo, en medio de
+        // este script, no lo encuentra todavía porque el navegador recién
+        // va por acá al parsear la página. Se busca recién en
+        // DOMContentLoaded, cuando el documento entero (botón incluido) ya
+        // está armado.
+        document.addEventListener('DOMContentLoaded', function () {
+            const btnSubmitCobro = formCobro ? formCobro.querySelector('button[type="submit"]') : null;
 
-        if (btnSubmitCobro) {
-            btnSubmitCobro.addEventListener('click', function (evento) {
-                if (aplicaModalPagoEfectivo()) {
-                    evento.preventDefault();
-                    abrirModalPagoEfectivo();
-                }
-            });
-        }
+            if (btnSubmitCobro) {
+                btnSubmitCobro.addEventListener('click', function (evento) {
+                    if (aplicaModalPagoEfectivo()) {
+                        evento.preventDefault();
+                        abrirModalPagoEfectivo();
+                    }
+                });
+            }
+        });
 
         toggleDividir.addEventListener('click', function () {
             modoDividido = !modoDividido;

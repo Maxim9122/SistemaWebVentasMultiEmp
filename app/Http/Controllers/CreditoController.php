@@ -192,10 +192,19 @@ class CreditoController extends Controller
             'monto_transferencia' => $montoTransferencia,
         ]);
 
-        // Mismo patrón que después de cobrar una venta (pedido_comprobante_listo_id
-        // en layouts.app): ofrece descargar el comprobante del pago recién hecho,
-        // gateado por el mismo interruptor `mostrar_modal_comprobante`.
-        session()->flash('pago_credito_comprobante_id', $pago->id);
+        $empresa = $request->user()->empresa;
+
+        // Mismo patrón que después de cobrar una venta (ver
+        // comportamiento_impresion en Empresa): "automático" imprime
+        // derecho sin preguntar, "preguntar" ofrece el cartel de siempre, y
+        // "sin_ticket" no hace nada de esto.
+        if ($empresa->imprimeAutomaticamente()) {
+            return redirect()->route('creditos.pagos.imprimir', $pago);
+        }
+
+        if ($empresa->preguntaAntesDeImprimir()) {
+            session()->flash('pago_credito_comprobante_id', $pago->id);
+        }
 
         return redirect()->route('creditos.index', ['cliente_id' => $datos['cliente_id']])->with('status', 'Pago registrado.');
     }

@@ -46,6 +46,10 @@ class ConfiguracionEmpresaController extends Controller
                 'required',
                 Rule::in([Empresa::FORMATO_COMPROBANTE_TICKET, Empresa::FORMATO_COMPROBANTE_A4]),
             ],
+            'comportamiento_impresion' => [
+                'required',
+                Rule::in([Empresa::IMPRESION_PREGUNTAR, Empresa::IMPRESION_AUTOMATICO, Empresa::IMPRESION_SIN_TICKET]),
+            ],
             'ajuste_efectivo_porcentaje' => ['required', 'numeric', 'between:-100,100'],
             'ajuste_tarjeta_porcentaje' => ['required', 'numeric', 'between:-100,100'],
             'ajuste_transferencia_porcentaje' => ['required', 'numeric', 'between:-100,100'],
@@ -61,8 +65,6 @@ class ConfiguracionEmpresaController extends Controller
             'permite_cajero_modificar_ventas' => $request->boolean('permite_cajero_modificar_ventas'),
             'permite_cajero_notas_credito' => $request->boolean('permite_cajero_notas_credito'),
             'factura_habilitada' => $request->boolean('factura_habilitada'),
-            'mostrar_modal_comprobante' => $request->boolean('mostrar_modal_comprobante'),
-            'imprimir_automatico' => $request->boolean('imprimir_automatico'),
             'permite_fiado' => $request->boolean('permite_fiado'),
             'permite_pago_qr' => $request->boolean('permite_pago_qr'),
         ]);

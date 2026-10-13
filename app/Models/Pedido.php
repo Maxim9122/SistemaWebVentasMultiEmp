@@ -121,6 +121,33 @@ class Pedido extends Model
     }
 
     /**
+     * Mismo chequeo que ya usaban los controllers antes de flashear
+     * "pedido_comprobante_listo_id": si hay algo imprimible (remito, o
+     * factura ya aprobada con CAE) — ver comentario de urlComprobante().
+     */
+    public function tieneComprobanteImprimible(): bool
+    {
+        return $this->tipo_comprobante === 'remito' || $this->factura?->estado === Factura::ESTADO_APROBADA;
+    }
+
+    /**
+     * La URL de "Imprimir" para este pedido — la misma que arma
+     * modal-comprobante-listo.blade.php, pero reusable desde el modo
+     * "imprimir automático" (ver Empresa::imprimeAutomaticamente()), que
+     * redirige derecho para acá en vez de mostrar el cartel primero.
+     */
+    public function urlComprobanteParaImprimir(): ?string
+    {
+        if (! $this->tieneComprobanteImprimible()) {
+            return null;
+        }
+
+        return $this->tipo_comprobante === 'factura'
+            ? route('ventas.imprimirComprobante', $this)
+            : route('ventas.imprimirRemito', $this);
+    }
+
+    /**
      * Todas las facturas que salieron de este pedido a lo largo del tiempo
      * (no solo la vigente vía `factura_id`) — al editar una venta ya
      * facturada, `factura_id` pasa a apuntar a la factura nueva y la vieja

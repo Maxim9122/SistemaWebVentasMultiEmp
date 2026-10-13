@@ -205,32 +205,41 @@
             </div>
 
             <div>
-                <label class="flex items-start gap-2 text-sm">
-                    <input type="checkbox" name="mostrar_modal_comprobante" value="1"
-                        @checked(old('mostrar_modal_comprobante', $empresa->mostrar_modal_comprobante)) class="rounded border border-slate-300 mt-0.5">
-                    <span>
-                        <span class="font-medium text-slate-900">Preguntar si descargar el comprobante al cobrar</span><br>
-                        <span class="text-slate-500">Activado por defecto. Al confirmar una venta (remito o factura), aparece un cartel para descargar el PDF. Desmarcá esto si tu empresa no imprime ni descarga comprobantes.</span>
-                    </span>
-                </label>
-            </div>
-
-            <div>
-                <label class="flex items-start gap-2 text-sm">
-                    <input type="checkbox" name="imprimir_automatico" value="1"
-                        @checked(old('imprimir_automatico', $empresa->imprimir_automatico)) class="rounded border border-slate-300 mt-0.5">
-                    <span>
-                        <span class="font-medium text-slate-900">Imprimir el ticket sin diálogos (experimental)</span><br>
-                        <span class="text-slate-500">
-                            Al imprimir un comprobante, lo manda directo a la impresora predeterminada de Windows, sin
-                            mostrar el botón "Imprimir" ni el cuadro de diálogo del navegador. Para que funcione de
-                            verdad sin ningún cartel, hay que abrir el sistema desde un acceso directo de Chrome con el
-                            modificador <code>--kiosk-printing</code> agregado — sin eso configurado en la computadora,
-                            el navegador va a mostrar su diálogo de impresión igual, solo que automáticamente en vez de
-                            con un clic.
+                <p class="font-medium text-slate-900 mb-2">Al cobrar una venta (remito o factura)</p>
+                @php $comportamiento = old('comportamiento_impresion', $empresa->comportamiento_impresion); @endphp
+                <div class="space-y-2.5">
+                    <label class="flex items-start gap-2 text-sm cursor-pointer">
+                        <input type="radio" name="comportamiento_impresion" value="{{ \App\Models\Empresa::IMPRESION_PREGUNTAR }}"
+                            @checked($comportamiento === \App\Models\Empresa::IMPRESION_PREGUNTAR) class="mt-0.5">
+                        <span>
+                            <span class="font-medium text-slate-900">Preguntar</span><br>
+                            <span class="text-slate-500">Por defecto. Aparece un cartel para confirmar si imprimir — al tocar "Imprimir" ahí, va directo al diálogo de impresión, sin pasos de más.</span>
                         </span>
-                    </span>
-                </label>
+                    </label>
+                    <label class="flex items-start gap-2 text-sm cursor-pointer">
+                        <input type="radio" name="comportamiento_impresion" value="{{ \App\Models\Empresa::IMPRESION_AUTOMATICO }}"
+                            @checked($comportamiento === \App\Models\Empresa::IMPRESION_AUTOMATICO) class="mt-0.5">
+                        <span>
+                            <span class="font-medium text-slate-900">Imprimir directo, sin preguntar (experimental)</span><br>
+                            <span class="text-slate-500">
+                                No aparece ningún cartel — al confirmar la venta, manda derecho al diálogo de impresión
+                                del navegador. Para que imprima de verdad sin ningún cartel del navegador tampoco, hace
+                                falta además abrir el sistema desde un acceso directo de Chrome con el modificador
+                                <code>--kiosk-printing</code> agregado (eso es configuración de Windows, no de acá) —
+                                sin eso, el navegador igual muestra su propio diálogo de impresión, nomás que
+                                automático en vez de con un clic.
+                            </span>
+                        </span>
+                    </label>
+                    <label class="flex items-start gap-2 text-sm cursor-pointer">
+                        <input type="radio" name="comportamiento_impresion" value="{{ \App\Models\Empresa::IMPRESION_SIN_TICKET }}"
+                            @checked($comportamiento === \App\Models\Empresa::IMPRESION_SIN_TICKET) class="mt-0.5">
+                        <span>
+                            <span class="font-medium text-slate-900">No usar ticket</span><br>
+                            <span class="text-slate-500">No aparece ningún cartel ni se ofrece imprimir — para empresas que no imprimen ni descargan comprobantes.</span>
+                        </span>
+                    </label>
+                </div>
             </div>
 
             <div class="border-t pt-5">
