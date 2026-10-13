@@ -188,21 +188,9 @@
         </form>
     </div>
 
-    @php
-        $productosParaBuscador = $productos->map(function ($producto) {
-            return [
-                'id' => $producto->id,
-                'nombre' => $producto->nombre,
-                'codigo' => $producto->codigo,
-                'precio' => (float) $producto->precio,
-                'es_por_peso' => $producto->esPorPeso(),
-            ];
-        })->values();
-    @endphp
-
     <script>
         (function () {
-            const productos = @json($productosParaBuscador);
+            const urlBuscarProducto = {{ Js::from(route('carritos.buscarProducto')) }};
 
             const input = document.getElementById('buscador_producto');
             const hidden = document.getElementById('producto_id_seleccionado');
@@ -253,9 +241,27 @@
 
             let resultados = [];
             let indiceActivo = -1;
+            let timerDebounce = null;
+            let idPeticion = 0;
 
             function formatearPrecio(precio) {
                 return precio.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+
+            // Búsqueda en el servidor en vez de filtrar un catálogo entero ya
+            // cargado en la página — con empresas de varios miles de
+            // productos, mandar todo el catálogo en cada carga de esta
+            // pantalla pesaba varios cientos de KB. idPeticion descarta la
+            // respuesta si para cuando llega ya se tipeó algo más nuevo.
+            function buscarEnServidor(texto) {
+                const miId = ++idPeticion;
+
+                return fetch(urlBuscarProducto + '?q=' + encodeURIComponent(texto), {
+                    headers: { 'Accept': 'application/json' },
+                })
+                    .then((respuesta) => respuesta.json())
+                    .then((datos) => (miId === idPeticion ? datos : null))
+                    .catch(() => null);
             }
 
             function renderizar() {
@@ -298,9 +304,10 @@
 
             input.addEventListener('input', function () {
                 hidden.value = '';
-                const texto = input.value.trim().toLowerCase();
+                const texto = input.value.trim();
                 indiceActivo = -1;
                 aplicarModoProducto(null);
+                clearTimeout(timerDebounce);
 
                 if (texto === '') {
                     resultados = [];
@@ -308,34 +315,59 @@
                     return;
                 }
 
-                resultados = productos.filter(function (producto) {
-                    return producto.nombre.toLowerCase().includes(texto)
-                        || (producto.codigo && producto.codigo.toLowerCase().includes(texto));
-                }).slice(0, 8);
+                // Debounce corto: no dispara una búsqueda por cada letra
+                // tipeada, solo cuando se deja de escribir un instante.
+                timerDebounce = setTimeout(function () {
+                    buscarEnServidor(texto).then(function (datos) {
+                        if (datos === null) {
+                            return;
+                        }
 
-                renderizar();
+                        resultados = datos;
+                        renderizar();
+                    });
+                }, 200);
             });
 
             input.addEventListener('keydown', function (evento) {
                 if (evento.key === 'Enter') {
-                    const texto = input.value.trim().toLowerCase();
+                    const texto = input.value.trim();
 
-                    // Coincidencia exacta de código (lector de código de barras o el código
-                    // completo tipeado a mano) tiene prioridad sobre lo resaltado en la lista.
-                    // Nunca se agrega solo al carrito acá: este Enter selecciona el producto y
-                    // salta el foco a Cantidad — recién un segundo Enter ahí (submit nativo del
-                    // form) lo agrega, dando tiempo a cambiar la cantidad por defecto.
-                    const productoEscaneado = productos.find(function (producto) {
-                        return producto.codigo && producto.codigo.toLowerCase() === texto;
-                    });
-
-                    const elegido = productoEscaneado
-                        || (indiceActivo >= 0 ? resultados[indiceActivo] : (resultados.length === 1 ? resultados[0] : null));
-
-                    if (elegido) {
-                        evento.preventDefault();
-                        seleccionar(elegido);
+                    if (texto === '') {
+                        return;
                     }
+
+                    evento.preventDefault();
+                    clearTimeout(timerDebounce);
+
+                    // Nunca se agrega solo al carrito acá: este Enter busca y
+                    // selecciona el producto, salta el foco a Cantidad (o a
+                    // Precio si es por peso) — recién un segundo Enter ahí
+                    // (submit nativo del form) lo agrega.
+                    buscarEnServidor(texto).then(function (datos) {
+                        if (datos === null) {
+                            return;
+                        }
+
+                        resultados = datos;
+
+                        // Coincidencia exacta de código (lector de código de barras o el
+                        // código completo tipeado a mano) tiene prioridad sobre lo
+                        // resaltado en la lista — el servidor ya la devuelve primera.
+                        const texto_min = texto.toLowerCase();
+                        const productoEscaneado = resultados.find(function (producto) {
+                            return producto.codigo && producto.codigo.toLowerCase() === texto_min;
+                        });
+
+                        const elegido = productoEscaneado
+                            || (indiceActivo >= 0 ? resultados[indiceActivo] : (resultados.length === 1 ? resultados[0] : null));
+
+                        if (elegido) {
+                            seleccionar(elegido);
+                        } else {
+                            renderizar();
+                        }
+                    });
 
                     return;
                 }

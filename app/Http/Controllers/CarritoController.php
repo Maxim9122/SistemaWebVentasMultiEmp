@@ -49,6 +49,44 @@ class CarritoController extends Controller
         return redirect()->route('carritos.show', $this->crearCarrito($usuario));
     }
 
+    /**
+     * Búsqueda en vivo para el buscador de productos del carrito. Antes se
+     * mandaba el catálogo entero (nombre/código/precio de cada producto) ya
+     * armado en la página — con empresas de varios miles de productos eso
+     * eran varios cientos de KB de JSON en cada carga de la pantalla, y en
+     * cada "Agregar" (que recarga la página). Ahora se busca en el momento,
+     * nunca se devuelven más de 8 resultados.
+     */
+    public function buscarProducto(Request $request): JsonResponse
+    {
+        $texto = trim((string) $request->input('q', ''));
+
+        if ($texto === '') {
+            return response()->json([]);
+        }
+
+        $productos = Producto::where('empresa_id', $request->user()->empresa_id)
+            ->where('activo', true)
+            ->where(function ($query) use ($texto) {
+                $query->where('nombre', 'like', "%{$texto}%")
+                    ->orWhere('codigo', 'like', "%{$texto}%");
+            })
+            // Si el texto es justo un código exacto (lector de código de
+            // barras), que aparezca primero sin importar el orden alfabético.
+            ->orderByRaw('codigo = ? desc', [$texto])
+            ->orderBy('nombre')
+            ->limit(8)
+            ->get(['id', 'nombre', 'codigo', 'precio', 'unidad']);
+
+        return response()->json($productos->map(fn (Producto $producto) => [
+            'id' => $producto->id,
+            'nombre' => $producto->nombre,
+            'codigo' => $producto->codigo,
+            'precio' => (float) $producto->precio,
+            'es_por_peso' => $producto->esPorPeso(),
+        ]));
+    }
+
     public function show(Request $request, Pedido $pedido): View|RedirectResponse
     {
         $this->autorizar($request, $pedido);
@@ -63,16 +101,9 @@ class CarritoController extends Controller
             ->where('id', '!=', $pedido->id)
             ->get();
 
-        $productos = Producto::query()
-            ->where('empresa_id', $request->user()->empresa_id)
-            ->where('activo', true)
-            ->orderBy('nombre')
-            ->get();
-
         return view('carritos.show', [
             'pedido' => $pedido->load('items.producto'),
             'otrosCarritos' => $otrosCarritos,
-            'productos' => $productos,
             'puedeCambiarPrecio' => $request->user()->puedeCambiarPrecioVenta(),
             'empresa' => $request->user()->empresa,
             'clientes' => Cliente::where('empresa_id', $request->user()->empresa_id)->where('activo', true)->orderBy('nombre')->get(),

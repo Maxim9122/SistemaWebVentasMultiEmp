@@ -226,6 +226,9 @@ Route::middleware('auth')->group(function () {
         Route::prefix('carritos')->name('carritos.')->middleware('role:vendedor,cajero_vendedor')->group(function () {
             Route::get('/', [CarritoController::class, 'index'])->name('index');
             Route::post('/', [CarritoController::class, 'store'])->name('store');
+            Route::get('/buscar-producto', [CarritoController::class, 'buscarProducto'])
+                ->middleware('throttle:120,1')
+                ->name('buscarProducto');
             Route::get('/{pedido}', [CarritoController::class, 'show'])->name('show');
             Route::put('/{pedido}/nombre', [CarritoController::class, 'renombrar'])->name('renombrar');
             Route::post('/{pedido}/items', [CarritoController::class, 'agregarItem'])->name('items.store');
