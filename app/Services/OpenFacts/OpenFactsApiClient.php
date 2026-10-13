@@ -42,7 +42,11 @@ class OpenFactsApiClient
         $producto = $response->json('product', []);
 
         return [
-            'nombre' => $this->primerValorNoVacio($producto['product_name'] ?? null),
+            // Esta familia de APIs es colaborativa — el nombre suele venir
+            // todo en minúscula tal como lo tipeó quien cargó el producto.
+            // Se capitaliza solo la primera letra (sin tocar el resto del
+            // texto) para que, al menos, no quede en minúscula de entrada.
+            'nombre' => $this->primeraLetraMayuscula($this->primerValorNoVacio($producto['product_name'] ?? null)),
             'marca' => $this->primerSegmento($producto['brands'] ?? null),
             'categoria' => $this->primerSegmento($producto['categories'] ?? null),
         ];
@@ -53,6 +57,19 @@ class OpenFactsApiClient
         $valor = trim((string) $valor);
 
         return $valor !== '' ? $valor : null;
+    }
+
+    /**
+     * mb_* (no ucfirst/strtoupper) porque el nombre puede empezar con una
+     * letra acentuada o una ñ.
+     */
+    private function primeraLetraMayuscula(?string $valor): ?string
+    {
+        if ($valor === null) {
+            return null;
+        }
+
+        return mb_strtoupper(mb_substr($valor, 0, 1)).mb_substr($valor, 1);
     }
 
     /**
