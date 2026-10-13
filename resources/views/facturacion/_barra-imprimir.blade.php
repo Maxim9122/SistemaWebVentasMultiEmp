@@ -58,21 +58,43 @@ manda. La barra nunca sale impresa: @media print la oculta. --}}
         <button type="button" class="imprimir" onclick="window.print()">Imprimir</button>
     </div>
     <script>
-        function volverComprobante(boton) {
-            boton.disabled = true;
+        var destinoVolver = @json($volverUrl ?? url()->previous());
+        var esMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-            var destino = @json($volverUrl ?? url()->previous());
-            var esMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        function volverComprobante(boton) {
+            if (boton) {
+                boton.disabled = true;
+            }
 
             if (esMobile) {
-                window.location.href = destino;
+                window.location.href = destinoVolver;
                 return;
             }
 
             window.close();
             setTimeout(function () {
-                window.location.href = destino;
+                window.location.href = destinoVolver;
             }, 150);
         }
+
+        {{--
+            Imprimir automático (opt-in por empresa, ver Configuración): dispara
+            el diálogo de impresión solo, sin esperar el clic en "Imprimir", y
+            al cerrarse ese diálogo (se haya impreso o cancelado) vuelve solo —
+            mismo comportamiento que ya tenía el botón "Volver", nada nuevo ahí.
+            Sin el modificador --kiosk-printing de Chrome configurado en esa PC
+            esto de última sigue mostrando el diálogo nativo (solo que
+            automático en vez de con un clic) — nunca bloquea poder imprimir.
+            Nunca en celular: ahí no existe un diálogo de impresión real de la
+            misma forma, y afterprint es poco confiable.
+        --}}
+        @if (($autoimprimir ?? false))
+            if (! esMobile) {
+                window.addEventListener('afterprint', function () {
+                    volverComprobante(null);
+                });
+                window.print();
+            }
+        @endif
     </script>
 @endif

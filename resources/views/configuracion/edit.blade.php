@@ -215,6 +215,24 @@
                 </label>
             </div>
 
+            <div>
+                <label class="flex items-start gap-2 text-sm">
+                    <input type="checkbox" name="imprimir_automatico" value="1"
+                        @checked(old('imprimir_automatico', $empresa->imprimir_automatico)) class="rounded border border-slate-300 mt-0.5">
+                    <span>
+                        <span class="font-medium text-slate-900">Imprimir el ticket sin diálogos (experimental)</span><br>
+                        <span class="text-slate-500">
+                            Al imprimir un comprobante, lo manda directo a la impresora predeterminada de Windows, sin
+                            mostrar el botón "Imprimir" ni el cuadro de diálogo del navegador. Para que funcione de
+                            verdad sin ningún cartel, hay que abrir el sistema desde un acceso directo de Chrome con el
+                            modificador <code>--kiosk-printing</code> agregado — sin eso configurado en la computadora,
+                            el navegador va a mostrar su diálogo de impresión igual, solo que automáticamente en vez de
+                            con un clic.
+                        </span>
+                    </span>
+                </label>
+            </div>
+
             <div class="border-t pt-5">
                 <p class="font-medium text-slate-900 mb-1">Descuento / recargo por medio de pago</p>
                 <p class="text-slate-500 text-sm mb-3">Un número negativo es descuento, positivo es recargo. Dejá 0 si ese medio no ajusta el precio.</p>

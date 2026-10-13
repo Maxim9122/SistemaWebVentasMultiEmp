@@ -62,6 +62,7 @@ class ConfiguracionEmpresaController extends Controller
             'permite_cajero_notas_credito' => $request->boolean('permite_cajero_notas_credito'),
             'factura_habilitada' => $request->boolean('factura_habilitada'),
             'mostrar_modal_comprobante' => $request->boolean('mostrar_modal_comprobante'),
+            'imprimir_automatico' => $request->boolean('imprimir_automatico'),
             'permite_fiado' => $request->boolean('permite_fiado'),
             'permite_pago_qr' => $request->boolean('permite_pago_qr'),
         ]);

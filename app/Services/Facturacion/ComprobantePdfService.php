@@ -132,6 +132,7 @@ class ComprobantePdfService
             'pedido' => $pedido,
             'modoWeb' => $modoWeb,
             'volverUrl' => $modoWeb ? route('carritos.index') : null,
+            'autoimprimir' => $modoWeb && $empresa->imprimir_automatico,
         ])->render();
     }
 
@@ -149,6 +150,7 @@ class ComprobantePdfService
             'pedido' => $pedido,
             'modoWeb' => $modoWeb,
             'volverUrl' => $modoWeb ? route('presupuestos.show', $pedido) : null,
+            'autoimprimir' => $modoWeb && $empresa->imprimir_automatico,
         ])->render();
     }
 
@@ -174,6 +176,7 @@ class ComprobantePdfService
             'pago' => $pago,
             'modoWeb' => $modoWeb,
             'volverUrl' => $modoWeb ? route('creditos.index', ['cliente_id' => $pago->cliente_id]) : null,
+            'autoimprimir' => $modoWeb && $empresa->imprimir_automatico,
         ])->render();
     }
 
@@ -230,6 +233,7 @@ class ComprobantePdfService
             'qr' => $qr,
             'modoWeb' => $modoWeb,
             'volverUrl' => $volverUrl,
+            'autoimprimir' => $modoWeb && $empresa->imprimir_automatico,
         ])->render();
     }
 
