@@ -85,18 +85,9 @@
         </div>
     </form>
 
-    @php
-        $productosParaBuscador = $productos->map(fn ($producto) => [
-            'id' => $producto->id,
-            'nombre' => $producto->nombre,
-            'codigo' => $producto->codigo,
-            'precio' => (float) $producto->precio,
-        ])->values();
-    @endphp
-
     <script>
         (function () {
-            const productos = @json($productosParaBuscador);
+            const urlBuscarProducto = {{ Js::from($buscarProductoUrl) }};
             const puedeCambiarPrecio = @json($puedeCambiarPrecio);
 
             const cuerpo = document.getElementById('filas_items');
@@ -108,9 +99,27 @@
             let indice = {{ $pedido->items->count() }};
             let resultados = [];
             let indiceActivo = -1;
+            let timerDebounce = null;
+            let idPeticion = 0;
 
             function formatearPrecio(precio) {
                 return precio.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+
+            // Búsqueda en el servidor en vez de filtrar un catálogo entero ya
+            // cargado en la página — con empresas de varios miles de
+            // productos, mandar todo el catálogo en cada carga de esta
+            // pantalla pesaba varios cientos de KB. idPeticion descarta la
+            // respuesta si para cuando llega ya se tipeó algo más nuevo.
+            function buscarEnServidor(texto) {
+                const miId = ++idPeticion;
+
+                return fetch(urlBuscarProducto + '?q=' + encodeURIComponent(texto), {
+                    headers: { 'Accept': 'application/json' },
+                })
+                    .then((respuesta) => respuesta.json())
+                    .then((datos) => (miId === idPeticion ? datos : null))
+                    .catch(() => null);
             }
 
             // El precio "auto" es aproximado (no recalcula tramos por cantidad
@@ -250,32 +259,62 @@
             }
 
             input.addEventListener('input', function () {
-                const texto = input.value.trim().toLowerCase();
+                const texto = input.value.trim();
                 indiceActivo = -1;
+                clearTimeout(timerDebounce);
 
-                resultados = texto === '' ? [] : productos.filter(function (producto) {
-                    return producto.nombre.toLowerCase().includes(texto)
-                        || (producto.codigo && producto.codigo.toLowerCase().includes(texto));
-                }).slice(0, 8);
+                if (texto === '') {
+                    resultados = [];
+                    renderizar();
+                    return;
+                }
 
-                renderizar();
+                // Debounce corto: no dispara una búsqueda por cada letra
+                // tipeada, solo cuando se deja de escribir un instante.
+                timerDebounce = setTimeout(function () {
+                    buscarEnServidor(texto).then(function (datos) {
+                        if (datos === null) {
+                            return;
+                        }
+
+                        resultados = datos;
+                        renderizar();
+                    });
+                }, 200);
             });
 
             input.addEventListener('keydown', function (evento) {
                 if (evento.key === 'Enter') {
                     evento.preventDefault();
-                    const texto = input.value.trim().toLowerCase();
+                    const texto = input.value.trim();
 
-                    const escaneado = productos.find(function (producto) {
-                        return producto.codigo && producto.codigo.toLowerCase() === texto;
-                    });
-
-                    const elegido = escaneado
-                        || (indiceActivo >= 0 ? resultados[indiceActivo] : (resultados.length === 1 ? resultados[0] : null));
-
-                    if (elegido) {
-                        seleccionar(elegido);
+                    if (texto === '') {
+                        return;
                     }
+
+                    clearTimeout(timerDebounce);
+
+                    buscarEnServidor(texto).then(function (datos) {
+                        if (datos === null) {
+                            return;
+                        }
+
+                        resultados = datos;
+
+                        const textoMin = texto.toLowerCase();
+                        const escaneado = resultados.find(function (producto) {
+                            return producto.codigo && producto.codigo.toLowerCase() === textoMin;
+                        });
+
+                        const elegido = escaneado
+                            || (indiceActivo >= 0 ? resultados[indiceActivo] : (resultados.length === 1 ? resultados[0] : null));
+
+                        if (elegido) {
+                            seleccionar(elegido);
+                        } else {
+                            renderizar();
+                        }
+                    });
 
                     return;
                 }

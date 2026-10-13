@@ -240,6 +240,9 @@ Route::middleware('auth')->group(function () {
 
         Route::prefix('caja')->name('caja.')->middleware('role:cajero,cajero_vendedor')->group(function () {
             Route::get('/', [CajaController::class, 'index'])->name('index');
+            Route::get('/buscar-producto', [CajaController::class, 'buscarProducto'])
+                ->middleware('throttle:120,1')
+                ->name('buscarProducto');
             Route::get('/{pedido}', [CajaController::class, 'show'])->name('show');
             Route::get('/{pedido}/editar', [CajaController::class, 'editar'])->name('editar');
             Route::post('/{pedido}/editar', [CajaController::class, 'actualizarItems'])->name('actualizarItems');
@@ -271,6 +274,9 @@ Route::middleware('auth')->group(function () {
         Route::prefix('presupuestos')->name('presupuestos.')->middleware('role:admin,cajero,cajero_vendedor')->group(function () {
             Route::get('/', [PresupuestoController::class, 'index'])->name('index');
             Route::post('/', [PresupuestoController::class, 'store'])->name('store');
+            Route::get('/buscar-producto', [PresupuestoController::class, 'buscarProducto'])
+                ->middleware('throttle:120,1')
+                ->name('buscarProducto');
             Route::get('/{pedido}', [PresupuestoController::class, 'show'])->name('show');
             Route::put('/{pedido}/cliente', [PresupuestoController::class, 'actualizarCliente'])->name('cliente.update');
             Route::post('/{pedido}/items', [PresupuestoController::class, 'agregarItem'])->name('items.store');
@@ -285,6 +291,9 @@ Route::middleware('auth')->group(function () {
 
         Route::prefix('pedidos')->name('pedidos.')->middleware('role:vendedor,cajero,cajero_vendedor')->group(function () {
             Route::get('/', [PedidoController::class, 'index'])->name('index');
+            Route::get('/buscar-producto', [PedidoController::class, 'buscarProducto'])
+                ->middleware('throttle:120,1')
+                ->name('buscarProducto');
             Route::get('/{pedido}', [PedidoController::class, 'show'])->name('show');
             Route::get('/{pedido}/editar', [PedidoController::class, 'editar'])->name('editar');
             Route::post('/{pedido}/editar', [PedidoController::class, 'actualizarItems'])->name('actualizarItems');

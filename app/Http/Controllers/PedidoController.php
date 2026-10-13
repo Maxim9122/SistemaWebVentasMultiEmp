@@ -6,6 +6,7 @@ use App\Http\Requests\EditarItemsVentaRequest;
 use App\Models\Pedido;
 use App\Models\Producto;
 use App\Services\ProcesadorDeCobro;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -84,14 +85,44 @@ class PedidoController extends Controller
         return view('pedidos.editar-items', [
             'titulo' => 'Editar pedido programado',
             'pedido' => $pedido->load('items'),
-            'productos' => Producto::where('empresa_id', $request->user()->empresa_id)
-                ->where('activo', true)
-                ->orderBy('nombre')
-                ->get(),
             'actionUrl' => route('pedidos.actualizarItems', $pedido),
             'volverUrl' => route('pedidos.show', $pedido),
+            'buscarProductoUrl' => route('pedidos.buscarProducto'),
             'puedeCambiarPrecio' => $request->user()->puedeCambiarPrecioVenta(),
         ]);
+    }
+
+    /**
+     * Búsqueda en vivo para el buscador de "Editar pedido programado" —
+     * antes se mandaba el catálogo entero de la empresa (ver editar()). Con
+     * empresas de varios miles de productos eso pesaba varios cientos de
+     * KB en cada carga de esa pantalla.
+     */
+    public function buscarProducto(Request $request): JsonResponse
+    {
+        $texto = trim((string) $request->input('q', ''));
+
+        if ($texto === '') {
+            return response()->json([]);
+        }
+
+        $productos = Producto::where('empresa_id', $request->user()->empresa_id)
+            ->where('activo', true)
+            ->where(function ($query) use ($texto) {
+                $query->where('nombre', 'like', "%{$texto}%")
+                    ->orWhere('codigo', 'like', "%{$texto}%");
+            })
+            ->orderByRaw('codigo = ? desc', [$texto])
+            ->orderBy('nombre')
+            ->limit(8)
+            ->get(['id', 'nombre', 'codigo', 'precio']);
+
+        return response()->json($productos->map(fn (Producto $producto) => [
+            'id' => $producto->id,
+            'nombre' => $producto->nombre,
+            'codigo' => $producto->codigo,
+            'precio' => (float) $producto->precio,
+        ]));
     }
 
     public function actualizarItems(EditarItemsVentaRequest $request, Pedido $pedido, ProcesadorDeCobro $procesador): RedirectResponse

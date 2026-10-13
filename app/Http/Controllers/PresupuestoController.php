@@ -15,6 +15,7 @@ use App\Services\EnvioTicketService;
 use App\Services\Facturacion\ComprobantePdfService;
 use App\Services\Facturacion\EmisionComprobanteService;
 use App\Services\ProcesadorDeCobro;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -87,10 +88,6 @@ class PresupuestoController extends Controller
 
         return view('presupuestos.show', [
             'pedido' => $pedido->load(['items.producto', 'cliente']),
-            'productos' => Producto::where('empresa_id', $request->user()->empresa_id)
-                ->where('activo', true)
-                ->orderBy('nombre')
-                ->get(),
             'puedeCambiarPrecio' => $request->user()->puedeCambiarPrecioVenta(),
             'empresa' => $request->user()->empresa,
             'clientes' => Cliente::where('empresa_id', $request->user()->empresa_id)->where('activo', true)->orderBy('nombre')->get(),
@@ -100,6 +97,40 @@ class PresupuestoController extends Controller
                 ['pedido' => $pedido->id, 'tipo' => 'presupuesto'],
             ),
         ]);
+    }
+
+    /**
+     * Búsqueda en vivo para el buscador de productos del presupuesto —
+     * antes se mandaba el catálogo entero de la empresa (ver show()). Con
+     * empresas de varios miles de productos eso pesaba varios cientos de
+     * KB en cada carga de esa pantalla.
+     */
+    public function buscarProducto(Request $request): JsonResponse
+    {
+        $texto = trim((string) $request->input('q', ''));
+
+        if ($texto === '') {
+            return response()->json([]);
+        }
+
+        $productos = Producto::where('empresa_id', $request->user()->empresa_id)
+            ->where('activo', true)
+            ->where(function ($query) use ($texto) {
+                $query->where('nombre', 'like', "%{$texto}%")
+                    ->orWhere('codigo', 'like', "%{$texto}%");
+            })
+            ->orderByRaw('codigo = ? desc', [$texto])
+            ->orderBy('nombre')
+            ->limit(8)
+            ->get(['id', 'nombre', 'codigo', 'precio', 'unidad']);
+
+        return response()->json($productos->map(fn (Producto $producto) => [
+            'id' => $producto->id,
+            'nombre' => $producto->nombre,
+            'codigo' => $producto->codigo,
+            'precio' => (float) $producto->precio,
+            'es_por_peso' => $producto->esPorPeso(),
+        ]));
     }
 
     public function actualizarCliente(Request $request, Pedido $pedido): RedirectResponse
