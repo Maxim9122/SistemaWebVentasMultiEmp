@@ -313,8 +313,15 @@ class CarritoController extends Controller
                 return back()->withErrors(['stock' => $e->getMessage()]);
             }
 
+            // Siempre se refresca, haya factura o no — cobrar() trabaja sobre
+            // una copia del pedido bloqueada aparte (para el lock de fila),
+            // nunca sobre esta instancia, así que sin esto el remito/tipo de
+            // comprobante/estado que ve el resto de este método quedan
+            // desactualizados (afecta a tieneComprobanteImprimible() de más
+            // abajo, no solo a la emisión).
+            $pedido->refresh();
+
             if ($factura) {
-                $pedido->refresh();
                 $emisor->emitir($factura, $pedido);
             }
 
