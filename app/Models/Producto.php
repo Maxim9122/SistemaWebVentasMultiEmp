@@ -66,6 +66,18 @@ class Producto extends Model
     }
 
     /**
+     * Productos que se venden pesados (unidad "kg", sin importar
+     * mayúsculas/minúsculas) — ya vienen con el precio final calculado por
+     * una balanza, así que al agregarlos a un carrito/presupuesto no se
+     * pide cantidad: se pide directamente ese precio total (ver
+     * CarritoController/PresupuestoController::resolverPrecio).
+     */
+    public function esPorPeso(): bool
+    {
+        return $this->unidad !== null && mb_strtolower(trim($this->unidad)) === 'kg';
+    }
+
+    /**
      * Cuando este producto es una promoción (es_promocion=true), los productos
      * reales que la componen y en qué cantidad cada uno.
      */

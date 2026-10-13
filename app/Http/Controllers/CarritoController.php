@@ -106,8 +106,13 @@ class CarritoController extends Controller
         }
 
         $producto = Producto::findOrFail($request->validated('producto_id'));
-        $cantidad = (int) $request->validated('cantidad');
-        $itemExistente = $pedido->items()->where('producto_id', $producto->id)->first();
+        $cantidad = $producto->esPorPeso() ? 1 : (int) $request->validated('cantidad');
+
+        // Un producto por peso nunca se fusiona con una línea ya cargada
+        // (cada pesada es un precio propio, calculado aparte por la
+        // balanza) — si se fusionara, la segunda pesada pisaría el precio
+        // de la primera en vez de sumarse, perdiendo esa venta.
+        $itemExistente = $producto->esPorPeso() ? null : $pedido->items()->where('producto_id', $producto->id)->first();
 
         if ($itemExistente) {
             $nuevaCantidad = $itemExistente->cantidad + $cantidad;
@@ -156,10 +161,11 @@ class CarritoController extends Controller
 
         $this->autorizarItem($pedido, $item);
 
-        $cantidad = (int) $request->validated('cantidad');
+        $producto = $item->producto ?? new Producto(['precio' => $item->precio_original]);
+        $cantidad = $producto->esPorPeso() ? 1 : (int) $request->validated('cantidad');
         $resolucion = $this->resolverPrecio(
             $request,
-            $item->producto ?? new Producto(['precio' => $item->precio_original]),
+            $producto,
             $cantidad,
             (bool) $item->precio_manual,
             (float) $item->precio_unitario,
@@ -329,6 +335,15 @@ class CarritoController extends Controller
         float $precioManualPrevio,
         bool $conservarManualSiNoSeEnviaPrecio,
     ): array {
+        // Un producto por peso no tiene "precio de catálogo" que aplicar —
+        // el precio es siempre el que se cargó a mano (ya calculado por la
+        // balanza), sin necesidad del permiso para cambiar precio de venta
+        // (no es una excepción al precio normal, es la única forma de
+        // vender este tipo de producto).
+        if ($producto->esPorPeso()) {
+            return ['precio' => (float) $request->validated('precio_unitario'), 'manual' => true];
+        }
+
         $precioSolicitado = $request->validated('precio_unitario');
         $puedeCambiar = $request->user()->puedeCambiarPrecioVenta();
 

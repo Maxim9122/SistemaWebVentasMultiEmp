@@ -54,7 +54,11 @@
                     <tr>
                         <td class="px-4 py-2">
                             {{ $item->nombre_producto }}
-                            @if ($item->tienePrecioEspecial())
+                            @if ($item->producto?->esPorPeso())
+                                <span class="block text-xs text-amber-600">
+                                    Pesado — ${{ number_format($item->precio_original, 2, ',', '.') }} el kg
+                                </span>
+                            @elseif ($item->tienePrecioEspecial())
                                 <span class="block text-xs text-amber-600">
                                     Precio especial (catálogo: ${{ number_format($item->precio_original, 2, ',', '.') }})
                                 </span>
@@ -71,14 +75,21 @@
                             <form method="POST" action="{{ route('carritos.items.update', [$pedido, $item]) }}" class="flex items-center gap-2">
                                 @csrf
                                 @method('PUT')
-                                <input type="number" name="cantidad" value="{{ $item->cantidad }}" data-valor-guardado="{{ $item->cantidad }}" min="1"
-                                    class="item-cantidad w-16 rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
-                                @if ($puedeCambiarPrecio)
-                                    <input type="number" name="precio_unitario"
-                                        value="{{ $item->precio_manual ? $item->precio_unitario : '' }}"
-                                        data-valor-guardado="{{ $item->precio_manual ? $item->precio_unitario : '' }}"
-                                        placeholder="Auto: ${{ number_format($item->precio_unitario, 2, ',', '.') }}" step="0.01" min="0"
+                                @if ($item->producto?->esPorPeso())
+                                    <input type="hidden" name="cantidad" value="1">
+                                    <input type="number" name="precio_unitario" value="{{ $item->precio_unitario }}"
+                                        data-valor-guardado="{{ $item->precio_unitario }}" step="0.01" min="0.01" required
                                         class="item-precio w-28 rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                                @else
+                                    <input type="number" name="cantidad" value="{{ $item->cantidad }}" data-valor-guardado="{{ $item->cantidad }}" min="1"
+                                        class="item-cantidad w-16 rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                                    @if ($puedeCambiarPrecio)
+                                        <input type="number" name="precio_unitario"
+                                            value="{{ $item->precio_manual ? $item->precio_unitario : '' }}"
+                                            data-valor-guardado="{{ $item->precio_manual ? $item->precio_unitario : '' }}"
+                                            placeholder="Auto: ${{ number_format($item->precio_unitario, 2, ',', '.') }}" step="0.01" min="0"
+                                            class="item-precio w-28 rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                                    @endif
                                 @endif
                                 <button type="submit" class="text-xs text-slate-500 hover:underline whitespace-nowrap">Actualizar</button>
                             </form>
@@ -103,7 +114,8 @@
     </div>
 
     <div class="bg-white rounded-lg shadow p-4 mb-4">
-        <form id="form_agregar_producto" method="POST" action="{{ route('carritos.items.store', $pedido) }}" class="flex flex-wrap items-end gap-3">
+        <form id="form_agregar_producto" method="POST" action="{{ route('carritos.items.store', $pedido) }}" class="flex flex-wrap items-end gap-3"
+            data-puede-cambiar-precio="{{ $puedeCambiarPrecio ? '1' : '0' }}">
             @csrf
             <div class="relative flex-1 min-w-[220px]">
                 <label for="buscador_producto" class="block text-sm font-medium mb-1">Producto</label>
@@ -112,18 +124,17 @@
                 <input type="hidden" name="producto_id" id="producto_id_seleccionado">
                 <ul id="resultados_producto" class="hidden absolute z-10 mt-1 w-full max-h-60 overflow-auto rounded border border-slate-200 bg-white shadow-lg"></ul>
             </div>
-            <div>
+            <div id="campo_cantidad">
                 <label for="cantidad" class="block text-sm font-medium mb-1">Cantidad</label>
                 <input id="cantidad" name="cantidad" type="number" min="1" value="1" required
                     class="w-20 rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
             </div>
-            @if ($puedeCambiarPrecio)
-                <div>
-                    <label for="precio_unitario" class="block text-sm font-medium mb-1">Precio especial</label>
-                    <input id="precio_unitario" name="precio_unitario" type="number" step="0.01" min="0" placeholder="Catálogo"
-                        class="w-28 rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
-                </div>
-            @endif
+            <div id="campo_precio_unitario" class="{{ $puedeCambiarPrecio ? '' : 'hidden' }}">
+                <label id="label_precio_unitario" for="precio_unitario" class="block text-sm font-medium mb-1">Precio especial</label>
+                <input id="precio_unitario" name="precio_unitario" type="number" step="0.01" min="0" placeholder="Catálogo"
+                    class="w-28 rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
+                <p id="ayuda_precio_kg" class="hidden text-xs text-slate-500 mt-1"></p>
+            </div>
             <button type="submit" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
                 Agregar
             </button>
@@ -184,6 +195,7 @@
                 'nombre' => $producto->nombre,
                 'codigo' => $producto->codigo,
                 'precio' => (float) $producto->precio,
+                'es_por_peso' => $producto->esPorPeso(),
             ];
         })->values();
     @endphp
@@ -196,6 +208,11 @@
             const hidden = document.getElementById('producto_id_seleccionado');
             const lista = document.getElementById('resultados_producto');
             const cantidadInput = document.getElementById('cantidad');
+            const campoCantidad = document.getElementById('campo_cantidad');
+            const campoPrecioUnitario = document.getElementById('campo_precio_unitario');
+            const labelPrecioUnitario = document.getElementById('label_precio_unitario');
+            const inputPrecioUnitario = document.getElementById('precio_unitario');
+            const ayudaPrecioKg = document.getElementById('ayuda_precio_kg');
 
             // Acá empieza siempre la próxima venta — reforzado a mano
             // además del atributo autofocus del HTML, porque después de
@@ -203,6 +220,36 @@
             // carrito nuevo) el foco no siempre termina quedando ahí solo.
             input.focus();
             const form = document.getElementById('form_agregar_producto');
+            const puedeCambiarPrecio = form.dataset.puedeCambiarPrecio === '1';
+
+            // Un producto "por peso" (unidad = kg) ya viene con el precio
+            // final calculado por una balanza — no tiene sentido pedir
+            // cantidad, se pide directamente ese precio total. El campo
+            // precio_unitario pasa a estar siempre visible y obligatorio
+            // para este caso puntual, sin importar el permiso de "cambiar
+            // precio de venta" (no es una excepción al precio, es la única
+            // forma de vender este producto).
+            function aplicarModoProducto(producto) {
+                const esPorPeso = !!(producto && producto.es_por_peso);
+
+                campoCantidad.classList.toggle('hidden', esPorPeso);
+                campoPrecioUnitario.classList.toggle('hidden', ! esPorPeso && ! puedeCambiarPrecio);
+
+                if (esPorPeso) {
+                    cantidadInput.value = 1;
+                    labelPrecioUnitario.textContent = 'Precio';
+                    inputPrecioUnitario.placeholder = 'Total ya pesado';
+                    inputPrecioUnitario.required = true;
+                    inputPrecioUnitario.value = '';
+                    ayudaPrecioKg.textContent = 'Precio por kg: $' + formatearPrecio(producto.precio);
+                    ayudaPrecioKg.classList.remove('hidden');
+                } else {
+                    labelPrecioUnitario.textContent = 'Precio especial';
+                    inputPrecioUnitario.placeholder = 'Catálogo';
+                    inputPrecioUnitario.required = false;
+                    ayudaPrecioKg.classList.add('hidden');
+                }
+            }
 
             let resultados = [];
             let indiceActivo = -1;
@@ -239,8 +286,11 @@
                 resultados = [];
                 indiceActivo = -1;
                 renderizar();
+                aplicarModoProducto(producto);
 
-                if (cantidadInput) {
+                if (producto.es_por_peso) {
+                    inputPrecioUnitario.focus();
+                } else if (cantidadInput) {
                     cantidadInput.focus();
                     cantidadInput.select();
                 }
@@ -250,6 +300,7 @@
                 hidden.value = '';
                 const texto = input.value.trim().toLowerCase();
                 indiceActivo = -1;
+                aplicarModoProducto(null);
 
                 if (texto === '') {
                     resultados = [];
