@@ -55,6 +55,26 @@ Route::get('/comprobantes/compartido/{pedido}/{tipo}', TicketPublicoController::
     ->name('ticket.publico')
     ->middleware('signed');
 
+// TEMPORAL: diagnóstico de opcache — se saca en el próximo commit.
+Route::get('/__debug/opcache', function () {
+    $archivo = app_path('Http/Controllers/CarritoController.php');
+    $estado = function_exists('opcache_get_status') ? opcache_get_status(false) : null;
+    $scripts = $estado['scripts'] ?? [];
+    $info = $scripts[$archivo] ?? null;
+
+    $empresa = \App\Models\Empresa::find(1);
+
+    return response()->json([
+        'opcache_enabled' => $estado['opcache_enabled'] ?? null,
+        'archivo_en_opcache' => $info !== null,
+        'timestamp_disco' => date('Y-m-d H:i:s', filemtime($archivo)),
+        'timestamp_opcache' => isset($info['timestamp']) ? date('Y-m-d H:i:s', $info['timestamp']) : null,
+        'tiene_metodo_nuevo' => method_exists(\App\Models\Empresa::class, 'imprimeAutomaticamente'),
+        'empresa_1_comportamiento_impresion' => $empresa?->comportamiento_impresion,
+        'empresa_1_imprime_automaticamente' => $empresa?->imprimeAutomaticamente(),
+    ]);
+});
+
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
