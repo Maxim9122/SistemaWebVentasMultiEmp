@@ -45,6 +45,14 @@ class RegistrarEmpresaRequest extends FormRequest
             'admin_name' => ['required', 'string', 'max:255'],
             'admin_email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'admin_password' => ['required', 'string', 'min:8', 'confirmed'],
+            'terminos_aceptados' => ['accepted'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'terminos_aceptados.accepted' => 'Tenés que aceptar los Términos y Condiciones para poder registrarte.',
         ];
     }
 

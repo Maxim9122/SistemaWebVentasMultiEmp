@@ -48,6 +48,11 @@ Route::middleware('guest')->group(function () {
     Route::post('/registro-empresa', [RegistroEmpresaController::class, 'store'])->name('empresas.registro.store');
 });
 
+// Pública a propósito (ni 'guest' ni 'auth'): hay que poder leerla antes de
+// registrarse (sin sesión) y también después, ya logueado (link en el pie
+// de página) — ver resources/views/legal/terminos.blade.php.
+Route::get('/terminos', fn () => view('legal.terminos'))->name('terminos');
+
 // Sin login: el link que se manda por WhatsApp al teléfono del cliente nunca
 // tiene sesión en el sistema. La seguridad depende 100% de la firma de la
 // URL (middleware `signed`), no de `auth`/`role` — ver TicketPublicoController.

@@ -26,6 +26,11 @@ class RegistroEmpresaController extends Controller
                 'telefono' => $request->validated('telefono'),
                 'direccion' => $request->validated('direccion'),
                 'estado' => 'pendiente',
+                // Rastro de aceptación de los Términos y Condiciones — la
+                // validación (ver RegistrarEmpresaRequest) ya exige el
+                // check antes de llegar acá, esto solo deja huella de
+                // cuándo pasó.
+                'terminos_aceptados_at' => now(),
             ]);
 
             User::create([

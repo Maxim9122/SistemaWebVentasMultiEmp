@@ -81,6 +81,21 @@
             </div>
         </div>
 
+        <div>
+            <label class="flex items-start gap-2 text-sm cursor-pointer">
+                <input type="checkbox" name="terminos_aceptados" value="1" required
+                    @checked(old('terminos_aceptados')) class="mt-0.5 rounded border-slate-300">
+                <span>
+                    Leí y acepto los
+                    <a href="{{ route('terminos') }}" target="_blank" class="text-slate-900 font-medium hover:underline">Términos y Condiciones</a>
+                    del servicio.
+                </span>
+            </label>
+            @error('terminos_aceptados')
+                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+
         @if (config('services.recaptcha.site_key'))
             <div>
                 <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>

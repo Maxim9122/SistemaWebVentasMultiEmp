@@ -122,7 +122,10 @@
 
             @php $lunasoft = \App\Models\User::where('role', 'superadmin')->first(); @endphp
             <footer class="shrink-0 border-t bg-white px-6 py-3 text-xs text-slate-500 flex items-center justify-between">
-                <span>&copy; {{ now()->year }} LunaSoft</span>
+                <span class="flex items-center gap-3">
+                    <span>&copy; {{ now()->year }} LunaSoft</span>
+                    <a href="{{ route('terminos') }}" target="_blank" class="hover:underline">Términos y Condiciones</a>
+                </span>
                 @if ($lunasoft && ($lunasoft->telefono || $lunasoft->email_publico))
                     <span class="flex items-center gap-3">
                         @if ($lunasoft->telefono)
