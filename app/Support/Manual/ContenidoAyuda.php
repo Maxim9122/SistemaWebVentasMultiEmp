@@ -33,7 +33,7 @@ class ContenidoAyuda
                                 <li>Completá los montos por medio de pago (efectivo/tarjeta/transferencia) — tienen que sumar exactamente el total.</li>
                                 <li>Confirmá el cobro. Se descuenta el stock en ese momento (nunca antes).</li>
                             </ol>
-                            <p>El remito se puede ver, imprimir o enviar por WhatsApp/email desde <strong>Ventas → el detalle de esa venta</strong>.</p>
+                            <p>El remito se puede ver, imprimir o enviar por WhatsApp desde <strong>Ventas → el detalle de esa venta</strong>.</p>
                         ',
                     ],
                     'venta-factura' => [
@@ -65,7 +65,6 @@ class ContenidoAyuda
                             <ul>
                                 <li><strong>Ver / imprimir</strong>: abre el PDF en otra pestaña, listo para imprimir directo (no hace falta ningún lector de PDF especial, el navegador lo muestra solo).</li>
                                 <li><strong>Enviar por WhatsApp</strong>: arma un link con el ticket para mandar al cliente.</li>
-                                <li><strong>Enviar por email</strong>: si el cliente tiene email cargado.</li>
                             </ul>
                         ',
                     ],

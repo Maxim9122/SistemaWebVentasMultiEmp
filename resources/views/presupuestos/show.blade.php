@@ -172,7 +172,13 @@
     <div class="bg-white rounded-lg shadow p-4 mb-4">
         <p class="font-medium mb-3">Enviar presupuesto</p>
         <div class="flex flex-wrap items-end gap-3">
-            <form method="POST" action="{{ route('presupuestos.enviarEmail', $pedido) }}" class="flex items-end gap-2">
+            {{--
+                Oculto temporalmente: producción no tiene SMTP real
+                configurado (MAIL_MAILER=log), así que este botón enviaba
+                un mail que nunca llegaba. Reactivar cuando se configure
+                un SMTP de verdad.
+            --}}
+            {{-- <form method="POST" action="{{ route('presupuestos.enviarEmail', $pedido) }}" class="flex items-end gap-2">
                 @csrf
                 <div>
                     <label for="email_envio" class="block text-xs text-slate-500 mb-1">Email del cliente</label>
@@ -182,7 +188,7 @@
                 <button type="submit" class="rounded px-3 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
                     Enviar por email
                 </button>
-            </form>
+            </form> --}}
 
             <div class="flex items-end gap-2">
                 <div>
