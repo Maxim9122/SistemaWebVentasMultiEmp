@@ -20,6 +20,7 @@
 <body>
     @include('facturacion._barra-imprimir')
     <div class="ticket">
+        @include('facturacion._logo-ticket')
         <h1>{{ $empresa->razon_social }}</h1>
         <p>CUIT: {{ \App\Models\Empresa::formatearCuit($empresa->cuit) }}</p>
         @if ($empresa->direccion)

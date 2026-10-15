@@ -24,6 +24,7 @@
         <h3>Presupuesto</h3>
         <h5>No válido como factura ni remito</h5>
 
+        @include('facturacion._logo-ticket')
         <h1>{{ $empresa->razon_social }}</h1>
         @if ($empresa->cuit)
             <p>CUIT: {{ \App\Models\Empresa::formatearCuit($empresa->cuit) }}</p>

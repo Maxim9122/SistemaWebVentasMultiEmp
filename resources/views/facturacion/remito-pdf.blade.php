@@ -24,6 +24,7 @@
         <h3>Remito</h3>
         <h5>No válido como factura</h5>
 
+        @include('facturacion._logo-ticket')
         <h1>{{ $empresa->razon_social }}</h1>
         @if ($empresa->direccion)
             <p>Domicilio: {{ $empresa->direccion }}</p>

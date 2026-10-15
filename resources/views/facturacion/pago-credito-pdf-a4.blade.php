@@ -27,6 +27,7 @@
     @include('facturacion._barra-imprimir')
     <div class="encabezado">
         <div class="empresa">
+            @include('facturacion._logo-a4')
             <h1>{{ $empresa->razon_social }}</h1>
             @if ($empresa->direccion)
                 <p>{{ $empresa->direccion }}</p>

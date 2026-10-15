@@ -291,6 +291,26 @@ class Empresa extends Model
         return $this->logo_path ? Storage::disk('public')->url($this->logo_path) : null;
     }
 
+    /**
+     * El logo embebido como data URI (base64), para los tickets/boletas en
+     * PDF — a diferencia de logoUrl(), esto sirve tanto en la vista web
+     * (modoWeb) como en el PDF real generado con dompdf, que tiene
+     * deshabilitadas las imágenes remotas por seguridad (ver
+     * ComprobantePdfService::renderizar) y no podría cargar logoUrl().
+     * Mismo patrón que ya usa el QR de AFIP (Endroid\QrCode ::getDataUri()).
+     */
+    public function logoDataUri(): ?string
+    {
+        if (! $this->logo_path || ! Storage::disk('public')->exists($this->logo_path)) {
+            return null;
+        }
+
+        $mime = Storage::disk('public')->mimeType($this->logo_path) ?: 'image/png';
+        $contenido = Storage::disk('public')->get($this->logo_path);
+
+        return 'data:'.$mime.';base64,'.base64_encode($contenido);
+    }
+
     public function puedeFacturar(): bool
     {
         return in_array($this->condicion_fiscal, [self::CONDICION_RESPONSABLE_INSCRIPTO, self::CONDICION_MONOTRIBUTISTA], true);
