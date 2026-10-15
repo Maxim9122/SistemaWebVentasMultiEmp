@@ -17,12 +17,12 @@
 
     <div class="bg-white rounded-lg shadow divide-y">
         @forelse ($staff as $usuario)
-            <div class="p-4 flex items-center justify-between">
+            <div class="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <a href="{{ route('staff.edit', $usuario) }}" class="font-medium hover:underline">{{ $usuario->name }}</a>
                     <p class="text-sm text-slate-500">{{ $usuario->email }} · {{ str_replace('_', ' ', $usuario->role) }}</p>
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex flex-wrap items-center gap-3">
                     <span class="text-xs font-medium rounded px-2 py-1 @class(['bg-emerald-100 text-emerald-800' => $usuario->activo, 'bg-slate-200 text-slate-700' => ! $usuario->activo])">
                         {{ $usuario->activo ? 'Activo' : 'Inactivo' }}
                     </span>
