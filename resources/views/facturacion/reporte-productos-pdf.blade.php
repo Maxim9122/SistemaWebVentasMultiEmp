@@ -30,9 +30,7 @@
                     <th>Proveedor</th>
                     <th class="text-right">Precio</th>
                     <th class="text-right">Costo</th>
-                    @if ($incluirStock)
-                        <th class="text-right">Stock</th>
-                    @endif
+                    <th class="text-right">Stock</th>
                 </tr>
             </thead>
             <tbody>
@@ -45,13 +43,11 @@
                         <td>{{ $producto->proveedor?->nombre ?? '—' }}</td>
                         <td class="text-right">${{ number_format($producto->precio, 2, ',', '.') }}</td>
                         <td class="text-right">{{ $producto->costo !== null ? '$'.number_format($producto->costo, 2, ',', '.') : '—' }}</td>
-                        @if ($incluirStock)
-                            <td class="text-right">{{ $producto->stock }}</td>
-                        @endif
+                        <td class="text-right">{{ $producto->stock }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="{{ $incluirStock ? 8 : 7 }}" style="text-align: center; padding: 12px; color: #64748b;">No hay productos que coincidan con el filtro.</td>
+                        <td colspan="8" style="text-align: center; padding: 12px; color: #64748b;">No hay productos que coincidan con el filtro.</td>
                     </tr>
                 @endforelse
             </tbody>

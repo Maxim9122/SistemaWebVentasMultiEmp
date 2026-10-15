@@ -454,7 +454,7 @@
                     <th class="px-4 py-2 font-medium whitespace-nowrap">
                         <label class="inline-flex items-center gap-1.5 cursor-pointer font-normal">
                             <input type="checkbox" id="check_todos_pagina" class="rounded border border-slate-300" title="Selecciona todo el resultado de la búsqueda, en todas las páginas">
-                            Seleccionar todos
+                            Todos
                         </label>
                     </th>
                     <th class="px-4 py-2 font-medium whitespace-nowrap">Nombre</th>
@@ -471,9 +471,7 @@
                     </th>
                     <th class="px-4 py-2 font-medium whitespace-nowrap">Proveedor</th>
                     <th class="px-4 py-2 font-medium text-right whitespace-nowrap">Precio</th>
-                    @if (auth()->user()->empresa->controla_stock)
-                        <th class="px-4 py-2 font-medium text-right whitespace-nowrap">Stock</th>
-                    @endif
+                    <th class="px-4 py-2 font-medium text-right whitespace-nowrap">Stock</th>
                     <th class="px-4 py-2 font-medium whitespace-nowrap">Estado</th>
                     <th class="px-4 py-2 font-medium whitespace-nowrap"></th>
                 </tr>
@@ -499,9 +497,7 @@
                         <td class="px-4 py-2 text-slate-500 whitespace-nowrap">{{ $producto->marca ?? '—' }}</td>
                         <td class="px-4 py-2 text-slate-500 whitespace-nowrap">{{ $producto->proveedor->nombre ?? '—' }}</td>
                         <td class="px-4 py-2 text-right whitespace-nowrap">${{ number_format($producto->precio, 2, ',', '.') }}</td>
-                        @if (auth()->user()->empresa->controla_stock)
-                            <td class="px-4 py-2 text-right whitespace-nowrap">{{ $producto->stock }}</td>
-                        @endif
+                        <td class="px-4 py-2 text-right whitespace-nowrap">{{ $producto->stock }}</td>
                         <td class="px-4 py-2">
                             <span class="text-xs font-medium rounded px-2 py-1 @class(['bg-emerald-100 text-emerald-800' => $producto->activo, 'bg-slate-200 text-slate-700' => ! $producto->activo])">
                                 {{ $producto->activo ? 'Activo' : 'Inactivo' }}
@@ -548,7 +544,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="{{ auth()->user()->empresa->controla_stock ? 10 : 9 }}" class="px-4 py-6 text-center text-slate-500">
+                        <td colspan="10" class="px-4 py-6 text-center text-slate-500">
                             @if ($buscar !== '')
                                 No encontramos productos que coincidan con "{{ $buscar }}".
                             @else

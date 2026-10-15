@@ -94,7 +94,7 @@ class GrupoProductoController extends Controller
         $this->autorizar($request, $grupo);
 
         $productos = $grupo->productos()->with('proveedor')->orderBy('nombre')->get();
-        $spreadsheet = $this->exportador->generar($productos, $request->user()->empresa->controla_stock);
+        $spreadsheet = $this->exportador->generar($productos);
         $nombreArchivo = Str::slug($grupo->nombre).'.xlsx';
 
         return response()->streamDownload(function () use ($spreadsheet) {

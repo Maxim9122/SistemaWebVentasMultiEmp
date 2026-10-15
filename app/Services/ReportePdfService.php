@@ -33,12 +33,11 @@ class ReportePdfService
     /**
      * @param  Collection<int, \App\Models\Producto>  $productos
      */
-    public function generarProductos(Collection $productos, Empresa $empresa, bool $incluirStock, string $descripcionFiltro): string
+    public function generarProductos(Collection $productos, Empresa $empresa, string $descripcionFiltro): string
     {
         $html = view('facturacion.reporte-productos-pdf', [
             'empresa' => $empresa,
             'productos' => $productos,
-            'incluirStock' => $incluirStock,
             'descripcionFiltro' => $descripcionFiltro,
         ])->render();
 

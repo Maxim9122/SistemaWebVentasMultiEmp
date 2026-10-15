@@ -210,7 +210,7 @@ class ProductoController extends Controller
             ->orderBy('nombre')
             ->get();
 
-        $spreadsheet = $this->exportador->generar($productos, $request->user()->empresa->controla_stock);
+        $spreadsheet = $this->exportador->generar($productos);
 
         return response()->streamDownload(function () use ($spreadsheet) {
             (new Xlsx($spreadsheet))->save('php://output');
@@ -255,7 +255,7 @@ class ProductoController extends Controller
 
         $productos = $query->with('proveedor')->orderBy('nombre')->get();
 
-        $pdf = $reportes->generarProductos($productos, $request->user()->empresa, $request->user()->empresa->controla_stock, $descripcionFiltro);
+        $pdf = $reportes->generarProductos($productos, $request->user()->empresa, $descripcionFiltro);
 
         return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
