@@ -23,6 +23,17 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductoController extends Controller
 {
+    /**
+     * Probado en producción con el catálogo real más grande que tenemos
+     * (6815 productos): el PDF (dompdf, que arma todo el documento en
+     * memoria antes de renderizar, sin streaming) se quedaba sin los 1536M
+     * de memory_limit del servidor y tiraba 500. Medido con cortes reales:
+     * 500 prod. ≈ 158MB, 1000 ≈ 362MB, 1500 ≈ 652MB — el crecimiento no es
+     * lineal, así que 1500 deja margen de sobra sin arriesgarse a acercarse
+     * al límite real.
+     */
+    private const LIMITE_PRODUCTOS_PDF = 1500;
+
     public function __construct(private readonly ExportadorProductosExcel $exportador) {}
 
     public function index(Request $request): View
@@ -213,38 +224,42 @@ class ProductoController extends Controller
      * selección por checkbox + localStorage que ya usan Grupos/Promos:
      * `productos_ids[]` llega por POST).
      */
-    public function exportarPdf(Request $request, ReportePdfService $reportes): Response
+    public function exportarPdf(Request $request, ReportePdfService $reportes): Response|JsonResponse
     {
         $empresaId = $request->user()->empresa_id;
         $idsSeleccionados = $request->input('productos_ids', []);
 
         if (! empty($idsSeleccionados)) {
-            $productos = Producto::where('empresa_id', $empresaId)
-                ->whereIn('id', $idsSeleccionados)
-                ->with('proveedor')
-                ->orderBy('nombre')
-                ->get();
-
-            $descripcionFiltro = 'Seleccionados a mano ('.$productos->count().')';
+            $query = Producto::where('empresa_id', $empresaId)->whereIn('id', $idsSeleccionados);
+            $descripcionFiltro = 'Seleccionados a mano ('.count($idsSeleccionados).')';
         } else {
             $buscar = trim((string) $request->input('buscar', ''));
             $marca = trim((string) $request->input('marca', ''));
             $categoria = trim((string) $request->input('categoria', ''));
             $proveedorId = $request->filled('proveedor_id') ? (int) $request->input('proveedor_id') : null;
 
-            $productos = $this->productosFiltrados($request, $buscar, $marca, $categoria, $proveedorId)
-                ->with('proveedor')
-                ->orderBy('nombre')
-                ->get();
-
+            $query = $this->productosFiltrados($request, $buscar, $marca, $categoria, $proveedorId);
             $descripcionFiltro = $this->descripcionFiltroProductos($buscar, $marca, $categoria, $proveedorId);
         }
+
+        // Contar ANTES de traer los modelos — con catálogos grandes, el
+        // ->get() solo ya pesa; no tiene sentido cargarlo para después
+        // descartarlo si de entrada sabemos que no entra.
+        $cantidad = (clone $query)->count();
+
+        if ($cantidad > self::LIMITE_PRODUCTOS_PDF) {
+            return response()->json([
+                'message' => "Hay {$cantidad} productos y el PDF no soporta tantos de una vez (se queda sin memoria el servidor). Achicá el resultado filtrando por proveedor, marca, categoría, o buscando un texto puntual — o descargá el Excel, que no tiene ese límite.",
+            ], 422);
+        }
+
+        $productos = $query->with('proveedor')->orderBy('nombre')->get();
 
         $pdf = $reportes->generarProductos($productos, $request->user()->empresa, $request->user()->empresa->controla_stock, $descripcionFiltro);
 
         return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="productos.pdf"',
+            'Content-Disposition' => 'attachment; filename="productos.pdf"',
         ]);
     }
 

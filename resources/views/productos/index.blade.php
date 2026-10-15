@@ -837,6 +837,53 @@
             actualizarBloque();
         })();
 
+        // Descarga por blob en vez de navegar directo a la URL: en la PWA
+        // instalada en el celular, tanto window.location.href como un
+        // <a target="_blank"> fallan en silencio (sin barra de navegador
+        // real, no hay dónde "aterrizar" la descarga). Pidiendo el archivo
+        // por fetch() y armando el link de descarga a partir del blob en
+        // memoria sí funciona ahí — es el mismo archivo, solo cambia cómo
+        // llega al navegador. De paso permite mostrar un error real si el
+        // servidor responde con uno (ej. PDF con demasiados productos) en
+        // vez de que la pestaña quede abierta sin hacer nada.
+        function descargarArchivo(url, nombreArchivo, boton) {
+            const textoOriginal = boton.textContent;
+            boton.disabled = true;
+            boton.textContent = 'Generando...';
+
+            fetch(url, { credentials: 'same-origin' })
+                .then(function (response) {
+                    if (! response.ok) {
+                        return response.json().catch(function () {
+                            return {};
+                        }).then(function (data) {
+                            throw new Error(data.message || 'No se pudo generar el archivo.');
+                        });
+                    }
+
+                    return response.blob();
+                })
+                .then(function (blob) {
+                    const blobUrl = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = blobUrl;
+                    link.download = nombreArchivo;
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    setTimeout(function () {
+                        URL.revokeObjectURL(blobUrl);
+                    }, 1000);
+                })
+                .catch(function (error) {
+                    alert(error.message || 'No se pudo descargar el archivo. Probá de nuevo.');
+                })
+                .finally(function () {
+                    boton.disabled = false;
+                    boton.textContent = textoOriginal;
+                });
+        }
+
         (function () {
             const modal = document.getElementById('modal_exportar_productos');
             const cancelar = document.getElementById('modal_exportar_productos_cancelar');
@@ -855,7 +902,7 @@
             confirmar.addEventListener('click', function () {
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
-                window.location.href = '{{ route('productos.exportar', request()->only('buscar')) }}';
+                descargarArchivo('{{ route('productos.exportar', request()->only('buscar')) }}', 'productos.xlsx', confirmar);
             });
         })();
 
@@ -882,8 +929,8 @@
                 const ids = idsSeleccionados();
 
                 mensaje.textContent = ids.length > 0
-                    ? 'Se va a abrir un PDF listo para imprimir con los ' + ids.length + ' producto(s) que tenés seleccionados.'
-                    : 'Se va a abrir un PDF listo para imprimir con los productos que coinciden con el filtro actual (búsqueda, marca, categoría y/o proveedor).';
+                    ? 'Se va a descargar un PDF listo para imprimir con los ' + ids.length + ' producto(s) que tenés seleccionados.'
+                    : 'Se va a descargar un PDF listo para imprimir con los productos que coinciden con el filtro actual (búsqueda, marca, categoría y/o proveedor). Si son muchos productos (más de 1500), achicá el filtro primero.';
 
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
@@ -910,18 +957,7 @@
                     if (@json($proveedorId)) params.append('proveedor_id', @json($proveedorId));
                 }
 
-                // A propósito no usa window.open(): en la PWA instalada,
-                // window.open() a veces termina navegando dentro de la
-                // misma ventana de la app en vez de abrir aparte. Simular
-                // el clic de un link real (mismo patrón que ya funciona
-                // bien en Créditos/Ventas) es más confiable ahí.
-                const link = document.createElement('a');
-                link.href = '{{ route('productos.exportarPdf') }}?' + params.toString();
-                link.target = '_blank';
-                link.rel = 'noopener';
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
+                descargarArchivo('{{ route('productos.exportarPdf') }}?' + params.toString(), 'productos.pdf', confirmar);
             });
         })();
 
