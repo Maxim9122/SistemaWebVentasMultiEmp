@@ -82,7 +82,7 @@
             </div>
         @endif
 
-        <div class="flex items-center gap-4">
+        <div class="flex flex-wrap items-center gap-4">
             @if ($empresa->logoUrl())
                 <img src="{{ $empresa->logoUrl() }}" alt="Logo de {{ $empresa->razon_social }}" class="w-16 h-16 object-cover rounded-2xl border border-slate-200">
             @else
@@ -91,7 +91,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('configuracion.logo.update') }}" enctype="multipart/form-data" class="flex items-center gap-2">
+            <form method="POST" action="{{ route('configuracion.logo.update') }}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-2">
                 @csrf
                 @method('PUT')
                 <input type="file" name="logo" accept="image/png,image/jpeg,image/webp" required

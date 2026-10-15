@@ -3,7 +3,7 @@
 @section('titulo', 'Staff')
 
 @section('contenido')
-    <div class="mb-4 flex justify-end gap-3">
+    <div class="mb-4 flex flex-wrap justify-end gap-3">
         <a href="{{ route('staff.seguridad.edit') }}" class="rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
             Seguridad de acceso
         </a>
