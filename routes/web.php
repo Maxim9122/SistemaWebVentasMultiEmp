@@ -44,10 +44,10 @@ Route::redirect('/', '/login');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
-    Route::post('/login', [LoginController::class, 'store']);
+    Route::post('/login', [LoginController::class, 'store'])->middleware('throttle:5,1');
 
     Route::get('/registro-empresa', [RegistroEmpresaController::class, 'create'])->name('empresas.registro');
-    Route::post('/registro-empresa', [RegistroEmpresaController::class, 'store'])->name('empresas.registro.store');
+    Route::post('/registro-empresa', [RegistroEmpresaController::class, 'store'])->name('empresas.registro.store')->middleware('throttle:10,1');
 
     Route::get('/forgot-password', [ForgotPasswordController::class, 'create'])->name('password.request');
     Route::post('/forgot-password', [ForgotPasswordController::class, 'store'])->name('password.email')->middleware('throttle:6,1');
@@ -307,7 +307,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/{pedido}/cancelar', [PresupuestoController::class, 'cancelar'])->name('cancelar');
             Route::get('/{pedido}/ticket.pdf', [PresupuestoController::class, 'ticketPdf'])->name('ticketPdf');
             Route::get('/{pedido}/ticket/imprimir', [PresupuestoController::class, 'imprimirTicket'])->name('imprimirTicket');
-            Route::post('/{pedido}/enviar-email', [PresupuestoController::class, 'enviarEmail'])->name('enviarEmail');
+            Route::post('/{pedido}/enviar-email', [PresupuestoController::class, 'enviarEmail'])->name('enviarEmail')->middleware('throttle:10,1');
         });
 
         Route::prefix('pedidos')->name('pedidos.')->middleware('role:vendedor,cajero,cajero_vendedor')->group(function () {
@@ -331,7 +331,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/{pedido}/editar', [VentaController::class, 'update'])->name('update');
             Route::post('/{pedido}/confirmar-reapertura', [VentaController::class, 'confirmarReapertura'])->name('confirmarReapertura');
             Route::post('/{pedido}/reintentar-facturacion', [VentaController::class, 'reintentarFacturacion'])->name('reintentarFacturacion');
-            Route::post('/{pedido}/enviar-email', [VentaController::class, 'enviarEmail'])->name('enviarEmail');
+            Route::post('/{pedido}/enviar-email', [VentaController::class, 'enviarEmail'])->name('enviarEmail')->middleware('throttle:10,1');
             Route::get('/{pedido}/comprobante.pdf', [VentaController::class, 'comprobantePdf'])->name('comprobantePdf');
             Route::get('/{pedido}/remito.pdf', [VentaController::class, 'remitoPdf'])->name('remitoPdf');
             Route::get('/{pedido}/comprobante/imprimir', [VentaController::class, 'imprimirComprobante'])->name('imprimirComprobante');
