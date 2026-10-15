@@ -74,9 +74,18 @@ class Caja extends Model
         return (float) $this->ventas()->sum('monto_transferencia');
     }
 
+    // Resta lo reembolsado (ver IntentoPagoMercadopago::reembolsado_at) —
+    // mismo criterio que totalPagosCreditoEfectivo(): la plata que volvió
+    // al cliente no debe contar como recaudada en el cierre.
     public function totalVentasMercadopago(): float
     {
-        return (float) $this->ventas()->sum('monto_mercadopago');
+        $bruto = (float) $this->ventas()->sum('monto_mercadopago');
+
+        $reembolsado = (float) IntentoPagoMercadopago::whereNotNull('reembolsado_at')
+            ->whereHas('pedido', fn ($q) => $q->where('caja_id', $this->id))
+            ->sum('monto');
+
+        return round($bruto - $reembolsado, 2);
     }
 
     public function totalEgresosEfectivo(): float

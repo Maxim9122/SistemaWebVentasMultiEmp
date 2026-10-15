@@ -75,6 +75,11 @@ class VentaController extends Controller
      */
     private function totalesPorMedio(Builder $query): array
     {
+        // Clonado antes de selectRaw() porque ese select consume/muta el
+        // builder — acá todavía se necesitan los IDs tal cual filtrados
+        // (mismo numero/fechas/vendedor/cajero) para restar lo reembolsado.
+        $pedidoIds = (clone $query)->pluck('id');
+
         $fila = $query->selectRaw('
             COALESCE(SUM(monto_efectivo), 0) as efectivo,
             COALESCE(SUM(monto_tarjeta), 0) as tarjeta,
@@ -82,11 +87,18 @@ class VentaController extends Controller
             COALESCE(SUM(monto_mercadopago), 0) as mercadopago
         ')->first();
 
+        // La plata reembolsada (ver IntentoPagoMercadopago::reembolsado_at)
+        // no debe contar como recaudación real — mismo criterio que el
+        // cierre de caja (ver Caja::totalVentasMercadopago()).
+        $reembolsadoMercadopago = (float) IntentoPagoMercadopago::whereIn('pedido_id', $pedidoIds)
+            ->whereNotNull('reembolsado_at')
+            ->sum('monto');
+
         $totales = [
             'efectivo' => (float) $fila->efectivo,
             'tarjeta' => (float) $fila->tarjeta,
             'transferencia' => (float) $fila->transferencia,
-            'mercadopago' => (float) $fila->mercadopago,
+            'mercadopago' => round((float) $fila->mercadopago - $reembolsadoMercadopago, 2),
         ];
 
         $totales['general'] = round(array_sum($totales), 2);
