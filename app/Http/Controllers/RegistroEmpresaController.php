@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\RegistrarEmpresaRequest;
+use App\Mail\NuevaEmpresaRegistradaMailable;
 use App\Models\Empresa;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
 
 class RegistroEmpresaController extends Controller
@@ -44,9 +47,26 @@ class RegistroEmpresaController extends Controller
             return $empresa;
         });
 
+        $superadmin = User::where('role', 'superadmin')->first();
+
+        // Best-effort: si el mail falla (SMTP caído, etc.) la empresa ya
+        // quedó creada y el alta no se le puede caer a quien se está
+        // registrando por un problema que es nuestro, no suyo. El aviso de
+        // WhatsApp en registro-enviado.blade.php queda como respaldo.
+        if ($superadmin?->email) {
+            try {
+                Mail::to($superadmin->email)->send(new NuevaEmpresaRegistradaMailable($empresa));
+            } catch (\Throwable $e) {
+                Log::warning('No se pudo avisar por email al superadmin de una empresa nueva registrada.', [
+                    'empresa_id' => $empresa->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         return view('empresas.registro-enviado', [
             'empresa' => $empresa,
-            'superadmin' => User::where('role', 'superadmin')->first(),
+            'superadmin' => $superadmin,
         ]);
     }
 }
