@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\AjustePrecioBusquedaController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\AyudaController;
 use App\Http\Controllers\CajaController;
 use App\Http\Controllers\CajaSesionController;
@@ -46,6 +48,11 @@ Route::middleware('guest')->group(function () {
 
     Route::get('/registro-empresa', [RegistroEmpresaController::class, 'create'])->name('empresas.registro');
     Route::post('/registro-empresa', [RegistroEmpresaController::class, 'store'])->name('empresas.registro.store');
+
+    Route::get('/forgot-password', [ForgotPasswordController::class, 'create'])->name('password.request');
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'store'])->name('password.email')->middleware('throttle:6,1');
+    Route::get('/reset-password/{token}', [ResetPasswordController::class, 'create'])->name('password.reset');
+    Route::post('/reset-password', [ResetPasswordController::class, 'store'])->name('password.update')->middleware('throttle:6,1');
 });
 
 // Pública a propósito (ni 'guest' ni 'auth'): hay que poder leerla antes de

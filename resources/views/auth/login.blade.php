@@ -13,7 +13,10 @@
         </div>
 
         <div>
-            <label for="password" class="block text-sm font-medium mb-1">Contraseña</label>
+            <div class="flex items-center justify-between mb-1">
+                <label for="password" class="block text-sm font-medium">Contraseña</label>
+                <a href="{{ route('password.request') }}" class="text-xs text-slate-500 hover:underline">¿Olvidaste tu contraseña?</a>
+            </div>
             <input id="password" name="password" type="password" required
                 class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
         </div>
