@@ -75,6 +75,21 @@ class ContenidoAyuda
                             <p>En <strong>Ventas</strong>, filtrá por rango de fechas (y los demás filtros que necesites) y usá el botón <strong>Descargar PDF</strong> — genera un reporte imprimible en A4 con todo lo filtrado.</p>
                         ',
                     ],
+                    'vender-por-peso' => [
+                        'titulo' => 'Vender productos por peso (kg)',
+                        'resumen' => '
+                            <p>Un producto cargado con unidad "kg" se agrega distinto al carrito: en vez de pedir cantidad, pide directamente el <strong>precio ya pesado y calculado</strong> (se asume que la balanza ya hizo la cuenta) — al lado se muestra el precio por kg de referencia.</p>
+                            <p>Si la empresa configuró el <strong>lector de código de balanza</strong> (ver Configuración), hay una forma más rápida: las balanzas que imprimen un código de barras de 13 dígitos con el peso o el precio ya codificado adentro se pueden escanear directo — el sistema reconoce el producto y carga el precio exacto solo, sin escribir nada a mano. Funciona en Carritos y Presupuestos.</p>
+                        ',
+                    ],
+                    'cobrar-qr-mercadopago' => [
+                        'titulo' => 'Cobrar con QR de Mercado Pago',
+                        'resumen' => '
+                            <p>Solo si la empresa conectó su cuenta de Mercado Pago y configuró la caja (ver Configuración). Al cobrar desde <strong>Caja</strong>, aparece <strong>Mercado Pago (QR)</strong> como un medio de pago más (se puede combinar con otros, igual que efectivo o tarjeta) — es el mismo QR físico impreso una sola vez, nunca cambia por venta.</p>
+                            <p>Al confirmar, la pantalla pasa a "Esperando el pago..." hasta que el cliente paga de verdad con su celular — ahí recién se cierra la venta sola. Si se vence el tiempo o el cliente se arrepiente, se puede cancelar e intentar con otro medio sin que quede nada cobrado.</p>
+                            <p>Para devolver un cobro por Mercado Pago (por error o pedido del cliente), desde el detalle de esa venta en <strong>Ventas</strong> hay un botón <strong>Devolver por Mercado Pago</strong> — la devolución queda registrada y no se vuelve a contar como recaudación en el cierre de caja ni en los reportes.</p>
+                        ',
+                    ],
                 ],
             ],
 
@@ -163,6 +178,15 @@ class ContenidoAyuda
                         'titulo' => 'Crear un producto',
                         'resumen' => '
                             <p>Desde <strong>Productos → Nuevo</strong>: nombre, código, precio, costo, stock, categoría, marca y unidad. Opcionalmente se pueden cargar precios escalonados por cantidad (ej. "de 10 en adelante, precio X").</p>
+                            <p>Si la <strong>unidad</strong> se carga como "kg" (sin importar mayúsculas/minúsculas), el producto queda marcado como "por peso" — ver el tema "Vender productos por peso" en Ventas para cómo cambia el carrito con estos productos.</p>
+                        ',
+                    ],
+                    'alta-codigo-barras' => [
+                        'titulo' => 'Cargar un producto escaneando el código de barras',
+                        'resumen' => '
+                            <p>Desde <strong>Productos → Nuevo</strong>, botón de escanear código de barras (usa la cámara del celular). Al leer un código, el sistema busca ese código en bases de datos públicas y gratuitas (Open Food/Beauty/Products Facts) y completa solo el <strong>nombre, marca y categoría</strong> si los encuentra — la primera letra del nombre se pone en mayúscula automáticamente.</p>
+                            <p>El <strong>precio siempre se carga a mano</strong> — no hay ninguna fuente gratuita confiable para sugerir precio, así que ese campo nunca se autocompleta. El stock también queda manual u opcional, igual que en el alta común.</p>
+                            <p>Si el código no se encuentra en ninguna de las fuentes, el formulario igual se abre vacío y editable — nunca bloquea la carga.</p>
                         ',
                     ],
                     'importar-productos' => [
@@ -194,7 +218,8 @@ class ContenidoAyuda
                     'exportar-pdf-productos' => [
                         'titulo' => 'Descargar un listado de productos en PDF',
                         'resumen' => '
-                            <p>En <strong>Productos</strong>, filtrá por marca, categoría o proveedor (o seleccioná productos puntuales de la lista) y usá <strong>Descargar PDF</strong> para un listado imprimible.</p>
+                            <p>En <strong>Productos</strong>, filtrá por marca, categoría o proveedor (o seleccioná productos puntuales de la lista) y usá <strong>Descargar PDF</strong> para un listado imprimible. La columna <strong>Stock</strong> siempre está incluida (en la tabla, el Excel y el PDF), útil para imprimir y hacer control manual de mercadería aunque la empresa no tenga activado el control automático de stock en las ventas.</p>
+                            <p>Si el filtro da más de 1500 productos, el PDF no se genera (el servidor se queda sin memoria con catálogos tan grandes) y se pide achicar el filtro primero — el <strong>Excel no tiene ese límite</strong>, funciona con cualquier cantidad.</p>
                         ',
                     ],
                     'ajustar-precio-busqueda' => [
@@ -253,6 +278,13 @@ class ContenidoAyuda
                             <p>En <strong>Staff → Seguridad</strong> se puede limitar el acceso del staff (no del admin, que nunca se restringe) a una IP fija y/o a un horario laboral con turnos por día. Fuera de esas condiciones, el login se rechaza con un mensaje claro.</p>
                         ',
                     ],
+                    'recuperar-contrasena' => [
+                        'titulo' => '¿Olvidaste tu contraseña?',
+                        'resumen' => '
+                            <p>Cualquier usuario (admin, cajero o vendedor) puede recuperarla solo: en la pantalla de <strong>Iniciar sesión</strong>, link "¿Olvidaste tu contraseña?" — se pide el email y llega un mail con un link para poner una contraseña nueva. El link vence a los 60 minutos.</p>
+                            <p>Si por lo que sea el mail no llega, el admin de la empresa puede resetearle la contraseña a cualquiera de su staff a mano desde <strong>Staff → Editar usuario</strong> (nunca necesita el mail para eso).</p>
+                        ',
+                    ],
                 ],
             ],
 
@@ -264,6 +296,7 @@ class ContenidoAyuda
                         'titulo' => 'Datos de la empresa y logo',
                         'resumen' => '
                             <p>Razón social, CUIT, contacto — y el <strong>logo</strong> que se ve en el panel, al lado del nombre de la empresa. Se sube en formato JPG/PNG/WEBP.</p>
+                            <p>El mismo logo aparece también en los <strong>tickets y boletas A4</strong> de ventas, remitos, presupuestos y pagos de crédito — tanto al verlos/imprimirlos en pantalla como en el PDF que se manda por email o WhatsApp. Si no se cargó ningún logo, los comprobantes se ven exactamente igual que antes, sin ningún espacio vacío.</p>
                             <p>El <strong>CUIT es opcional</strong>: solo hace falta cargarlo si la empresa va a facturar — recién se vuelve obligatorio al elegir una condición fiscal (Responsable Inscripto o Monotributista), más abajo en esta misma sección. Si la empresa nunca factura (solo remitos), no hace falta cargarlo.</p>
                         ',
                     ],
@@ -294,6 +327,36 @@ class ContenidoAyuda
                                 <li><strong>A4</strong>: hoja entera, para imprimir en una impresora común de oficina.</li>
                             </ul>
                             <p>Cambia el diseño de todos los documentos de una — no hay que elegir formato por cada venta.</p>
+                        ',
+                    ],
+                    'comportamiento-impresion' => [
+                        'titulo' => 'Qué pasa con la impresión al cobrar una venta',
+                        'resumen' => '
+                            <p>En <strong>Configuración → "Al cobrar una venta"</strong>, tres opciones (aplican a remito y factura):</p>
+                            <ul>
+                                <li><strong>Preguntar</strong> (la de por defecto): aparece un cartel para confirmar — al tocar "Imprimir" ahí, va directo al diálogo de impresión del navegador.</li>
+                                <li><strong>Imprimir directo, sin preguntar (experimental)</strong>: no aparece ningún cartel, al confirmar la venta manda derecho al diálogo de impresión del navegador. Para que imprima de verdad sin que aparezca ningún diálogo (ni del navegador), además hace falta abrir el sistema desde un acceso directo de Chrome con el modificador <code>--kiosk-printing</code> — eso es una configuración de Windows, no de acá.</li>
+                                <li><strong>No usar ticket</strong>: no aparece ningún cartel ni se ofrece imprimir — para empresas que no imprimen ni descargan comprobantes.</li>
+                            </ul>
+                        ',
+                    ],
+                    'lector-balanza' => [
+                        'titulo' => 'Configurar el lector de código de balanza',
+                        'resumen' => '
+                            <p>Solo para balanzas que imprimen un código de barras de 13 dígitos con el <strong>peso o el precio ya calculado adentro</strong> (no el código común del producto). En <strong>Configuración</strong>, activando "Lector de código de balanza" se puede cargar a mano cómo están armados esos 13 dígitos en tu balanza puntual: en qué posición va el código del producto, en qué posición va el peso/precio, cuántos decimales, etc. — cada marca de balanza arma el código distinto.</p>
+                            <p>Hay un <strong>probador</strong> en la misma pantalla: se pega un código real impreso por la balanza y muestra qué producto y qué valor detectó, antes de guardar la configuración. Mientras no se active, la lectura de código común (el de siempre, escaneando o tipeando) sigue funcionando exactamente igual — nunca se rompe nada de lo que ya anda.</p>
+                        ',
+                    ],
+                    'mercadopago-qr' => [
+                        'titulo' => 'Configurar el cobro con QR de Mercado Pago',
+                        'resumen' => '
+                            <p>En <strong>Configuración → Cobro con QR (Mercado Pago)</strong>:</p>
+                            <ol>
+                                <li><strong>Conectar con Mercado Pago</strong>: lleva a loguearse con la cuenta de Mercado Pago de la empresa y autorizar la conexión.</li>
+                                <li>Cargar la <strong>dirección del local</strong> (Mercado Pago la pide para la caja) — la ciudad y la provincia tienen que escribirse exactamente como las nombra Mercado Pago, si no las rechaza y avisa en pantalla.</li>
+                                <li>Con eso se genera el <strong>QR fijo para imprimir</strong> — se imprime una sola vez y no cambia más, cada venta nueva simplemente reutiliza el mismo QR en el mostrador.</li>
+                            </ol>
+                            <p>Para que el medio de pago aparezca al cobrar, además hay que tildar <strong>"Permitir cobro con QR (Mercado Pago)"</strong> en esta misma pantalla, y opcionalmente cargar un % de recargo/descuento propio para ese medio (campo "Mercado Pago %", junto a los de efectivo/tarjeta/transferencia). Se puede cambiar de cuenta conectada en cualquier momento con el link "Cambiar cuenta de Mercado Pago".</p>
                         ',
                     ],
                 ],
