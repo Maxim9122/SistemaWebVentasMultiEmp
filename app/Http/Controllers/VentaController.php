@@ -16,6 +16,7 @@ use App\Services\MercadoPago\MercadoPagoQrService;
 use App\Services\ProcesadorDeCobro;
 use App\Services\ReportePdfService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -216,12 +217,41 @@ class VentaController extends Controller
 
         return view('ventas.editar', [
             'pedido' => $pedido->load(['items', 'factura.notaCredito']),
-            'productos' => Producto::where('empresa_id', $request->user()->empresa_id)
-                ->where('activo', true)
-                ->orderBy('nombre')
-                ->get(),
             'puedeCambiarPrecio' => $request->user()->puedeCambiarPrecioVenta(),
         ]);
+    }
+
+    /**
+     * Mismo criterio que CarritoController::buscarProducto() — esta pantalla
+     * mandaba el catálogo entero de productos activos inline (sin límite de
+     * columnas) en cada "Editar venta", varios cientos de KB/MB con un
+     * catálogo grande.
+     */
+    public function buscarProducto(Request $request): JsonResponse
+    {
+        $texto = trim((string) $request->input('q', ''));
+
+        if ($texto === '') {
+            return response()->json([]);
+        }
+
+        $productos = Producto::where('empresa_id', $request->user()->empresa_id)
+            ->where('activo', true)
+            ->where(function ($query) use ($texto) {
+                $query->where('nombre', 'like', "%{$texto}%")
+                    ->orWhere('codigo', 'like', "%{$texto}%");
+            })
+            ->orderByRaw('codigo = ? desc', [$texto])
+            ->orderBy('nombre')
+            ->limit(8)
+            ->get(['id', 'nombre', 'codigo', 'precio']);
+
+        return response()->json($productos->map(fn (Producto $producto) => [
+            'id' => $producto->id,
+            'nombre' => $producto->nombre,
+            'codigo' => $producto->codigo,
+            'precio' => (float) $producto->precio,
+        ]));
     }
 
     /**

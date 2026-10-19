@@ -169,7 +169,6 @@
             'motivosEgreso' => $empresaEgreso->motivosEgreso()->where('activo', true)->orderBy('nombre')->get(),
             'proveedoresEgreso' => \App\Models\Proveedor::where('empresa_id', $empresaEgreso->id)->where('activo', true)->orderBy('nombre')->get(),
             'staffEgreso' => \App\Models\User::where('empresa_id', $empresaEgreso->id)->where('role', '!=', 'admin')->where('activo', true)->orderBy('name')->get(),
-            'productosEgreso' => \App\Models\Producto::where('empresa_id', $empresaEgreso->id)->where('activo', true)->orderBy('nombre')->get(),
         ])
     @endif
 

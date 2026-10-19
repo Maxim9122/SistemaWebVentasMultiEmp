@@ -9,13 +9,6 @@
     $proveedoresParaBuscador = $proveedoresEgreso->map(fn ($p) => ['id' => $p->id, 'tipo' => 'proveedor', 'nombre' => $p->nombre])->values();
     $staffParaBuscador = $staffEgreso->map(fn ($u) => ['id' => $u->id, 'tipo' => 'usuario', 'nombre' => $u->name])->values();
 
-    $productosParaBuscador = $productosEgreso->map(fn ($p) => [
-        'id' => $p->id,
-        'nombre' => $p->nombre,
-        'codigo' => $p->codigo,
-        'precio' => (float) $p->precio,
-    ])->values();
-
     $descuentoEmpleado = auth()->user()->empresa->descuento_precio_empleado_porcentaje;
 @endphp
 
@@ -115,8 +108,25 @@
         const motivos = @json($motivosParaBuscador);
         const proveedores = @json($proveedoresParaBuscador);
         const staff = @json($staffParaBuscador);
-        const productos = @json($productosParaBuscador);
         const descuentoEmpleado = @json($descuentoEmpleado === null ? null : (float) $descuentoEmpleado);
+        const urlBuscarProducto = {{ Js::from(route('egresos.buscarProducto')) }};
+        let timerDebounceProd = null;
+        let idPeticionProd = 0;
+
+        // Búsqueda en el servidor en vez de mandar el catálogo entero inline
+        // en el layout — este botón se ve en TODAS las páginas mientras haya
+        // una caja abierta, así que ese volcado pesaba en cada navegación,
+        // no solo acá. Mismo criterio que ya usa Carritos/Caja.
+        function buscarProductoEnServidor(texto) {
+            const miId = ++idPeticionProd;
+
+            return fetch(urlBuscarProducto + '?q=' + encodeURIComponent(texto), {
+                headers: { 'Accept': 'application/json' },
+            })
+                .then((respuesta) => respuesta.json())
+                .then((datos) => (miId === idPeticionProd ? datos : null))
+                .catch(() => null);
+        }
 
         const btnAbrir = document.getElementById('btn_abrir_egreso');
         const btnCerrar = document.getElementById('btn_cerrar_egreso');
@@ -326,13 +336,26 @@
             productoElegido = null;
             actualizarPreviewValor();
             indiceActivoProd = -1;
+            clearTimeout(timerDebounceProd);
 
-            const texto = inputProdBuscador.value.trim().toLowerCase();
-            resultadosProd = texto === '' ? [] : productos.filter(function (p) {
-                return p.nombre.toLowerCase().includes(texto) || (p.codigo && p.codigo.toLowerCase().includes(texto));
-            }).slice(0, 8);
+            const texto = inputProdBuscador.value.trim();
 
-            renderizarProd();
+            if (texto === '') {
+                resultadosProd = [];
+                renderizarProd();
+                return;
+            }
+
+            timerDebounceProd = setTimeout(function () {
+                buscarProductoEnServidor(texto).then(function (datos) {
+                    if (datos === null) {
+                        return;
+                    }
+
+                    resultadosProd = datos;
+                    renderizarProd();
+                });
+            }, 200);
         });
 
         inputProdBuscador.addEventListener('keydown', function (evento) {
@@ -343,6 +366,7 @@
                 // preventDefault va siempre que haya desplegable abierto,
                 // no solo cuando hay algo para elegir.
                 evento.preventDefault();
+                clearTimeout(timerDebounceProd);
 
                 const elegido = indiceActivoProd >= 0 ? resultadosProd[indiceActivoProd] : (resultadosProd.length === 1 ? resultadosProd[0] : null);
 

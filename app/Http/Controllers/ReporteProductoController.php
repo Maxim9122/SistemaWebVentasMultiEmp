@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Pedido;
 use App\Models\PedidoItem;
 use App\Models\Producto;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -58,9 +59,6 @@ class ReporteProductoController extends Controller
         }
 
         return view('ventas.reporte-producto', [
-            'productosParaBuscador' => Producto::where('empresa_id', $request->user()->empresa_id)
-                ->orderBy('nombre')
-                ->get(['id', 'nombre', 'codigo']),
             'producto' => $producto,
             'productoId' => $productoId,
             'items' => $items,
@@ -70,5 +68,35 @@ class ReporteProductoController extends Controller
             'fechaHasta' => $fechaHasta,
             'fechaFiltradaManualmente' => $fechaFiltradaManualmente,
         ]);
+    }
+
+    /**
+     * Mismo criterio que CarritoController::buscarProducto() — esta
+     * pantalla mandaba el catálogo entero (todos los productos, incluso
+     * inactivos a propósito: el reporte histórico puede querer un producto
+     * que ya no se vende) inline en cada carga.
+     *
+     * A diferencia de los demás buscadores de productos del sistema, acá NO
+     * se filtra por activo — es intencional, igual que antes.
+     */
+    public function buscarProducto(Request $request): JsonResponse
+    {
+        $texto = trim((string) $request->input('q', ''));
+
+        if ($texto === '') {
+            return response()->json([]);
+        }
+
+        $productos = Producto::where('empresa_id', $request->user()->empresa_id)
+            ->where(function ($query) use ($texto) {
+                $query->where('nombre', 'like', "%{$texto}%")
+                    ->orWhere('codigo', 'like', "%{$texto}%");
+            })
+            ->orderByRaw('codigo = ? desc', [$texto])
+            ->orderBy('nombre')
+            ->limit(8)
+            ->get(['id', 'nombre', 'codigo']);
+
+        return response()->json($productos);
     }
 }

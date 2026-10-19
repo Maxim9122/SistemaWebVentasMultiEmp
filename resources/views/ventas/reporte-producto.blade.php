@@ -174,13 +174,26 @@
 
     <script>
         (function () {
-            const productos = @json($productosParaBuscador);
+            const urlBuscarProducto = {{ Js::from(route('ventas.reporteProducto.buscarProducto')) }};
             const input = document.getElementById('buscador_producto');
             const hidden = document.getElementById('producto_id');
             const lista = document.getElementById('resultados_producto');
 
             let resultados = [];
             let indiceActivo = -1;
+            let timerDebounce = null;
+            let idPeticion = 0;
+
+            function buscarEnServidor(texto) {
+                const miId = ++idPeticion;
+
+                return fetch(urlBuscarProducto + '?q=' + encodeURIComponent(texto), {
+                    headers: { 'Accept': 'application/json' },
+                })
+                    .then((respuesta) => respuesta.json())
+                    .then((datos) => (miId === idPeticion ? datos : null))
+                    .catch(() => null);
+            }
 
             function etiqueta(producto) {
                 return producto.nombre + (producto.codigo ? ' (' + producto.codigo + ')' : '');
@@ -218,15 +231,26 @@
 
             input.addEventListener('input', function () {
                 hidden.value = '';
-                const texto = input.value.trim().toLowerCase();
+                const texto = input.value.trim();
                 indiceActivo = -1;
+                clearTimeout(timerDebounce);
 
-                resultados = texto === '' ? [] : productos.filter(function (producto) {
-                    return producto.nombre.toLowerCase().includes(texto)
-                        || (producto.codigo && producto.codigo.toLowerCase().includes(texto));
-                }).slice(0, 8);
+                if (texto === '') {
+                    resultados = [];
+                    renderizar();
+                    return;
+                }
 
-                renderizar();
+                timerDebounce = setTimeout(function () {
+                    buscarEnServidor(texto).then(function (datos) {
+                        if (datos === null) {
+                            return;
+                        }
+
+                        resultados = datos;
+                        renderizar();
+                    });
+                }, 200);
             });
 
             input.addEventListener('keydown', function (evento) {
@@ -237,6 +261,7 @@
                     const elegido = indiceActivo >= 0 ? resultados[indiceActivo] : (resultados.length === 1 ? resultados[0] : null);
 
                     evento.preventDefault();
+                    clearTimeout(timerDebounce);
 
                     if (elegido) {
                         seleccionar(elegido);

@@ -107,19 +107,23 @@
         </div>
     </form>
 
-    @php
-        $productosParaBuscador = $productos->map(fn ($producto) => [
-            'id' => $producto->id,
-            'nombre' => $producto->nombre,
-            'codigo' => $producto->codigo,
-            'precio' => (float) $producto->precio,
-        ])->values();
-    @endphp
-
     <script>
         (function () {
-            const productos = @json($productosParaBuscador);
+            const urlBuscarProducto = {{ Js::from(route('ventas.buscarProducto')) }};
             const puedeCambiarPrecio = @json($puedeCambiarPrecio);
+            let timerDebounce = null;
+            let idPeticion = 0;
+
+            function buscarEnServidor(texto) {
+                const miId = ++idPeticion;
+
+                return fetch(urlBuscarProducto + '?q=' + encodeURIComponent(texto), {
+                    headers: { 'Accept': 'application/json' },
+                })
+                    .then((respuesta) => respuesta.json())
+                    .then((datos) => (miId === idPeticion ? datos : null))
+                    .catch(() => null);
+            }
 
             const cuerpo = document.getElementById('filas_items');
             const input = document.getElementById('buscador_producto');
@@ -272,15 +276,26 @@
             }
 
             input.addEventListener('input', function () {
-                const texto = input.value.trim().toLowerCase();
+                const texto = input.value.trim();
                 indiceActivo = -1;
+                clearTimeout(timerDebounce);
 
-                resultados = texto === '' ? [] : productos.filter(function (producto) {
-                    return producto.nombre.toLowerCase().includes(texto)
-                        || (producto.codigo && producto.codigo.toLowerCase().includes(texto));
-                }).slice(0, 8);
+                if (texto === '') {
+                    resultados = [];
+                    renderizar();
+                    return;
+                }
 
-                renderizar();
+                timerDebounce = setTimeout(function () {
+                    buscarEnServidor(texto).then(function (datos) {
+                        if (datos === null) {
+                            return;
+                        }
+
+                        resultados = datos;
+                        renderizar();
+                    });
+                }, 200);
             });
 
             input.addEventListener('keydown', function (evento) {
@@ -298,6 +313,7 @@
                     renderizar();
                 } else if (evento.key === 'Enter') {
                     evento.preventDefault();
+                    clearTimeout(timerDebounce);
                     const elegido = indiceActivo >= 0 ? resultados[indiceActivo] : (resultados.length === 1 ? resultados[0] : null);
 
                     if (elegido) {

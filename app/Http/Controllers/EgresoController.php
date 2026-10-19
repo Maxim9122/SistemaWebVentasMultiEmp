@@ -6,6 +6,7 @@ use App\Models\Egreso;
 use App\Models\MotivoEgreso;
 use App\Models\Producto;
 use App\Services\ProcesadorDeCobro;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -42,6 +43,41 @@ class EgresoController extends Controller
             'fechaHasta' => $fechaHasta,
             'fechaFiltradaManualmente' => $fechaFiltradaManualmente,
         ]);
+    }
+
+    /**
+     * El botón flotante "Egresos" vive en el layout (se ve en cualquier
+     * página mientras el cajero tenga la caja abierta) — antes mandaba el
+     * catálogo entero de productos activos inline en CADA página (3+ MB en
+     * una empresa de 6800 productos). Mismo criterio que
+     * CarritoController::buscarProducto(): búsqueda en el servidor, bajo
+     * demanda, nada más.
+     */
+    public function buscarProducto(Request $request): JsonResponse
+    {
+        $texto = trim((string) $request->input('q', ''));
+
+        if ($texto === '') {
+            return response()->json([]);
+        }
+
+        $productos = Producto::where('empresa_id', $request->user()->empresa_id)
+            ->where('activo', true)
+            ->where(function ($query) use ($texto) {
+                $query->where('nombre', 'like', "%{$texto}%")
+                    ->orWhere('codigo', 'like', "%{$texto}%");
+            })
+            ->orderByRaw('codigo = ? desc', [$texto])
+            ->orderBy('nombre')
+            ->limit(8)
+            ->get(['id', 'nombre', 'codigo', 'precio']);
+
+        return response()->json($productos->map(fn (Producto $producto) => [
+            'id' => $producto->id,
+            'nombre' => $producto->nombre,
+            'codigo' => $producto->codigo,
+            'precio' => (float) $producto->precio,
+        ]));
     }
 
     public function store(Request $request, ProcesadorDeCobro $procesador): RedirectResponse

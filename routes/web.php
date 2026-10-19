@@ -118,6 +118,9 @@ Route::middleware('auth')->group(function () {
             Route::post('/buscar-codigo-barra', [ProductoController::class, 'buscarPorCodigoBarra'])
                 ->middleware('throttle:30,1')
                 ->name('buscarCodigoBarra');
+            Route::get('/buscar-para-reponer', [ProductoController::class, 'buscarParaReponer'])
+                ->middleware('throttle:60,1')
+                ->name('buscarParaReponer');
             Route::get('/{producto}/editar', [ProductoController::class, 'edit'])->name('edit');
             Route::put('/{producto}', [ProductoController::class, 'update'])->name('update');
             Route::post('/ajustar-precio-busqueda', [ProductoController::class, 'ajustarPrecioBusqueda'])->name('ajustarPrecioBusqueda');
@@ -277,6 +280,9 @@ Route::middleware('auth')->group(function () {
         });
 
         Route::post('/egresos', [EgresoController::class, 'store'])->name('egresos.store')->middleware('role:cajero,cajero_vendedor');
+        Route::get('/egresos/buscar-producto', [EgresoController::class, 'buscarProducto'])
+            ->name('egresos.buscarProducto')
+            ->middleware(['role:cajero,cajero_vendedor', 'throttle:120,1']);
 
         Route::prefix('creditos')->name('creditos.')->middleware('role:admin,cajero,cajero_vendedor')->group(function () {
             Route::get('/', [CreditoController::class, 'index'])->name('index');
@@ -326,6 +332,12 @@ Route::middleware('auth')->group(function () {
             Route::get('/', [VentaController::class, 'index'])->name('index');
             Route::get('/exportar-pdf', [VentaController::class, 'exportarPdf'])->name('exportarPdf');
             Route::get('/reporte-producto', [ReporteProductoController::class, 'index'])->name('reporteProducto');
+            Route::get('/reporte-producto/buscar-producto', [ReporteProductoController::class, 'buscarProducto'])
+                ->name('reporteProducto.buscarProducto')
+                ->middleware('throttle:60,1');
+            Route::get('/buscar-producto', [VentaController::class, 'buscarProducto'])
+                ->name('buscarProducto')
+                ->middleware('throttle:60,1');
             Route::get('/{pedido}', [VentaController::class, 'show'])->name('show');
             Route::get('/{pedido}/editar', [VentaController::class, 'edit'])->name('edit');
             Route::post('/{pedido}/editar', [VentaController::class, 'update'])->name('update');

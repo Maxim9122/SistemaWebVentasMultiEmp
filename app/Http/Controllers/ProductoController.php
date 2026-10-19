@@ -77,14 +77,6 @@ class ProductoController extends Controller
             'marcasDisponibles' => Producto::where('empresa_id', $empresaId)->whereNotNull('marca')->where('marca', '!=', '')->distinct()->orderBy('marca')->pluck('marca'),
             'categoriasDisponibles' => Producto::where('empresa_id', $empresaId)->whereNotNull('categoria')->where('categoria', '!=', '')->distinct()->orderBy('categoria')->pluck('categoria'),
             'proveedoresDisponibles' => Proveedor::where('empresa_id', $empresaId)->orderBy('nombre')->get(['id', 'nombre']),
-            // Lista completa (no paginada) para el buscador del modal de
-            // "Reponer stock" — a diferencia de $productos de arriba, acá
-            // hace falta poder encontrar cualquier producto sin importar en
-            // qué página/filtro esté parado el listado.
-            'productosParaReponer' => Producto::where('empresa_id', $empresaId)
-                ->where('activo', true)
-                ->orderBy('nombre')
-                ->get(['id', 'nombre', 'codigo', 'stock']),
             // Si se viene desde "Editar reposición" (botón en
             // productos.reposiciones.show), el modal de reponer stock se
             // abre solo, ya cargado con las líneas de ese lote.
@@ -179,7 +171,7 @@ class ProductoController extends Controller
 
         $reposicion = ReposicionStock::where('id', $request->input('editar_reposicion'))
             ->where('empresa_id', $empresaId)
-            ->with('items')
+            ->with('items.producto')
             ->first();
 
         if (! $reposicion || $reposicion->fueRevertida()) {
@@ -190,12 +182,47 @@ class ProductoController extends Controller
             'id' => $reposicion->id,
             'proveedor_id' => $reposicion->proveedor_id,
             'nota' => $reposicion->nota,
+            // codigo/stock salen de la relación (no de un volcado del
+            // catálogo entero — ver buscarParaReponer) porque acá solo
+            // hacen falta para los pocos productos de ESTA reposición.
             'items' => $reposicion->items->map(fn ($item) => [
                 'producto_id' => $item->producto_id,
                 'nombre' => $item->nombre_producto,
                 'cantidad' => $item->cantidad_agregada,
+                'codigo' => $item->producto?->codigo,
+                'stock' => $item->producto?->stock,
             ]),
         ];
+    }
+
+    /**
+     * Mismo criterio que CarritoController/CajaController::buscarProducto():
+     * búsqueda en el servidor en vez de mandar el catálogo entero inline en
+     * la página. Esta pantalla lo hacía (ver productosParaReponer, ya
+     * sacado) — con el catálogo de 6800+ productos de una empresa real, eso
+     * eran varios cientos de KB de JSON en CADA carga de Productos, se abra
+     * o no el modal de reponer stock.
+     */
+    public function buscarParaReponer(Request $request): JsonResponse
+    {
+        $texto = trim((string) $request->input('q', ''));
+
+        if ($texto === '') {
+            return response()->json([]);
+        }
+
+        $productos = Producto::where('empresa_id', $request->user()->empresa_id)
+            ->where('activo', true)
+            ->where(function ($query) use ($texto) {
+                $query->where('nombre', 'like', "%{$texto}%")
+                    ->orWhere('codigo', 'like', "%{$texto}%");
+            })
+            ->orderByRaw('codigo = ? desc', [$texto])
+            ->orderBy('nombre')
+            ->limit(8)
+            ->get(['id', 'nombre', 'codigo', 'stock']);
+
+        return response()->json($productos);
     }
 
     public function exportar(Request $request): StreamedResponse

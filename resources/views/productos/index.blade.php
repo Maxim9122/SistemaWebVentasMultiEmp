@@ -958,8 +958,8 @@
         })();
 
         (function () {
-            const productos = @json($productosParaReponer);
             const reposicionParaEditar = @json($reposicionParaEditar);
+            const urlBuscarParaReponer = {{ Js::from(route('productos.buscarParaReponer')) }};
 
             const boton = document.getElementById('btn_abrir_reponer_stock');
             const modal = document.getElementById('modal_reponer_stock');
@@ -980,7 +980,27 @@
             let resultados = [];
             let indiceActivo = -1;
             let reposicionEditandoId = null; // null = creando una reposición nueva
+            let timerDebounce = null;
+            let idPeticion = 0;
             const agregados = new Map(); // producto_id -> { inputCantidad }
+
+            // Búsqueda en el servidor en vez de filtrar un catálogo entero ya
+            // cargado en la página — mismo criterio que ya usa el buscador de
+            // Carritos/Caja (ver carritos/show.blade.php): con una empresa de
+            // miles de productos, mandar todo el catálogo en cada carga de
+            // esta pantalla pesaba varios cientos de KB, se abriera o no este
+            // modal. idPeticion descarta la respuesta si ya se tipeó algo más
+            // nuevo para cuando llega.
+            function buscarEnServidor(texto) {
+                const miId = ++idPeticion;
+
+                return fetch(urlBuscarParaReponer + '?q=' + encodeURIComponent(texto), {
+                    headers: { 'Accept': 'application/json' },
+                })
+                    .then((respuesta) => respuesta.json())
+                    .then((datos) => (miId === idPeticion ? datos : null))
+                    .catch(() => null);
+            }
 
             function abrirModal() {
                 modal.classList.remove('hidden');
@@ -1015,12 +1035,11 @@
                 inputNota.value = datos.nota || '';
 
                 datos.items.forEach(function (item) {
-                    const productoConocido = productos.find(function (p) { return p.id === item.producto_id; });
                     agregarProducto({
                         id: item.producto_id,
                         nombre: item.nombre,
-                        codigo: productoConocido ? productoConocido.codigo : null,
-                        stock: productoConocido ? productoConocido.stock : null,
+                        codigo: item.codigo,
+                        stock: item.stock,
                     }, item.cantidad);
                 });
 
@@ -1138,15 +1157,28 @@
             }
 
             input.addEventListener('input', function () {
-                const texto = input.value.trim().toLowerCase();
+                const texto = input.value.trim();
                 indiceActivo = -1;
+                clearTimeout(timerDebounce);
 
-                resultados = texto === '' ? [] : productos.filter(function (producto) {
-                    return producto.nombre.toLowerCase().includes(texto)
-                        || (producto.codigo && producto.codigo.toLowerCase().includes(texto));
-                }).slice(0, 8);
+                if (texto === '') {
+                    resultados = [];
+                    renderizarResultados();
+                    return;
+                }
 
-                renderizarResultados();
+                // Debounce corto: no dispara una búsqueda por cada letra
+                // tipeada, solo cuando se deja de escribir un instante.
+                timerDebounce = setTimeout(function () {
+                    buscarEnServidor(texto).then(function (datos) {
+                        if (datos === null) {
+                            return;
+                        }
+
+                        resultados = datos;
+                        renderizarResultados();
+                    });
+                }, 200);
             });
 
             input.addEventListener('keydown', function (evento) {
