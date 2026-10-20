@@ -53,6 +53,11 @@ return [
         'secret_key' => env('RECAPTCHA_SECRET_KEY'),
     ],
 
+    'anthropic' => [
+        'api_key' => env('ANTHROPIC_API_KEY'),
+        'vision_model' => env('ANTHROPIC_VISION_MODEL', 'claude-sonnet-5-5'),
+    ],
+
     'openfoodfacts' => [
         'url' => env('OPENFOODFACTS_API_URL', 'https://world.openfoodfacts.org'),
     ],

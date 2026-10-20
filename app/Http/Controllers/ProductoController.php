@@ -9,6 +9,7 @@ use App\Models\Producto;
 use App\Models\Proveedor;
 use App\Models\ReposicionStock;
 use App\Services\BusquedaProductoPorCodigoBarraService;
+use App\Services\ClaudeVision\ClaudeVisionApiClient;
 use App\Services\ExportadorProductosExcel;
 use App\Services\ReportePdfService;
 use Illuminate\Database\Eloquent\Builder;
@@ -34,7 +35,10 @@ class ProductoController extends Controller
      */
     private const LIMITE_PRODUCTOS_PDF = 1500;
 
-    public function __construct(private readonly ExportadorProductosExcel $exportador) {}
+    public function __construct(
+        private readonly ExportadorProductosExcel $exportador,
+        private readonly ClaudeVisionApiClient $claudeVision,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -89,6 +93,7 @@ class ProductoController extends Controller
             'idsAjustablesBusqueda' => $this->productosFiltrados($request, $buscar, $marca, $categoria, $proveedorId)
                 ->where('es_promocion', false)
                 ->pluck('id'),
+            'claudeVisionConfigurado' => $this->claudeVision->configurada(),
         ]);
     }
 

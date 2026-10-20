@@ -72,6 +72,15 @@
             </svg>
             Importar desde Excel
         </a>
+        @if ($claudeVisionConfigurado)
+            <a href="{{ route('productos.importarFoto.subir') }}" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                </svg>
+                Importar desde una foto
+            </a>
+        @endif
         <button type="button" id="btn_exportar_productos" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
                 <path d="M12 4v10m0 0-3.5-3.5M12 14l3.5-3.5"/>

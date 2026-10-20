@@ -2,13 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ConfirmarExtraccionFotoProductosRequest;
 use App\Http\Requests\ConfirmarImportacionProductosRequest;
 use App\Http\Requests\SubirExcelProductosRequest;
+use App\Http\Requests\SubirFotoProductosRequest;
 use App\Models\ImportacionProductoCambio;
 use App\Models\ImportacionProductos;
 use App\Models\MapeoImportacionProductos;
 use App\Models\Producto;
 use App\Models\Proveedor;
+use App\Services\ClaudeVision\ClaudeVisionApiClient;
+use App\Services\ClaudeVision\Exceptions\ExtraccionFotoProductosException;
+use App\Services\GeneradorExcelProductosDesdeExtraccionService;
 use App\Services\LectorArchivoExcel;
 use App\Services\MapeoColumnasService;
 use Illuminate\Http\RedirectResponse;
@@ -18,6 +23,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ProductoImportController extends Controller
 {
@@ -36,6 +42,8 @@ class ProductoImportController extends Controller
     public function __construct(
         private readonly LectorArchivoExcel $importador,
         private readonly MapeoColumnasService $mapeoColumnas,
+        private readonly ClaudeVisionApiClient $claudeVision,
+        private readonly GeneradorExcelProductosDesdeExtraccionService $generadorExcel,
     ) {}
 
     private function esCodigoInvalido(string $codigo): bool
@@ -116,24 +124,46 @@ class ProductoImportController extends Controller
         $extension = $archivo->getClientOriginalExtension();
 
         $rutaRelativa = $archivo->storeAs('imports-temp', "{$token}.{$extension}", 'local');
-        $rutaAbsoluta = Storage::disk('local')->path($rutaRelativa);
 
+        return $this->previsualizarDesdeArchivo(
+            $token,
+            $rutaRelativa,
+            Storage::disk('local')->path($rutaRelativa),
+            $archivo->getClientOriginalName(),
+            $request->user()->empresa_id,
+            $request->validated('proveedor_id'),
+        );
+    }
+
+    /**
+     * Punto compartido entre la importación por Excel subido a mano y la
+     * importación por foto (que genera un .xlsx sintético y lo mete por acá
+     * — ver confirmarExtraccion()): a partir de un archivo que YA está en
+     * disco, arma la pantalla de mapeo de columnas/duplicados. Nunca sabe ni
+     * le importa de dónde salió el archivo.
+     */
+    private function previsualizarDesdeArchivo(
+        string $token,
+        string $rutaRelativa,
+        string $rutaAbsoluta,
+        string $nombreArchivoOriginal,
+        int $empresaId,
+        ?int $proveedorId,
+    ): View {
         $lectura = $this->importador->leerEncabezadosYPreview($rutaAbsoluta);
         $filasTotales = count($this->importador->leerFilas($rutaAbsoluta));
 
-        $empresaId = $request->user()->empresa_id;
         $mapeoRecordado = MapeoImportacionProductos::where('empresa_id', $empresaId)->first()?->mapeo;
 
         $sugerencias = $this->mapeoColumnas->sugerir($lectura['encabezados'], $mapeoRecordado);
 
-        $proveedorId = $request->validated('proveedor_id');
         $proveedorNombre = $proveedorId ? Proveedor::find($proveedorId)?->nombre : null;
 
         Cache::put("import-productos:{$token}", [
             'empresa_id' => $empresaId,
             'ruta' => $rutaRelativa,
             'encabezados' => $lectura['encabezados'],
-            'nombre_archivo' => $archivo->getClientOriginalName(),
+            'nombre_archivo' => $nombreArchivoOriginal,
             'proveedor_id' => $proveedorId,
         ], now()->addMinutes(30));
 
@@ -155,6 +185,102 @@ class ProductoImportController extends Controller
             'duplicados' => $duplicados,
             'codigosInvalidos' => $codigosInvalidos,
         ]);
+    }
+
+    public function subirFoto(Request $request): View
+    {
+        abort_if(! $this->claudeVision->configurada(), 404);
+
+        $proveedores = Proveedor::query()
+            ->where('empresa_id', $request->user()->empresa_id)
+            ->where('activo', true)
+            ->orderBy('nombre')
+            ->get();
+
+        return view('productos.importar.foto-subir', ['proveedores' => $proveedores]);
+    }
+
+    public function extraerFoto(SubirFotoProductosRequest $request): View
+    {
+        abort_if(! $this->claudeVision->configurada(), 404);
+
+        $foto = $request->file('foto');
+        $rutaTemporal = $foto->getRealPath();
+
+        $this->redimensionarSiHaceFalta($rutaTemporal);
+
+        try {
+            $productos = $this->claudeVision->extraerProductosDeFoto(
+                file_get_contents($rutaTemporal),
+                $foto->getMimeType(),
+            );
+        } catch (ExtraccionFotoProductosException $e) {
+            return back()->withErrors(['foto' => $e->getMessage()])->withInput();
+        }
+
+        return view('productos.importar.foto-revisar', [
+            'productos' => $productos,
+            'campos' => MapeoColumnasService::CAMPOS,
+            'proveedorId' => $request->validated('proveedor_id'),
+        ]);
+    }
+
+    /**
+     * 1568px de lado más largo es lo que Anthropic documenta como el punto
+     * óptimo costo/calidad para vision — una foto de celular sin comprimir
+     * suele venir muy por arriba de eso. Reducirla antes de mandarla achica
+     * el costo de la llamada y el tiempo de subida, sin perder legibilidad
+     * para una lista de precios. GD ya está disponible, sin agregar
+     * dependencia nueva (mismo motor que ya usa el QR de AFIP).
+     */
+    private function redimensionarSiHaceFalta(string $rutaAbsoluta, int $maxLado = 1568): void
+    {
+        $medidas = @getimagesize($rutaAbsoluta);
+
+        if ($medidas === false || max($medidas[0], $medidas[1]) <= $maxLado) {
+            return;
+        }
+
+        [$ancho, $alto] = $medidas;
+        $original = imagecreatefromstring((string) file_get_contents($rutaAbsoluta));
+
+        if ($original === false) {
+            return;
+        }
+
+        $escala = $maxLado / max($ancho, $alto);
+        $redimensionada = imagescale($original, (int) round($ancho * $escala), (int) round($alto * $escala));
+        imagedestroy($original);
+
+        if ($redimensionada === false) {
+            return;
+        }
+
+        imagejpeg($redimensionada, $rutaAbsoluta, 85);
+        imagedestroy($redimensionada);
+    }
+
+    public function confirmarExtraccion(ConfirmarExtraccionFotoProductosRequest $request): View
+    {
+        abort_if(! $this->claudeVision->configurada(), 404);
+
+        $token = (string) Str::uuid();
+        $rutaRelativa = "imports-temp/{$token}.xlsx";
+
+        Storage::disk('local')->makeDirectory('imports-temp');
+        $rutaAbsoluta = Storage::disk('local')->path($rutaRelativa);
+
+        $spreadsheet = $this->generadorExcel->generar($request->validated('productos'));
+        (new Xlsx($spreadsheet))->save($rutaAbsoluta);
+
+        return $this->previsualizarDesdeArchivo(
+            $token,
+            $rutaRelativa,
+            $rutaAbsoluta,
+            'Foto de lista de precios.xlsx',
+            $request->user()->empresa_id,
+            $request->validated('proveedor_id'),
+        );
     }
 
     /**
