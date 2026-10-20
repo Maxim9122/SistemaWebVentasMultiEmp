@@ -21,9 +21,9 @@
 
             <div>
                 <label for="foto" class="block text-sm font-medium mb-1">Foto</label>
-                <input id="foto" name="foto" type="file" accept="image/*" capture="environment" required
+                <input id="foto" name="foto" type="file" accept="image/*" required
                     class="w-full text-sm rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
-                <p class="text-xs text-slate-400 mt-1">Máximo 8 MB. JPG, PNG o WEBP.</p>
+                <p class="text-xs text-slate-400 mt-1">Máximo 8 MB. JPG, PNG o WEBP. Podés sacar una foto nueva o elegir una que ya tengas guardada.</p>
                 @error('foto')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
