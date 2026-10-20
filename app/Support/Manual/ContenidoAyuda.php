@@ -172,7 +172,7 @@ class ContenidoAyuda
 
             'productos' => [
                 'titulo' => 'Productos',
-                'descripcion' => 'Alta, importación, grupos y promociones.',
+                'descripcion' => 'Alta, importación (¡incluso desde una foto!), grupos y promociones.',
                 'temas' => [
                     'crear-producto' => [
                         'titulo' => 'Crear un producto',
@@ -196,6 +196,18 @@ class ContenidoAyuda
                             <p>Si el archivo tiene productos cuyo <strong>código ya existe</strong> en tu catálogo, aparece un aviso antes de importar mostrando cuáles son, y podés elegir: <strong>actualizarlos</strong> (pisa precio, costo, stock, etc. con los datos del Excel), <strong>ignorarlos</strong> (los deja tal cual están y solo crea los que son nuevos) o <strong>crearlos como copia nueva</strong> (no toca el producto existente, crea uno nuevo con los datos del Excel pero sin código, para no chocar con el que ya existe).</p>
                             <p>Si una celda de la columna "Código" tiene un valor que no es un código real (por ejemplo "NaN" o "#N/A" — típico de un Excel exportado con errores), el sistema lo detecta y avisa antes de importar: esas filas se crean como productos nuevos <strong>sin código</strong>, nunca se usan para buscar una coincidencia entre sí ni con el catálogo.</p>
                             <p>Las columnas de Precio, Costo y Stock aceptan el signo "$", espacios y separadores de miles/decimales en cualquiera de los dos formatos habituales (por ejemplo "$1.500,50" o "1,500.50") — se limpian solos antes de importar.</p>
+                        ',
+                    ],
+                    'importar-foto' => [
+                        'titulo' => '⭐ Importar productos a partir de una foto',
+                        'resumen' => '
+                            <div class="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 mb-3">
+                                <p class="font-medium text-emerald-800">La forma más rápida de cargar el catálogo si no tenés un Excel — ideal para arrancar con el sistema desde una lista de precios en papel o una boleta de proveedor.</p>
+                            </div>
+                            <p>Desde <strong>Productos → Importar desde una foto</strong>: sacás una foto (o elegís una ya guardada en el celular) de la lista, el sistema la lee automáticamente y arma una tabla con lo que pudo reconocer — <strong>nombre, código, precio, costo, stock, categoría, marca y unidad</strong>.</p>
+                            <p>Esa tabla es <strong>editable antes de importar nada</strong>: se puede corregir cualquier dato mal leído, sacar una fila que no corresponda, o agregar una a mano si a la foto le faltó algo. Nada se guarda en el catálogo hasta que se confirma esa pantalla.</p>
+                            <p>Una vez confirmada la edición, sigue por el <strong>mismo paso de siempre</strong> (el mismo que la importación por Excel): mapeo de columnas, aviso de productos con código repetido, y elegir qué hacer con los duplicados (actualizar, ignorar, o crear como copia) — las mismas reglas y el mismo historial con <strong>deshacer</strong>, sin importar si el origen fue un Excel o una foto.</p>
+                            <p class="text-slate-500 text-sm">Si no aparece la opción "Importar desde una foto" en el menú, todavía no está configurada esta función — consultá al administrador del sistema.</p>
                         ',
                     ],
                     'reponer-stock' => [
