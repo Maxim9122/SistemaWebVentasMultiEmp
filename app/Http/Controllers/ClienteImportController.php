@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ConfirmarExtraccionFotoClientesRequest;
 use App\Http\Requests\ConfirmarImportacionClientesRequest;
 use App\Http\Requests\SubirExcelClientesRequest;
+use App\Http\Requests\SubirFotoClientesRequest;
 use App\Models\Cliente;
 use App\Models\ImportacionClienteCambio;
 use App\Models\ImportacionClientes;
 use App\Models\MapeoImportacionClientes;
+use App\Services\ClaudeVision\ClaudeVisionApiClient;
+use App\Services\ClaudeVision\Exceptions\ExtraccionFotoException;
+use App\Services\GeneradorExcelClientesDesdeExtraccionService;
 use App\Services\LectorArchivoExcel;
 use App\Services\MapeoColumnasClienteService;
 use Illuminate\Http\RedirectResponse;
@@ -17,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 /**
  * Mismo flujo en dos pasos (previsualizar con mapeo sugerido + confirmar) que
@@ -30,6 +36,8 @@ class ClienteImportController extends Controller
     public function __construct(
         private readonly LectorArchivoExcel $lector,
         private readonly MapeoColumnasClienteService $mapeoColumnas,
+        private readonly ClaudeVisionApiClient $claudeVision,
+        private readonly GeneradorExcelClientesDesdeExtraccionService $generadorExcel,
     ) {}
 
     public function subir(): View
@@ -44,12 +52,32 @@ class ClienteImportController extends Controller
         $extension = $archivo->getClientOriginalExtension();
 
         $rutaRelativa = $archivo->storeAs('imports-temp', "{$token}.{$extension}", 'local');
-        $rutaAbsoluta = Storage::disk('local')->path($rutaRelativa);
 
+        return $this->previsualizarDesdeArchivo(
+            $token,
+            $rutaRelativa,
+            Storage::disk('local')->path($rutaRelativa),
+            $archivo->getClientOriginalName(),
+            $request->user()->empresa_id,
+        );
+    }
+
+    /**
+     * Punto compartido entre la importación por Excel subido a mano y la
+     * importación por foto — ver ProductoImportController::previsualizarDesdeArchivo()
+     * para el mismo razonamiento. A partir de un archivo que YA está en
+     * disco, arma la pantalla de mapeo de columnas.
+     */
+    private function previsualizarDesdeArchivo(
+        string $token,
+        string $rutaRelativa,
+        string $rutaAbsoluta,
+        string $nombreArchivoOriginal,
+        int $empresaId,
+    ): View {
         $lectura = $this->lector->leerEncabezadosYPreview($rutaAbsoluta);
         $filasTotales = count($this->lector->leerFilas($rutaAbsoluta));
 
-        $empresaId = $request->user()->empresa_id;
         $mapeoRecordado = MapeoImportacionClientes::where('empresa_id', $empresaId)->first()?->mapeo;
 
         $sugerencias = $this->mapeoColumnas->sugerir($lectura['encabezados'], $mapeoRecordado);
@@ -58,7 +86,7 @@ class ClienteImportController extends Controller
             'empresa_id' => $empresaId,
             'ruta' => $rutaRelativa,
             'encabezados' => $lectura['encabezados'],
-            'nombre_archivo' => $archivo->getClientOriginalName(),
+            'nombre_archivo' => $nombreArchivoOriginal,
         ], now()->addMinutes(30));
 
         return view('clientes.importar.confirmar', [
@@ -69,6 +97,91 @@ class ClienteImportController extends Controller
             'campos' => MapeoColumnasClienteService::CAMPOS,
             'filasTotales' => $filasTotales,
         ]);
+    }
+
+    public function subirFoto(): View
+    {
+        abort_if(! $this->claudeVision->configurada(), 404);
+
+        return view('clientes.importar.foto-subir');
+    }
+
+    public function extraerFoto(SubirFotoClientesRequest $request): View
+    {
+        abort_if(! $this->claudeVision->configurada(), 404);
+
+        $foto = $request->file('foto');
+        $rutaTemporal = $foto->getRealPath();
+
+        $this->redimensionarSiHaceFalta($rutaTemporal);
+
+        try {
+            $clientes = $this->claudeVision->extraerClientesDeFoto(
+                file_get_contents($rutaTemporal),
+                $foto->getMimeType(),
+            );
+        } catch (ExtraccionFotoException $e) {
+            return back()->withErrors(['foto' => $e->getMessage()])->withInput();
+        }
+
+        return view('clientes.importar.foto-revisar', [
+            'clientes' => $clientes,
+            'campos' => MapeoColumnasClienteService::CAMPOS,
+        ]);
+    }
+
+    /**
+     * Mismo criterio y mismo valor (1568px) que
+     * ProductoImportController::redimensionarSiHaceFalta() — ver ese
+     * método para el razonamiento completo.
+     */
+    private function redimensionarSiHaceFalta(string $rutaAbsoluta, int $maxLado = 1568): void
+    {
+        $medidas = @getimagesize($rutaAbsoluta);
+
+        if ($medidas === false || max($medidas[0], $medidas[1]) <= $maxLado) {
+            return;
+        }
+
+        [$ancho, $alto] = $medidas;
+        $original = imagecreatefromstring((string) file_get_contents($rutaAbsoluta));
+
+        if ($original === false) {
+            return;
+        }
+
+        $escala = $maxLado / max($ancho, $alto);
+        $redimensionada = imagescale($original, (int) round($ancho * $escala), (int) round($alto * $escala));
+        imagedestroy($original);
+
+        if ($redimensionada === false) {
+            return;
+        }
+
+        imagejpeg($redimensionada, $rutaAbsoluta, 85);
+        imagedestroy($redimensionada);
+    }
+
+    public function confirmarExtraccion(ConfirmarExtraccionFotoClientesRequest $request): View
+    {
+        abort_if(! $this->claudeVision->configurada(), 404);
+
+        $token = (string) Str::uuid();
+        $rutaRelativa = "imports-temp/{$token}.xlsx";
+
+        Storage::disk('local')->makeDirectory('imports-temp');
+        $rutaAbsoluta = Storage::disk('local')->path($rutaRelativa);
+
+        $spreadsheet = $this->generadorExcel->generar($request->validated('clientes'));
+        (new Xlsx($spreadsheet))->save($rutaAbsoluta);
+
+        return $this->previsualizarDesdeArchivo(
+            $token,
+            $rutaRelativa,
+            $rutaAbsoluta,
+            'Foto de lista de clientes.xlsx',
+            $request->user()->empresa_id,
+        );
     }
 
     public function confirmar(ConfirmarImportacionClientesRequest $request): View|RedirectResponse

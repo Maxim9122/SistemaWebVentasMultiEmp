@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Services\ClaudeVision\ClaudeVisionApiClient;
-use App\Services\ClaudeVision\Exceptions\ExtraccionFotoProductosException;
+use App\Services\ClaudeVision\Exceptions\ExtraccionFotoException;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -37,6 +37,41 @@ class ClaudeVisionApiClientTest extends TestCase
         $this->assertSame('1500', $productos[0]['precio']);
     }
 
+    public function test_respuesta_valida_devuelve_los_clientes(): void
+    {
+        Http::fake([
+            'api.anthropic.com/*' => Http::response([
+                'content' => [
+                    ['type' => 'text', 'text' => json_encode([
+                        'clientes' => [
+                            ['nombre' => 'Juan Pérez', 'cuit' => '20304050607', 'telefono' => '1122334455', 'email' => null],
+                        ],
+                    ])],
+                ],
+            ], 200),
+        ]);
+
+        $clientes = $this->cliente()->extraerClientesDeFoto('contenido-binario-falso', 'image/jpeg');
+
+        $this->assertCount(1, $clientes);
+        $this->assertSame('Juan Pérez', $clientes[0]['nombre']);
+        $this->assertSame('1122334455', $clientes[0]['telefono']);
+    }
+
+    public function test_sin_clientes_detectados_tira_excepcion_clara(): void
+    {
+        Http::fake([
+            'api.anthropic.com/*' => Http::response([
+                'content' => [['type' => 'text', 'text' => json_encode(['clientes' => []])]],
+            ], 200),
+        ]);
+
+        $this->expectException(ExtraccionFotoException::class);
+        $this->expectExceptionMessage('No se detectó ningún cliente');
+
+        $this->cliente()->extraerClientesDeFoto('contenido', 'image/jpeg');
+    }
+
     public function test_usa_el_modelo_configurado_y_los_headers_correctos(): void
     {
         config(['services.anthropic.vision_model' => 'claude-haiku-5-5']);
@@ -65,7 +100,7 @@ class ClaudeVisionApiClientTest extends TestCase
             ], 200),
         ]);
 
-        $this->expectException(ExtraccionFotoProductosException::class);
+        $this->expectException(ExtraccionFotoException::class);
         $this->expectExceptionMessage('No se pudo interpretar la respuesta');
 
         $this->cliente()->extraerProductosDeFoto('contenido', 'image/jpeg');
@@ -79,7 +114,7 @@ class ClaudeVisionApiClientTest extends TestCase
             ], 200),
         ]);
 
-        $this->expectException(ExtraccionFotoProductosException::class);
+        $this->expectException(ExtraccionFotoException::class);
         $this->expectExceptionMessage('No se detectó ningún producto');
 
         $this->cliente()->extraerProductosDeFoto('contenido', 'image/jpeg');
@@ -91,7 +126,7 @@ class ClaudeVisionApiClientTest extends TestCase
             'api.anthropic.com/*' => Http::response(['error' => 'algo salió mal'], 500),
         ]);
 
-        $this->expectException(ExtraccionFotoProductosException::class);
+        $this->expectException(ExtraccionFotoException::class);
 
         $this->cliente()->extraerProductosDeFoto('contenido', 'image/jpeg');
     }
@@ -102,7 +137,7 @@ class ClaudeVisionApiClientTest extends TestCase
             throw new \Illuminate\Http\Client\ConnectionException('timeout');
         });
 
-        $this->expectException(ExtraccionFotoProductosException::class);
+        $this->expectException(ExtraccionFotoException::class);
         $this->expectExceptionMessage('No se pudo contactar');
 
         $this->cliente()->extraerProductosDeFoto('contenido', 'image/jpeg');

@@ -12,7 +12,7 @@ use App\Models\MapeoImportacionProductos;
 use App\Models\Producto;
 use App\Models\Proveedor;
 use App\Services\ClaudeVision\ClaudeVisionApiClient;
-use App\Services\ClaudeVision\Exceptions\ExtraccionFotoProductosException;
+use App\Services\ClaudeVision\Exceptions\ExtraccionFotoException;
 use App\Services\GeneradorExcelProductosDesdeExtraccionService;
 use App\Services\LectorArchivoExcel;
 use App\Services\MapeoColumnasService;
@@ -214,7 +214,7 @@ class ProductoImportController extends Controller
                 file_get_contents($rutaTemporal),
                 $foto->getMimeType(),
             );
-        } catch (ExtraccionFotoProductosException $e) {
+        } catch (ExtraccionFotoException $e) {
             return back()->withErrors(['foto' => $e->getMessage()])->withInput();
         }
 

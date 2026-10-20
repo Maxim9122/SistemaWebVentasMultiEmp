@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\GuardarClienteRequest;
 use App\Models\Cliente;
+use App\Services\ClaudeVision\ClaudeVisionApiClient;
 use App\Services\ExportadorClientesExcel;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -14,7 +15,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ClienteController extends Controller
 {
-    public function __construct(private readonly ExportadorClientesExcel $exportador) {}
+    public function __construct(
+        private readonly ExportadorClientesExcel $exportador,
+        private readonly ClaudeVisionApiClient $claudeVision,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -35,6 +39,7 @@ class ClienteController extends Controller
             'clientes' => $clientes,
             'porPagina' => $porPagina,
             'buscar' => $buscar,
+            'claudeVisionConfigurado' => $this->claudeVision->configurada(),
         ]);
     }
 

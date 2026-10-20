@@ -199,6 +199,14 @@ Route::middleware('auth')->group(function () {
             Route::post('/importar', [ClienteImportController::class, 'previsualizar'])->name('importar.previsualizar');
             Route::post('/importar/confirmar', [ClienteImportController::class, 'confirmar'])->name('importar.confirmar');
 
+            Route::prefix('importar-foto')->name('importarFoto.')->group(function () {
+                Route::get('/', [ClienteImportController::class, 'subirFoto'])->name('subir');
+                Route::post('/extraer', [ClienteImportController::class, 'extraerFoto'])
+                    ->middleware('throttle:5,1') // única ruta que llama a la API paga
+                    ->name('extraer');
+                Route::post('/confirmar', [ClienteImportController::class, 'confirmarExtraccion'])->name('confirmar');
+            });
+
             Route::prefix('importaciones')->name('importaciones.')->group(function () {
                 Route::get('/', [ImportacionClienteController::class, 'index'])->name('index');
                 Route::post('/{importacion}/deshacer', [ImportacionClienteController::class, 'deshacer'])->name('deshacer');

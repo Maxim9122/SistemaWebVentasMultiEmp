@@ -2,7 +2,8 @@
 
 namespace App\Services\ClaudeVision;
 
-use App\Services\ClaudeVision\Exceptions\ExtraccionFotoProductosException;
+use App\Services\ClaudeVision\Exceptions\ExtraccionFotoException;
+use App\Services\MapeoColumnasClienteService;
 use App\Services\MapeoColumnasService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
@@ -14,6 +15,11 @@ use Illuminate\Support\Facades\Http;
  * de Anthropic instalada y prefiere mantenerse así — ver preferencia de
  * dependencias mínimas), credencial siempre como parámetro de config, nunca
  * hardcodeada.
+ *
+ * Dos entradas públicas (productos/clientes) sobre el mismo núcleo HTTP —
+ * cada una con su propio prompt, porque una foto de lista de precios y una
+ * foto de lista de clientes se leen distinto (igual que MapeoColumnasService
+ * y MapeoColumnasClienteService son dos esquemas separados, no uno genérico).
  */
 class ClaudeVisionApiClient
 {
@@ -23,22 +29,84 @@ class ClaudeVisionApiClient
     }
 
     /**
-     * Le pide a Claude que lea una foto de una lista de precios y devuelva
-     * los productos detectados, uno por fila, con las claves de
-     * MapeoColumnasService::CAMPOS. Usa "structured outputs"
+     * @return list<array<string, ?string>>
+     *
+     * @throws ExtraccionFotoException si falla la conexión, la API devuelve
+     *                                 un error, la respuesta no cumple el
+     *                                 schema esperado, o no se detectó ningún
+     *                                 producto en la foto.
+     */
+    public function extraerProductosDeFoto(string $imagenBinaria, string $mimeType): array
+    {
+        return $this->extraerDeFoto(
+            $imagenBinaria,
+            $mimeType,
+            claveLista: 'productos',
+            campos: MapeoColumnasService::CAMPOS,
+            prompt: <<<'TEXTO'
+                Esta imagen es una foto de una lista de precios de un comercio (puede estar
+                escrita a mano o impresa). Extraé cada producto que puedas leer con sus
+                campos: nombre, codigo (código de barras o SKU, si aparece), precio (precio
+                de venta), costo (precio de costo, si aparece), stock (cantidad, si aparece),
+                categoria, marca, unidad (ej "kg", "unidad", "docena").
+
+                Si un campo no se puede leer con confianza para un producto, poné null para
+                ese campo en vez de adivinar. No inventes productos que no estén en la foto.
+                Dejá los valores de precio/costo/stock tal como aparecen escritos (con
+                separadores de miles o decimales, símbolo de moneda, etc.) — no los
+                conviertas ni los redondees.
+                TEXTO,
+            mensajeSinResultados: 'No se detectó ningún producto en la foto. Probá con otra foto más clara, o cargalos manualmente.',
+        );
+    }
+
+    /**
+     * @return list<array<string, ?string>>
+     *
+     * @throws ExtraccionFotoException si falla la conexión, la API devuelve
+     *                                 un error, la respuesta no cumple el
+     *                                 schema esperado, o no se detectó ningún
+     *                                 cliente en la foto.
+     */
+    public function extraerClientesDeFoto(string $imagenBinaria, string $mimeType): array
+    {
+        return $this->extraerDeFoto(
+            $imagenBinaria,
+            $mimeType,
+            claveLista: 'clientes',
+            campos: MapeoColumnasClienteService::CAMPOS,
+            prompt: <<<'TEXTO'
+                Esta imagen es una foto de una lista de clientes de un comercio (puede estar
+                escrita a mano o impresa — por ejemplo una agenda, un cuaderno de fiado, o un
+                listado de contactos). Extraé cada cliente que puedas leer con sus campos:
+                nombre, cuit (CUIT o DNI, si aparece), telefono, email.
+
+                Si un campo no se puede leer con confianza para un cliente, poné null para
+                ese campo en vez de adivinar. No inventes clientes que no estén en la foto.
+                Dejá el teléfono tal como aparece escrito (con espacios, guiones, código de
+                área, etc.) — no lo reformatees.
+                TEXTO,
+            mensajeSinResultados: 'No se detectó ningún cliente en la foto. Probá con otra foto más clara, o cargalos manualmente.',
+        );
+    }
+
+    /**
+     * Núcleo HTTP compartido: arma el request con "structured outputs"
      * (output_config.format con JSON Schema) en vez de pedir JSON en texto
      * libre — la API valida el schema del lado de ellos, así que no hace
      * falta tolerar una respuesta mal formada.
      *
+     * @param  list<string>  $campos
      * @return list<array<string, ?string>>
-     *
-     * @throws ExtraccionFotoProductosException si falla la conexión, la API
-     *                                           devuelve un error, la respuesta no
-     *                                           cumple el schema esperado, o no se
-     *                                           detectó ningún producto en la foto.
      */
-    public function extraerProductosDeFoto(string $imagenBinaria, string $mimeType): array
-    {
+    private function extraerDeFoto(
+        string $imagenBinaria,
+        string $mimeType,
+        string $claveLista,
+        array $campos,
+        string $prompt,
+        string $mensajeSinResultados,
+    ): array {
         $this->asegurarConfigurada();
 
         try {
@@ -61,20 +129,20 @@ class ClaudeVisionApiClient
                                     'data' => base64_encode($imagenBinaria),
                                 ],
                             ],
-                            ['type' => 'text', 'text' => $this->prompt()],
+                            ['type' => 'text', 'text' => $prompt],
                         ],
                     ]],
-                    'output_config' => ['format' => $this->jsonSchema()],
+                    'output_config' => ['format' => $this->jsonSchema($claveLista, $campos)],
                 ]);
         } catch (ConnectionException $e) {
-            throw new ExtraccionFotoProductosException(
+            throw new ExtraccionFotoException(
                 'No se pudo contactar al servicio de lectura de fotos. Probá de nuevo en unos minutos.',
                 previous: $e,
             );
         }
 
         if ($response->failed()) {
-            throw new ExtraccionFotoProductosException(
+            throw new ExtraccionFotoException(
                 'El servicio de lectura de fotos devolvió un error. Probá de nuevo en unos minutos.'
             );
         }
@@ -82,19 +150,17 @@ class ClaudeVisionApiClient
         $texto = $this->primerBloqueDeTexto($response->json('content', []));
         $datos = $texto !== null ? json_decode($texto, true) : null;
 
-        if (! is_array($datos) || ! isset($datos['productos']) || ! is_array($datos['productos'])) {
-            throw new ExtraccionFotoProductosException(
+        if (! is_array($datos) || ! isset($datos[$claveLista]) || ! is_array($datos[$claveLista])) {
+            throw new ExtraccionFotoException(
                 'No se pudo interpretar la respuesta del servicio de lectura de fotos. Probá con otra foto, con mejor luz y encuadre.'
             );
         }
 
-        if ($datos['productos'] === []) {
-            throw new ExtraccionFotoProductosException(
-                'No se detectó ningún producto en la foto. Probá con otra foto más clara, o cargalos manualmente.'
-            );
+        if ($datos[$claveLista] === []) {
+            throw new ExtraccionFotoException($mensajeSinResultados);
         }
 
-        return $datos['productos'];
+        return $datos[$claveLista];
     }
 
     /**
@@ -111,46 +177,29 @@ class ClaudeVisionApiClient
         return null;
     }
 
-    private function prompt(): string
+    /**
+     * @param  list<string>  $campos
+     */
+    private function jsonSchema(string $claveLista, array $campos): array
     {
-        return <<<'TEXTO'
-            Esta imagen es una foto de una lista de precios de un comercio (puede estar
-            escrita a mano o impresa). Extraé cada producto que puedas leer con sus
-            campos: nombre, codigo (código de barras o SKU, si aparece), precio (precio
-            de venta), costo (precio de costo, si aparece), stock (cantidad, si aparece),
-            categoria, marca, unidad (ej "kg", "unidad", "docena").
-
-            Si un campo no se puede leer con confianza para un producto, poné null para
-            ese campo en vez de adivinar. No inventes productos que no estén en la foto.
-            Dejá los valores de precio/costo/stock tal como aparecen escritos (con
-            separadores de miles o decimales, símbolo de moneda, etc.) — no los
-            conviertas ni los redondees.
-            TEXTO;
-    }
-
-    private function jsonSchema(): array
-    {
-        $propiedades = array_fill_keys(
-            MapeoColumnasService::CAMPOS,
-            ['type' => ['string', 'null']],
-        );
+        $propiedades = array_fill_keys($campos, ['type' => ['string', 'null']]);
 
         return [
             'type' => 'json_schema',
             'schema' => [
                 'type' => 'object',
                 'properties' => [
-                    'productos' => [
+                    $claveLista => [
                         'type' => 'array',
                         'items' => [
                             'type' => 'object',
                             'properties' => $propiedades,
-                            'required' => MapeoColumnasService::CAMPOS,
+                            'required' => $campos,
                             'additionalProperties' => false,
                         ],
                     ],
                 ],
-                'required' => ['productos'],
+                'required' => [$claveLista],
                 'additionalProperties' => false,
             ],
         ];
