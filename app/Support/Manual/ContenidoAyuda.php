@@ -221,6 +221,18 @@ class ContenidoAyuda
                             </ul>
                         ',
                     ],
+                    'reponer-stock-foto' => [
+                        'titulo' => '⭐ Reponer stock a partir de una foto',
+                        'resumen' => '
+                            <div class="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 mb-3">
+                                <p class="font-medium text-emerald-800">Sacale una foto al remito o factura del proveedor cuando llega mercadería, en vez de buscar y cargar cada producto a mano.</p>
+                            </div>
+                            <p>Botón <strong>Reponer stock desde una foto</strong> en Productos (junto a "Reponer stock"): subís la foto del remito/factura y el sistema lee cada producto y cantidad. A diferencia de "Importar productos", acá <strong>nunca se crean productos nuevos</strong> — solo se suma stock a productos que ya existen en tu catálogo.</p>
+                            <p>Por cada línea leída, el sistema busca una coincidencia <strong>exacta</strong> (mismo código, o mismo nombre) en tu catálogo. Si la encuentra, queda pre-cargada; si no, queda para que busques el producto correcto a mano — a propósito nunca adivina por "parecido", para no sumarle stock al producto equivocado.</p>
+                            <p>En la misma pantalla de revisión podés además cargar un <strong>porcentaje de ajuste de precio</strong> (positivo para aumentar, negativo para bajar) y aplicarlo a todos los productos de la lista o solo a los que tildes — se aplica junto con confirmar la reposición, y queda en el mismo historial de "Ajustes de precio" para poder deshacerlo.</p>
+                            <p class="text-slate-500 text-sm">Si no aparece esta opción en el menú, todavía no está configurada esta función — consultá al administrador del sistema.</p>
+                        ',
+                    ],
                     'grupos-y-promociones' => [
                         'titulo' => 'Grupos de productos y promociones',
                         'resumen' => '

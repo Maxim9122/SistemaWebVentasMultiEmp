@@ -172,6 +172,16 @@ Route::middleware('auth')->group(function () {
             Route::prefix('reposiciones')->name('reposiciones.')->group(function () {
                 Route::get('/', [ReposicionStockController::class, 'index'])->name('index');
                 Route::post('/', [ReposicionStockController::class, 'store'])->name('store');
+
+                // Antes del /{reposicion} de abajo: si quedara después, ese
+                // wildcard se comería "importar-foto" como si fuera un id.
+                Route::prefix('importar-foto')->name('importarFoto.')->group(function () {
+                    Route::get('/', [ReposicionStockController::class, 'subirFoto'])->name('subir');
+                    Route::post('/extraer', [ReposicionStockController::class, 'extraerFoto'])
+                        ->middleware('throttle:5,1') // única ruta que llama a la API paga
+                        ->name('extraer');
+                });
+
                 Route::get('/{reposicion}', [ReposicionStockController::class, 'show'])->name('show');
                 Route::put('/{reposicion}', [ReposicionStockController::class, 'update'])->name('update');
                 Route::post('/{reposicion}/deshacer', [ReposicionStockController::class, 'deshacer'])->name('deshacer');

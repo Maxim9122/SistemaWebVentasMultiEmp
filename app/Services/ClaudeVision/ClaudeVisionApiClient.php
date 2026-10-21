@@ -91,6 +91,44 @@ class ClaudeVisionApiClient
     }
 
     /**
+     * Lee una foto de un remito/factura de proveedor (lo que llegó de
+     * mercadería) y devuelve una lista de {nombre, codigo, cantidad} — a
+     * propósito NO pide precio/costo/etc acá: "reponer stock" solo suma
+     * cantidad a productos que YA existen en el catálogo, nunca crea
+     * productos nuevos (eso es tarea de "Importar productos", no de acá).
+     *
+     * @return list<array{nombre: ?string, codigo: ?string, cantidad: ?string}>
+     *
+     * @throws ExtraccionFotoException si falla la conexión, la API devuelve
+     *                                 un error, la respuesta no cumple el
+     *                                 schema esperado, o no se detectó nada
+     *                                 en la foto.
+     */
+    public function extraerReposicionDeFoto(string $imagenBinaria, string $mimeType): array
+    {
+        return $this->extraerDeFoto(
+            $imagenBinaria,
+            $mimeType,
+            claveLista: 'items',
+            campos: ['nombre', 'codigo', 'cantidad'],
+            prompt: <<<'TEXTO'
+                Esta imagen es una foto de un remito o factura de un proveedor — el
+                comprobante de mercadería que llegó a un comercio (puede estar escrito a
+                mano o impreso). Extraé cada producto/artículo de la lista con sus campos:
+                nombre (tal como está escrito), codigo (código de barras o SKU, si
+                aparece), cantidad (la cantidad que llegó de ese producto).
+
+                No extraigas precios ni montos — no hacen falta. Si un campo no se puede
+                leer con confianza, poné null para ese campo en vez de adivinar (la
+                cantidad es el dato más importante, prestale especial atención). No
+                inventes productos que no estén en la foto. Ignorá totales, subtotales,
+                impuestos y cualquier línea que no sea un producto/artículo concreto.
+                TEXTO,
+            mensajeSinResultados: 'No se detectó ningún producto en la foto. Probá con otra foto más clara.',
+        );
+    }
+
+    /**
      * Núcleo HTTP compartido: arma el request con "structured outputs"
      * (output_config.format con JSON Schema) en vez de pedir JSON en texto
      * libre — la API valida el schema del lado de ellos, así que no hace

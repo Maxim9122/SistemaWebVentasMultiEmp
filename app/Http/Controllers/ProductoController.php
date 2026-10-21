@@ -8,6 +8,7 @@ use App\Models\GrupoProducto;
 use App\Models\Producto;
 use App\Models\Proveedor;
 use App\Models\ReposicionStock;
+use App\Services\AjustePrecioService;
 use App\Services\BusquedaProductoPorCodigoBarraService;
 use App\Services\ClaudeVision\ClaudeVisionApiClient;
 use App\Services\ExportadorProductosExcel;
@@ -111,7 +112,7 @@ class ProductoController extends Controller
      * coincidiendo con el filtro de ahora. Mismo criterio de intersección
      * que ya usa GrupoProductoController::ajustarPrecio.
      */
-    public function ajustarPrecioBusqueda(Request $request): RedirectResponse
+    public function ajustarPrecioBusqueda(Request $request, AjustePrecioService $ajustador): RedirectResponse
     {
         $datos = $request->validate([
             'porcentaje' => ['required', 'numeric', 'between:-100,1000'],
@@ -141,28 +142,7 @@ class ProductoController extends Controller
 
         $descripcionFiltro = $this->descripcionFiltroProductos($buscar, $marca, $categoria, $proveedorId);
 
-        DB::transaction(function () use ($productos, $datos, $request, $descripcionFiltro) {
-            $ajuste = AjustePrecioBusqueda::create([
-                'empresa_id' => $request->user()->empresa_id,
-                'user_id' => $request->user()->id,
-                'porcentaje' => $datos['porcentaje'],
-                'descripcion_filtro' => $descripcionFiltro,
-                'productos_count' => $productos->count(),
-            ]);
-
-            foreach ($productos as $producto) {
-                $precioAnterior = (float) $producto->precio;
-                $nuevoPrecio = max(0, round($precioAnterior * (1 + $datos['porcentaje'] / 100), 2));
-
-                $producto->update(['precio' => $nuevoPrecio]);
-
-                $ajuste->cambios()->create([
-                    'producto_id' => $producto->id,
-                    'precio_anterior' => $precioAnterior,
-                    'precio_nuevo' => $nuevoPrecio,
-                ]);
-            }
-        });
+        $ajustador->aplicar($productos, (float) $datos['porcentaje'], $request->user()->empresa_id, $request->user()->id, $descripcionFiltro);
 
         return redirect()->route('productos.index', $request->only(['buscar', 'marca', 'categoria', 'proveedor_id', 'orden', 'dir', 'por_pagina']))
             ->with('status', count($productos).' producto(s) actualizados con el ajuste de precio. Podés deshacerlo desde "Historial de ajustes de precio".');

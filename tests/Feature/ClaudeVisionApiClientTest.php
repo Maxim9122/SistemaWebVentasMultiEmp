@@ -58,6 +58,27 @@ class ClaudeVisionApiClientTest extends TestCase
         $this->assertSame('1122334455', $clientes[0]['telefono']);
     }
 
+    public function test_respuesta_valida_devuelve_los_items_de_reposicion(): void
+    {
+        Http::fake([
+            'api.anthropic.com/*' => Http::response([
+                'content' => [
+                    ['type' => 'text', 'text' => json_encode([
+                        'items' => [
+                            ['nombre' => 'Coca Cola 1.5L', 'codigo' => '7790001000001', 'cantidad' => '12'],
+                        ],
+                    ])],
+                ],
+            ], 200),
+        ]);
+
+        $items = $this->cliente()->extraerReposicionDeFoto('contenido-binario-falso', 'image/jpeg');
+
+        $this->assertCount(1, $items);
+        $this->assertSame('Coca Cola 1.5L', $items[0]['nombre']);
+        $this->assertSame('12', $items[0]['cantidad']);
+    }
+
     public function test_sin_clientes_detectados_tira_excepcion_clara(): void
     {
         Http::fake([
