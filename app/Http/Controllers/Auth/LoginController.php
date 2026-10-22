@@ -105,9 +105,11 @@ class LoginController extends Controller
         }
 
         // Admin es el único rol que llega hasta acá (vendedor/cajero_vendedor
-        // y cajero ya resolvieron arriba) — Productos es su pantalla de
-        // trabajo principal, no hay una pantalla de "Resumen" aparte.
-        return redirect()->route('productos.index');
+        // y cajero ya resolvieron arriba). Ayuda es liviana (~16KB) — se
+        // probó primero mandarlo a Productos, pero esa pantalla pesa ~195KB
+        // (catálogo completo + filtros + modales) y hacía sentir lento el
+        // login entero.
+        return redirect()->route('ayuda.index');
     }
 
     public function destroy(Request $request): RedirectResponse
