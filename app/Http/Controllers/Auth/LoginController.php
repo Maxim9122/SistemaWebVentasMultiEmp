@@ -104,7 +104,10 @@ class LoginController extends Controller
             return redirect()->route('caja.index');
         }
 
-        return redirect()->route('dashboard');
+        // Admin es el único rol que llega hasta acá (vendedor/cajero_vendedor
+        // y cajero ya resolvieron arriba) — Productos es su pantalla de
+        // trabajo principal, no hay una pantalla de "Resumen" aparte.
+        return redirect()->route('productos.index');
     }
 
     public function destroy(Request $request): RedirectResponse

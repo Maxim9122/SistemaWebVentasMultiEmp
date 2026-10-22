@@ -30,6 +30,10 @@
                             @endif
                             <span class="text-sm font-medium text-slate-200 truncate">{{ auth()->user()->empresa->razon_social }}</span>
                         </div>
+                        <div class="mt-2 text-xs text-slate-400 space-y-0.5">
+                            <p class="truncate">Hola, {{ auth()->user()->name }}</p>
+                            <p>Rol: <span class="text-slate-300 font-medium">{{ str_replace('_', ' ', auth()->user()->role) }}</span></p>
+                        </div>
                     @endif
                 </div>
                 <button type="button" onclick="cerrarMenu()" class="md:hidden shrink-0 text-slate-400 hover:text-white p-1" aria-label="Cerrar menú">
@@ -50,7 +54,6 @@
                     </a>
                     <a href="{{ route('superadmin.perfil.edit') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('superadmin.perfil.*') ? 'bg-slate-800 text-white' : '' }}">Mi perfil</a>
                 @else
-                    <a href="{{ route('dashboard') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('dashboard') ? 'bg-slate-800 text-white' : '' }}">Resumen</a>
                     <a href="{{ route('ayuda.index') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('ayuda.*') ? 'bg-slate-800 text-white' : '' }}">Ayuda</a>
                     @if (in_array(auth()->user()->role, ['admin', 'vendedor', 'cajero_vendedor']))
                         <a href="{{ route('carritos.index') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('carritos.*') ? 'bg-slate-800 text-white' : '' }}">Carritos</a>

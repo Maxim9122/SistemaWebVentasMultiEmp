@@ -12,7 +12,6 @@ use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ClienteImportController;
 use App\Http\Controllers\ConfiguracionEmpresaController;
 use App\Http\Controllers\CreditoController;
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EgresoController;
 use App\Http\Controllers\FacturacionElectronicaController;
 use App\Http\Controllers\GrupoProductoController;
@@ -71,8 +70,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
     Route::middleware(['cuenta.activa', 'sesion.actividad'])->group(function () {
-        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
         Route::prefix('ayuda')->name('ayuda.')->group(function () {
             Route::get('/', [AyudaController::class, 'index'])->name('index');
             Route::get('/{seccion}', [AyudaController::class, 'seccion'])->name('seccion');
