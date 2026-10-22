@@ -30,7 +30,7 @@
         su caja hoy — un vendedor puro no tiene caja que abrir. Para cerrar
         hay que ir a "Mi caja": ahí se ve el detalle de lo cobrado antes de
         declarar el cierre, no es un atajo de un solo paso como abrir. --}}
-        @if (auth()->user()->role === 'cajero_vendedor' && ! auth()->user()->cajaAbierta())
+        @if (in_array(auth()->user()->role, ['admin', 'cajero_vendedor']) && ! auth()->user()->cajaAbierta())
             <button type="button" id="btn_abrir_caja_carritos"
                 class="rounded px-3 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white">
                 Abrir caja
@@ -154,7 +154,7 @@
                     <select id="destino" name="destino" required
                         onchange="document.getElementById('fecha_programada_wrap').classList.toggle('hidden', this.value !== 'programado'); document.getElementById('cobro_wrap')?.classList.toggle('hidden', this.value !== 'inmediato')"
                         class="rounded border border-slate-300 text-sm focus:border-slate-500 focus:ring-slate-500">
-                        @if (auth()->user()->role === 'cajero_vendedor')
+                        @if (in_array(auth()->user()->role, ['admin', 'cajero_vendedor']))
                             <option value="inmediato">Cobrar ahora</option>
                         @else
                             <option value="inmediato">Para ahora (va a caja)</option>
@@ -169,7 +169,7 @@
                 </div>
             </div>
 
-            @if (auth()->user()->role === 'cajero_vendedor')
+            @if (in_array(auth()->user()->role, ['admin', 'cajero_vendedor']))
                 <div id="cobro_wrap" class="max-w-xl mb-4">
                     @include('partials.formulario-cobro', ['pedido' => $pedido, 'empresa' => $empresa, 'clientes' => $clientes])
                 </div>
@@ -501,7 +501,7 @@
         })();
     </script>
 
-    @if (auth()->user()->role === 'cajero_vendedor')
+    @if (in_array(auth()->user()->role, ['admin', 'cajero_vendedor']))
         @include('partials.modal-cobro-qr', [
             'formId' => 'form_cerrar_carrito',
             'redirectUrl' => route('carritos.index'),

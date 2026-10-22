@@ -56,6 +56,6 @@ class CerrarCarritoRequest extends FormRequest
 
     private function cobraAlToque(): bool
     {
-        return $this->user()->role === 'cajero_vendedor' && $this->input('destino') === 'inmediato';
+        return in_array($this->user()->role, ['admin', 'cajero_vendedor'], true) && $this->input('destino') === 'inmediato';
     }
 }

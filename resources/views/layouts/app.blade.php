@@ -52,14 +52,14 @@
                 @else
                     <a href="{{ route('dashboard') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('dashboard') ? 'bg-slate-800 text-white' : '' }}">Resumen</a>
                     <a href="{{ route('ayuda.index') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('ayuda.*') ? 'bg-slate-800 text-white' : '' }}">Ayuda</a>
-                    @if (in_array(auth()->user()->role, ['vendedor', 'cajero_vendedor']))
+                    @if (in_array(auth()->user()->role, ['admin', 'vendedor', 'cajero_vendedor']))
                         <a href="{{ route('carritos.index') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('carritos.*') ? 'bg-slate-800 text-white' : '' }}">Carritos</a>
                     @endif
-                    @if (in_array(auth()->user()->role, ['cajero', 'cajero_vendedor']))
+                    @if (in_array(auth()->user()->role, ['admin', 'cajero', 'cajero_vendedor']))
                         <a href="{{ route('caja.index') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('caja.*') ? 'bg-slate-800 text-white' : '' }}">Caja</a>
                         <a href="{{ route('caja-sesion.show') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('caja-sesion.*') ? 'bg-slate-800 text-white' : '' }}">Mi caja</a>
                     @endif
-                    @if (in_array(auth()->user()->role, ['vendedor', 'cajero', 'cajero_vendedor']))
+                    @if (in_array(auth()->user()->role, ['admin', 'vendedor', 'cajero', 'cajero_vendedor']))
                         <a href="{{ route('pedidos.index') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('pedidos.*') ? 'bg-slate-800 text-white' : '' }}">Pedidos</a>
                     @endif
                     @if (in_array(auth()->user()->role, ['admin', 'cajero', 'cajero_vendedor']))
@@ -158,7 +158,7 @@
         @endif
     @endif
 
-    @php $cajaAbiertaEgreso = auth()->check() && in_array(auth()->user()->role, ['cajero', 'cajero_vendedor']) ? auth()->user()->cajaAbierta() : null; @endphp
+    @php $cajaAbiertaEgreso = auth()->check() && in_array(auth()->user()->role, ['admin', 'cajero', 'cajero_vendedor']) ? auth()->user()->cajaAbierta() : null; @endphp
     @if ($cajaAbiertaEgreso)
         @php
             $empresaEgreso = auth()->user()->empresa;

@@ -267,7 +267,7 @@ Route::middleware('auth')->group(function () {
             });
         });
 
-        Route::prefix('carritos')->name('carritos.')->middleware('role:vendedor,cajero_vendedor')->group(function () {
+        Route::prefix('carritos')->name('carritos.')->middleware('role:admin,vendedor,cajero_vendedor')->group(function () {
             Route::get('/', [CarritoController::class, 'index'])->name('index');
             Route::post('/', [CarritoController::class, 'store'])->name('store');
             Route::get('/buscar-producto', [CarritoController::class, 'buscarProducto'])
@@ -285,7 +285,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/{pedido}/cancelar', [CarritoController::class, 'cancelar'])->name('cancelar');
         });
 
-        Route::prefix('caja')->name('caja.')->middleware('role:cajero,cajero_vendedor')->group(function () {
+        Route::prefix('caja')->name('caja.')->middleware('role:admin,cajero,cajero_vendedor')->group(function () {
             Route::get('/', [CajaController::class, 'index'])->name('index');
             Route::get('/buscar-producto', [CajaController::class, 'buscarProducto'])
                 ->middleware('throttle:120,1')
@@ -298,17 +298,17 @@ Route::middleware('auth')->group(function () {
             Route::post('/intentos-mercadopago/{intento}/cancelar', [CajaController::class, 'cancelarIntento'])->name('mercadopago.cancelar');
         });
 
-        Route::prefix('mi-caja')->name('caja-sesion.')->middleware('role:cajero,cajero_vendedor')->group(function () {
+        Route::prefix('mi-caja')->name('caja-sesion.')->middleware('role:admin,cajero,cajero_vendedor')->group(function () {
             Route::get('/', [CajaSesionController::class, 'show'])->name('show');
             Route::post('/abrir', [CajaSesionController::class, 'abrir'])->name('abrir');
             Route::post('/cerrar', [CajaSesionController::class, 'cerrar'])->name('cerrar');
             Route::get('/{caja}', [CajaSesionController::class, 'detalle'])->name('detalle');
         });
 
-        Route::post('/egresos', [EgresoController::class, 'store'])->name('egresos.store')->middleware('role:cajero,cajero_vendedor');
+        Route::post('/egresos', [EgresoController::class, 'store'])->name('egresos.store')->middleware('role:admin,cajero,cajero_vendedor');
         Route::get('/egresos/buscar-producto', [EgresoController::class, 'buscarProducto'])
             ->name('egresos.buscarProducto')
-            ->middleware(['role:cajero,cajero_vendedor', 'throttle:120,1']);
+            ->middleware(['role:admin,cajero,cajero_vendedor', 'throttle:120,1']);
 
         Route::prefix('creditos')->name('creditos.')->middleware('role:admin,cajero,cajero_vendedor')->group(function () {
             Route::get('/', [CreditoController::class, 'index'])->name('index');
@@ -342,7 +342,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/{pedido}/enviar-email', [PresupuestoController::class, 'enviarEmail'])->name('enviarEmail')->middleware('throttle:10,1');
         });
 
-        Route::prefix('pedidos')->name('pedidos.')->middleware('role:vendedor,cajero,cajero_vendedor')->group(function () {
+        Route::prefix('pedidos')->name('pedidos.')->middleware('role:admin,vendedor,cajero,cajero_vendedor')->group(function () {
             Route::get('/', [PedidoController::class, 'index'])->name('index');
             Route::get('/buscar-producto', [PedidoController::class, 'buscarProducto'])
                 ->middleware('throttle:120,1')

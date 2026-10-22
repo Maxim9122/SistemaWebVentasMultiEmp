@@ -33,13 +33,12 @@ use Illuminate\View\View;
  * buscable por número desde el momento en que se crea, mucho antes de que
  * exista un `numero_venta` (que recién se asigna al cobrar).
  *
- * A diferencia de Carritos (personal, por vendedor, roles vendedor/
+ * A diferencia de Carritos (personal, por vendedor, roles admin/vendedor/
  * cajero_vendedor), esto es una lista compartida de toda la empresa — mismo
  * criterio de autorización por `empresa_id` que Caja/Pedidos/Ventas/Créditos,
- * visible para admin/cajero/cajero_vendedor (admin no vende, pero arma y
- * gestiona presupuestos igual; para cobrarlo de verdad hace falta caja
- * abierta, mismo requisito que ya exige ProcesadorDeCobro::cobrar() para
- * cualquier cobro).
+ * visible para admin/cajero/cajero_vendedor; para cobrarlo de verdad hace
+ * falta caja abierta, mismo requisito que ya exige ProcesadorDeCobro::cobrar()
+ * para cualquier cobro.
  */
 class PresupuestoController extends Controller
 {

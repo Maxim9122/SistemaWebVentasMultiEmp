@@ -296,7 +296,7 @@ class CarritoController extends Controller
         $destino = $request->validated('destino');
         $usuario = $request->user();
 
-        if ($destino === 'inmediato' && $usuario->role === 'cajero_vendedor') {
+        if ($destino === 'inmediato' && in_array($usuario->role, ['admin', 'cajero_vendedor'], true)) {
             $montoMercadopago = (float) ($request->validated('monto_mercadopago') ?: 0);
 
             if ($montoMercadopago > 0) {
