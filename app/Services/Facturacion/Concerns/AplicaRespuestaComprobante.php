@@ -22,7 +22,13 @@ trait AplicaRespuestaComprobante
                 'estado' => $estadoAprobada,
                 'cae' => $json['cae'] ?? null,
                 'cae_vencimiento' => $json['cae_vencimiento'] ?? null,
-                'numero_comprobante' => $json['numero_comprobante'] ?? null,
+                // La API de facturación devuelve el número bajo la clave
+                // "numero" (ver ComprobanteController::respuestaComprobante
+                // en el proyecto hermano ModuloAPI_Facturacion_ARCA) — nunca
+                // "numero_comprobante". Con la clave equivocada esto quedaba
+                // siempre null, lo que además apaga el QR de AFIP en el
+                // comprobante (ComprobantePdfService lo exige junto al CAE).
+                'numero_comprobante' => $json['numero'] ?? null,
                 'comprobante_externo_id' => $json['id'] ?? $json['comprobante_id'] ?? null,
                 'error_mensaje' => null,
             ]),

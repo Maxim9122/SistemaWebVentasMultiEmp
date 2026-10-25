@@ -138,7 +138,10 @@ class EmisionComprobanteService
                 'estado' => Factura::ESTADO_APROBADA,
                 'cae' => $payload['cae'] ?? $factura->cae,
                 'cae_vencimiento' => $payload['cae_vencimiento'] ?? $factura->cae_vencimiento,
-                'numero_comprobante' => $payload['numero_comprobante'] ?? $factura->numero_comprobante,
+                // Mismo nombre de campo real que en aplicarRespuestaComun():
+                // el webhook manda "numero", no "numero_comprobante" (ver
+                // EnviarWebhookComprobante en el proyecto hermano).
+                'numero_comprobante' => $payload['numero'] ?? $factura->numero_comprobante,
                 'comprobante_externo_id' => $payload['comprobante_id'] ?? $payload['id'] ?? $factura->comprobante_externo_id,
                 'error_mensaje' => null,
             ]);
