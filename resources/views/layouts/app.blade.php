@@ -59,8 +59,8 @@
                         <a href="{{ route('carritos.index') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('carritos.*') ? 'bg-slate-800 text-white' : '' }}">Carritos</a>
                     @endif
                     @if (in_array(auth()->user()->role, ['admin', 'cajero', 'cajero_vendedor']))
-                        <a href="{{ route('caja.index') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('caja.*') ? 'bg-slate-800 text-white' : '' }}">Caja</a>
-                        <a href="{{ route('caja-sesion.show') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('caja-sesion.*') ? 'bg-slate-800 text-white' : '' }}">Mi caja</a>
+                        <a href="{{ route('caja.index') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('caja.*') ? 'bg-slate-800 text-white' : '' }}">Caja <span class="text-xs text-slate-400">(Cobrar)</span></a>
+                        <a href="{{ route('caja-sesion.show') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('caja-sesion.*') ? 'bg-slate-800 text-white' : '' }}">Mi caja <span class="text-xs text-slate-400">(abrir/cerrar)</span></a>
                     @endif
                     @if (in_array(auth()->user()->role, ['admin', 'vendedor', 'cajero', 'cajero_vendedor']))
                         <a href="{{ route('pedidos.index') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('pedidos.*') ? 'bg-slate-800 text-white' : '' }}">Pedidos</a>
