@@ -126,6 +126,9 @@ Route::middleware('auth')->group(function () {
             Route::get('/buscar-para-reponer', [ProductoController::class, 'buscarParaReponer'])
                 ->middleware('throttle:60,1')
                 ->name('buscarParaReponer');
+            Route::get('/ids-filtrados', [ProductoController::class, 'idsFiltrados'])
+                ->middleware('throttle:60,1')
+                ->name('idsFiltrados');
             Route::get('/{producto}/editar', [ProductoController::class, 'edit'])->name('edit');
             Route::put('/{producto}', [ProductoController::class, 'update'])->name('update');
             Route::post('/ajustar-precio-busqueda', [ProductoController::class, 'ajustarPrecioBusqueda'])->name('ajustarPrecioBusqueda');

@@ -697,37 +697,68 @@
 
             // Todos los ids que matchean la búsqueda actual, en TODAS las
             // páginas (no solo los que están renderizados ahora) — así el
-            // check general puede tildar de verdad "todo el resultado",
-            // no solo lo que se ve en pantalla.
-            const idsAjustablesBusqueda = @json($idsAjustablesBusqueda->map(fn ($id) => (string) $id));
+            // check general puede tildar de verdad "todo el resultado", no
+            // solo lo que se ve en pantalla. A propósito NO viene embebido en
+            // la página: con catálogos de miles de productos eso pesaba
+            // decenas de KB de JSON en CADA carga de Productos, se usara o no
+            // este check — se pide por AJAX (productos.idsFiltrados) solo
+            // cuando hace falta de verdad.
+            const urlIdsFiltrados = {{ Js::from(route('productos.idsFiltrados', ['buscar' => $buscar, 'marca' => $marca, 'categoria' => $categoria, 'proveedor_id' => $proveedorId])) }};
+            let idsAjustablesBusquedaCache = null;
+
+            function obtenerIdsAjustablesBusqueda() {
+                if (idsAjustablesBusquedaCache !== null) {
+                    return Promise.resolve(idsAjustablesBusquedaCache);
+                }
+
+                return fetch(urlIdsFiltrados, { headers: { 'Accept': 'application/json' } })
+                    .then(function (r) { return r.json(); })
+                    .then(function (datos) {
+                        idsAjustablesBusquedaCache = (datos.ids || []).map(String);
+                        return idsAjustablesBusquedaCache;
+                    })
+                    .catch(function () { return []; });
+            }
 
             const checkTodosPagina = document.getElementById('check_todos_pagina');
             if (checkTodosPagina) {
                 // Refleja el estado real al cargar: si ya está TODO el
                 // resultado de la búsqueda tildado (por ej. se tildó "todo"
-                // en una página anterior), que no quede destildado a la vista.
-                checkTodosPagina.checked = idsAjustablesBusqueda.length > 0
-                    && idsAjustablesBusqueda.every(function (id) { return seleccion.has(id); });
+                // en una página anterior), que no quede destildado a la
+                // vista. Solo pide los ids si YA hay algo seleccionado —
+                // entrando sin ninguna selección previa (el caso común) no
+                // puede estar "todo tildado", así que no hace falta pedir
+                // nada todavía.
+                if (seleccion.size > 0) {
+                    obtenerIdsAjustablesBusqueda().then(function (ids) {
+                        checkTodosPagina.checked = ids.length > 0 && ids.every(function (id) { return seleccion.has(id); });
+                    });
+                }
 
                 checkTodosPagina.addEventListener('change', function () {
-                    idsAjustablesBusqueda.forEach(function (id) {
-                        if (checkTodosPagina.checked) {
-                            seleccion.add(id);
-                        } else {
-                            seleccion.delete(id);
-                        }
-                    });
+                    const marcar = checkTodosPagina.checked;
 
-                    // Los checkboxes visibles de esta página reflejan el
-                    // nuevo estado (los de otras páginas se van a ver
-                    // tildados solos al navegar, porque leen de `seleccion`
-                    // guardada en localStorage al cargar cada página).
-                    document.querySelectorAll('.seleccion-producto').forEach(function (checkbox) {
-                        checkbox.checked = seleccion.has(checkbox.dataset.id);
-                    });
+                    obtenerIdsAjustablesBusqueda().then(function (ids) {
+                        ids.forEach(function (id) {
+                            if (marcar) {
+                                seleccion.add(id);
+                            } else {
+                                seleccion.delete(id);
+                            }
+                        });
 
-                    guardarSeleccion(seleccion);
-                    actualizarBloque();
+                        // Los checkboxes visibles de esta página reflejan el
+                        // nuevo estado (los de otras páginas se van a ver
+                        // tildados solos al navegar, porque leen de
+                        // `seleccion` guardada en localStorage al cargar cada
+                        // página).
+                        document.querySelectorAll('.seleccion-producto').forEach(function (checkbox) {
+                            checkbox.checked = seleccion.has(checkbox.dataset.id);
+                        });
+
+                        guardarSeleccion(seleccion);
+                        actualizarBloque();
+                    });
                 });
             }
 

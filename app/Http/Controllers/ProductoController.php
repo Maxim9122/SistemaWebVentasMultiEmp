@@ -87,13 +87,6 @@ class ProductoController extends Controller
             // abre solo, ya cargado con las líneas de ese lote.
             'reposicionParaEditar' => $this->reposicionParaEditar($request, $empresaId),
             'descripcionFiltro' => $this->descripcionFiltroProductos($buscar, $marca, $categoria, $proveedorId),
-            // Ids de TODO el resultado del filtro actual (no solo la página
-            // que se ve), sin promos — se lo pasamos al JS para que el check
-            // "seleccionar todo el resultado de la búsqueda" pueda tildar
-            // productos de páginas que ni siquiera están renderizadas todavía.
-            'idsAjustablesBusqueda' => $this->productosFiltrados($request, $buscar, $marca, $categoria, $proveedorId)
-                ->where('es_promocion', false)
-                ->pluck('id'),
             'claudeVisionConfigurado' => $this->claudeVision->configurada(),
         ]);
     }
@@ -208,6 +201,28 @@ class ProductoController extends Controller
             ->get(['id', 'nombre', 'codigo', 'stock']);
 
         return response()->json($productos);
+    }
+
+    /**
+     * Ids de TODO el resultado del filtro actual (no solo la página que se
+     * ve), sin promos — usado por el check "seleccionar todo el resultado de
+     * la búsqueda" en productos.index. A propósito NO va embebido en la
+     * página (como estaba antes): con un catálogo de miles de productos esos
+     * ids solos pesaban ~55KB de JSON en CADA carga de Productos, se usara o
+     * no el check — se pide por AJAX solo cuando hace falta de verdad.
+     */
+    public function idsFiltrados(Request $request): JsonResponse
+    {
+        $buscar = trim((string) $request->input('buscar', ''));
+        $marca = trim((string) $request->input('marca', ''));
+        $categoria = trim((string) $request->input('categoria', ''));
+        $proveedorId = $request->filled('proveedor_id') ? (int) $request->input('proveedor_id') : null;
+
+        $ids = $this->productosFiltrados($request, $buscar, $marca, $categoria, $proveedorId)
+            ->where('es_promocion', false)
+            ->pluck('id');
+
+        return response()->json(['ids' => $ids]);
     }
 
     public function exportar(Request $request): StreamedResponse
