@@ -85,6 +85,33 @@ class User extends Authenticatable
         return $this->role === 'superadmin';
     }
 
+    /**
+     * Nombre de ruta a la que este usuario "vuelve a casa" — usado tanto
+     * después de loguearse (LoginController::store()) como en la ruta raíz
+     * '/' para un usuario que ya tiene sesión activa (ver routes/web.php).
+     * Importante que exista una ruta real para cada caso: si Route::has()
+     * no encuentra ni 'dashboard' ni 'home', el middleware 'guest' de
+     * Laravel cae de vuelta a '/', que acá redirige a /login — con un
+     * usuario ya logueado eso es un loop infinito (pasó en la PWA, que
+     * arranca siempre en '/').
+     */
+    public function rutaInicio(): string
+    {
+        if ($this->esSuperadmin()) {
+            return 'superadmin.empresas.index';
+        }
+
+        if (in_array($this->role, ['vendedor', 'cajero_vendedor'], true)) {
+            return 'carritos.index';
+        }
+
+        if ($this->role === 'cajero') {
+            return 'caja.index';
+        }
+
+        return 'ayuda.index';
+    }
+
     public function iconoSitioUrl(): ?string
     {
         return $this->icono_sitio_path ? Storage::disk('public')->url($this->icono_sitio_path) : null;

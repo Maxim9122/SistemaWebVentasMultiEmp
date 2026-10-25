@@ -92,24 +92,7 @@ class LoginController extends Controller
         ]);
         $request->session()->put('sesion_usuario_id', $sesion->id);
 
-        if ($user->esSuperadmin()) {
-            return redirect()->route('superadmin.empresas.index');
-        }
-
-        if (in_array($user->role, ['vendedor', 'cajero_vendedor'], true)) {
-            return redirect()->route('carritos.index');
-        }
-
-        if ($user->role === 'cajero') {
-            return redirect()->route('caja.index');
-        }
-
-        // Admin es el único rol que llega hasta acá (vendedor/cajero_vendedor
-        // y cajero ya resolvieron arriba). Ayuda es liviana (~16KB) — se
-        // probó primero mandarlo a Productos, pero esa pantalla pesa ~195KB
-        // (catálogo completo + filtros + modales) y hacía sentir lento el
-        // login entero.
-        return redirect()->route('ayuda.index');
+        return redirect()->route($user->rutaInicio());
     }
 
     public function destroy(Request $request): RedirectResponse

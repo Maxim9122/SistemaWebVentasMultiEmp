@@ -39,7 +39,15 @@ use App\Http\Controllers\TicketPublicoController;
 use App\Http\Controllers\VentaController;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/login');
+// No es un simple Route::redirect('/', '/login'): el middleware 'guest' de
+// Laravel, al no encontrar ninguna ruta llamada 'dashboard' ni 'home', cae de
+// vuelta acá para un usuario ya logueado — con un redirect fijo a /login eso
+// es un loop infinito para cualquiera que ya tenga sesión (se vio en la PWA,
+// que siempre arranca en '/', mandando ERR_TOO_MANY_REDIRECTS; ver
+// User::rutaInicio()).
+Route::get('/', fn () => auth()->check()
+    ? redirect()->route(auth()->user()->rutaInicio())
+    : redirect()->route('login'));
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
