@@ -35,6 +35,7 @@ class FacturacionApiClient
 
         $response = Http::withToken(config('services.facturacion.platform_key'))
             ->acceptJson()
+            ->timeout(15)
             ->post($this->url('/api/platform/v1/empresas'), $datos);
 
         if ($response->status() === 409) {
@@ -70,6 +71,7 @@ class FacturacionApiClient
 
         $response = Http::withToken(config('services.facturacion.platform_key'))
             ->acceptJson()
+            ->timeout(15)
             ->patch($this->url("/api/platform/v1/empresas/{$empresaExternaId}"), $datos);
 
         if ($response->status() === 409) {
