@@ -10,6 +10,7 @@ use App\Models\ReposicionStockItem;
 use App\Services\AjustePrecioService;
 use App\Services\ClaudeVision\ClaudeVisionApiClient;
 use App\Services\ClaudeVision\Exceptions\ExtraccionFotoException;
+use App\Services\NormalizadorNumeroService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,10 @@ use Illuminate\View\View;
 
 class ReposicionStockController extends Controller
 {
-    public function __construct(private readonly ClaudeVisionApiClient $claudeVision) {}
+    public function __construct(
+        private readonly ClaudeVisionApiClient $claudeVision,
+        private readonly NormalizadorNumeroService $normalizador,
+    ) {}
 
     public function subirFoto(Request $request): View
     {
@@ -56,6 +60,7 @@ class ReposicionStockController extends Controller
             $nombre = trim((string) ($item['nombre'] ?? ''));
             $codigo = trim((string) ($item['codigo'] ?? ''));
             $cantidad = $this->limpiarCantidad($item['cantidad'] ?? null);
+            $precioLeido = $this->normalizador->normalizar($item['precio'] ?? null);
 
             $sugerido = $this->sugerirProducto($empresaId, $nombre, $codigo);
 
@@ -63,6 +68,7 @@ class ReposicionStockController extends Controller
                 'nombre_leido' => $nombre,
                 'codigo_leido' => $codigo,
                 'cantidad' => $cantidad,
+                'precio_leido' => $precioLeido !== null ? (float) $precioLeido : null,
                 'producto_id' => $sugerido?->id,
                 'producto_nombre' => $sugerido?->nombre,
                 'producto_codigo' => $sugerido?->codigo,

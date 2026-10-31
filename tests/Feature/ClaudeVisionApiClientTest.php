@@ -65,7 +65,7 @@ class ClaudeVisionApiClientTest extends TestCase
                 'content' => [
                     ['type' => 'text', 'text' => json_encode([
                         'items' => [
-                            ['nombre' => 'Coca Cola 1.5L', 'codigo' => '7790001000001', 'cantidad' => '12'],
+                            ['nombre' => 'Coca Cola 1.5L', 'codigo' => '7790001000001', 'cantidad' => '12', 'precio' => '1.500,00'],
                         ],
                     ])],
                 ],
@@ -77,6 +77,7 @@ class ClaudeVisionApiClientTest extends TestCase
         $this->assertCount(1, $items);
         $this->assertSame('Coca Cola 1.5L', $items[0]['nombre']);
         $this->assertSame('12', $items[0]['cantidad']);
+        $this->assertSame('1.500,00', $items[0]['precio']);
     }
 
     public function test_sin_clientes_detectados_tira_excepcion_clara(): void

@@ -92,12 +92,14 @@ class ClaudeVisionApiClient
 
     /**
      * Lee una foto de un remito/factura de proveedor (lo que llegó de
-     * mercadería) y devuelve una lista de {nombre, codigo, cantidad} — a
-     * propósito NO pide precio/costo/etc acá: "reponer stock" solo suma
-     * cantidad a productos que YA existen en el catálogo, nunca crea
-     * productos nuevos (eso es tarea de "Importar productos", no de acá).
+     * mercadería) y devuelve una lista de {nombre, codigo, cantidad, precio}
+     * — "reponer stock" solo suma cantidad a productos que YA existen en el
+     * catálogo, nunca crea productos nuevos (eso es tarea de "Importar
+     * productos", no de acá). El precio es opcional: solo sirve para que el
+     * usuario pueda compararlo con el precio actual del catálogo y decidir
+     * si ajusta — nunca se aplica solo, sin que el usuario lo confirme.
      *
-     * @return list<array{nombre: ?string, codigo: ?string, cantidad: ?string}>
+     * @return list<array{nombre: ?string, codigo: ?string, cantidad: ?string, precio: ?string}>
      *
      * @throws ExtraccionFotoException si falla la conexión, la API devuelve
      *                                 un error, la respuesta no cumple el
@@ -110,19 +112,22 @@ class ClaudeVisionApiClient
             $imagenBinaria,
             $mimeType,
             claveLista: 'items',
-            campos: ['nombre', 'codigo', 'cantidad'],
+            campos: ['nombre', 'codigo', 'cantidad', 'precio'],
             prompt: <<<'TEXTO'
                 Esta imagen es una foto de un remito o factura de un proveedor — el
                 comprobante de mercadería que llegó a un comercio (puede estar escrito a
                 mano o impreso). Extraé cada producto/artículo de la lista con sus campos:
                 nombre (tal como está escrito), codigo (código de barras o SKU, si
-                aparece), cantidad (la cantidad que llegó de ese producto).
+                aparece), cantidad (la cantidad que llegó de ese producto), precio (el
+                precio unitario de ese producto en este comprobante, si aparece — dejalo
+                tal como está escrito, con separadores de miles o decimales, símbolo de
+                moneda, etc., no lo conviertas ni lo redondees).
 
-                No extraigas precios ni montos — no hacen falta. Si un campo no se puede
-                leer con confianza, poné null para ese campo en vez de adivinar (la
-                cantidad es el dato más importante, prestale especial atención). No
-                inventes productos que no estén en la foto. Ignorá totales, subtotales,
-                impuestos y cualquier línea que no sea un producto/artículo concreto.
+                Si un campo no se puede leer con confianza, poné null para ese campo en vez
+                de adivinar (la cantidad es el dato más importante, prestale especial
+                atención). No inventes productos que no estén en la foto. Ignorá totales,
+                subtotales, impuestos y cualquier línea que no sea un producto/artículo
+                concreto.
                 TEXTO,
             mensajeSinResultados: 'No se detectó ningún producto en la foto. Probá con otra foto más clara.',
         );

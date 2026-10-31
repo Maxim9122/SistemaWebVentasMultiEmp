@@ -198,7 +198,7 @@ class ProductoController extends Controller
             ->orderByRaw('codigo = ? desc', [$texto])
             ->orderBy('nombre')
             ->limit(8)
-            ->get(['id', 'nombre', 'codigo', 'stock']);
+            ->get(['id', 'nombre', 'codigo', 'stock', 'precio']);
 
         return response()->json($productos);
     }

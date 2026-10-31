@@ -9,6 +9,11 @@
             que corresponde y la cantidad — solo se auto-completó cuando hubo una coincidencia exacta de código o
             nombre, cualquier otra línea queda para que la busques a mano. Nada se guarda todavía.
         </p>
+        <p class="text-xs text-slate-400 mb-1">
+            Si el remito/factura traía precio, debajo de cada producto matcheado vas a ver el precio actual del
+            catálogo comparado con el leído, con la diferencia marcada si cambió — es solo informativo, no cambia
+            nada solo.
+        </p>
         <p class="text-xs text-slate-400 mb-4">
             También podés aplicar un aumento o una baja de precio (en %) a todos los productos de la lista, o solo a
             los que tildes, junto con confirmar la reposición.
@@ -41,10 +46,28 @@
                                     autocomplete="off" placeholder="Buscar producto (nombre o código)..."
                                     value="{{ $fila['producto_nombre'] ? $fila['producto_nombre'].($fila['producto_codigo'] ? ' ('.$fila['producto_codigo'].')' : '') : '' }}">
                                 <input type="hidden" class="producto-id-oculto" value="{{ $fila['producto_id'] }}">
+                                <input type="hidden" class="precio-leido-oculto" value="{{ $fila['precio_leido'] ?? '' }}">
                                 <ul class="resultados-producto hidden absolute z-10 mt-1 w-56 max-h-48 overflow-auto rounded border border-slate-200 bg-white shadow-lg"></ul>
                                 <p class="estado-fila text-xs mt-1 {{ $fila['producto_id'] ? 'text-slate-400' : 'text-amber-600' }}">
                                     {{ $fila['producto_id'] ? 'Stock actual: '.$fila['producto_stock'] : 'Sin coincidencia exacta — buscalo arriba.' }}
                                 </p>
+                                @if ($fila['producto_id'] && $fila['precio_leido'] !== null)
+                                    @php
+                                        $precioActual = (float) $fila['producto_precio'];
+                                        $precioLeido = (float) $fila['precio_leido'];
+                                        $hayDiferencia = round($precioActual, 2) !== round($precioLeido, 2);
+                                        $variacion = $precioActual > 0 ? round((($precioLeido - $precioActual) / $precioActual) * 100, 1) : null;
+                                    @endphp
+                                    <p class="precio-comparacion text-xs mt-1 {{ $hayDiferencia ? 'text-amber-600' : 'text-slate-400' }}">
+                                        Precio actual: ${{ number_format($precioActual, 2, ',', '.') }} —
+                                        Leído: ${{ number_format($precioLeido, 2, ',', '.') }}
+                                        @if ($hayDiferencia && $variacion !== null)
+                                            ({{ $variacion > 0 ? '+' : '' }}{{ number_format($variacion, 1, ',', '.') }}%)
+                                        @elseif (! $hayDiferencia)
+                                            (igual)
+                                        @endif
+                                    </p>
+                                @endif
                             </td>
                             <td class="px-2 py-2">
                                 <input type="number" min="1" class="cantidad-input w-24 rounded border border-slate-300 text-sm px-2 py-1 focus:border-slate-500 focus:ring-slate-500"
@@ -128,6 +151,7 @@
                         <input type="text" class="buscador-producto w-56 rounded border border-slate-300 text-sm px-2 py-1 focus:border-slate-500 focus:ring-slate-500"
                             autocomplete="off" placeholder="Buscar producto (nombre o código)...">
                         <input type="hidden" class="producto-id-oculto" value="">
+                        <input type="hidden" class="precio-leido-oculto" value="">
                         <ul class="resultados-producto hidden absolute z-10 mt-1 w-56 max-h-48 overflow-auto rounded border border-slate-200 bg-white shadow-lg"></ul>
                         <p class="estado-fila text-xs mt-1 text-amber-600">Buscá el producto arriba.</p>
                     </td>
@@ -176,6 +200,46 @@
                     .catch(() => null);
             }
 
+            // Compara el precio leído de la foto (si lo hubo) contra el
+            // precio actual del producto recién elegido — ya sea por la
+            // sugerencia automática al cargar la pantalla, o por una
+            // búsqueda manual acá mismo (buscarParaReponer ahora también
+            // manda el precio, no solo nombre/código/stock).
+            function actualizarComparacionPrecio(fila, producto) {
+                const precioLeidoInput = fila.querySelector('.precio-leido-oculto');
+                const precioLeidoTexto = precioLeidoInput ? precioLeidoInput.value : '';
+                let comparacion = fila.querySelector('.precio-comparacion');
+
+                if (precioLeidoTexto === '' || !producto || producto.precio === null || producto.precio === undefined) {
+                    if (comparacion) comparacion.remove();
+                    return;
+                }
+
+                const precioLeido = parseFloat(precioLeidoTexto);
+                const precioActual = parseFloat(producto.precio);
+                const formatear = function (valor) {
+                    return valor.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                };
+
+                const hayDiferencia = Math.round(precioActual * 100) !== Math.round(precioLeido * 100);
+                let texto = 'Precio actual: $' + formatear(precioActual) + ' — Leído: $' + formatear(precioLeido);
+
+                if (hayDiferencia) {
+                    const variacion = precioActual > 0 ? ((precioLeido - precioActual) / precioActual) * 100 : 0;
+                    texto += ' (' + (variacion > 0 ? '+' : '') + variacion.toFixed(1).replace('.', ',') + '%)';
+                } else {
+                    texto += ' (igual)';
+                }
+
+                if (!comparacion) {
+                    comparacion = document.createElement('p');
+                    fila.querySelector('.estado-fila').insertAdjacentElement('afterend', comparacion);
+                }
+
+                comparacion.textContent = texto;
+                comparacion.className = 'precio-comparacion text-xs mt-1 ' + (hayDiferencia ? 'text-amber-600' : 'text-slate-400');
+            }
+
             function seleccionarProducto(fila, producto) {
                 fila.querySelector('.buscador-producto').value = producto.nombre + (producto.codigo ? ' (' + producto.codigo + ')' : '');
                 fila.querySelector('.producto-id-oculto').value = producto.id;
@@ -184,6 +248,7 @@
                 estado.className = 'estado-fila text-xs mt-1 text-slate-400';
                 fila.querySelector('.resultados-producto').innerHTML = '';
                 fila.querySelector('.resultados-producto').classList.add('hidden');
+                actualizarComparacionPrecio(fila, producto);
             }
 
             let timerDebounce = null;
@@ -198,6 +263,9 @@
                 const estado = fila.querySelector('.estado-fila');
                 estado.textContent = 'Sin coincidencia exacta — buscalo arriba.';
                 estado.className = 'estado-fila text-xs mt-1 text-amber-600';
+
+                const comparacionVieja = fila.querySelector('.precio-comparacion');
+                if (comparacionVieja) comparacionVieja.remove();
 
                 clearTimeout(timerDebounce);
 
