@@ -39,7 +39,7 @@
             </button>
             <div id="menu_historial" class="hidden absolute left-0 top-full z-50 w-56 rounded-lg border border-slate-200 bg-white shadow-lg py-1">
                 <a href="{{ route('productos.reposiciones.index') }}" class="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Reposiciones de stock</a>
-                <a href="{{ route('productos.importaciones.index') }}" class="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Importaciones desde Excel</a>
+                <a href="{{ route('productos.importaciones.index') }}" class="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Importaciones de productos</a>
                 <a href="{{ route('productos.ajustesPrecio.index') }}" class="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Ajustes de precio</a>
             </div>
         </div>
