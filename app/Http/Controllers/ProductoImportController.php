@@ -97,8 +97,7 @@ class ProductoImportController extends Controller
         int $empresaId,
         ?int $proveedorId,
     ): View {
-        $lectura = $this->importador->leerEncabezadosYPreview($rutaAbsoluta);
-        $filasTotales = count($this->importador->leerFilas($rutaAbsoluta));
+        $lectura = $this->importador->leer($rutaAbsoluta);
 
         $mapeoRecordado = MapeoImportacionProductos::where('empresa_id', $empresaId)->first()?->mapeo;
 
@@ -118,8 +117,8 @@ class ProductoImportController extends Controller
         // puede ajustar abajo) — es una estimación para avisar antes de
         // importar, no la fuente de verdad: confirmar() vuelve a calcularlo
         // con el mapeo definitivo que se haya terminado usando.
-        $duplicados = $this->detectarDuplicados($rutaAbsoluta, $sugerencias, $empresaId);
-        $codigosInvalidos = $this->detectarCodigosInvalidos($rutaAbsoluta, $sugerencias);
+        $duplicados = $this->detectarDuplicados($lectura['filas'], $sugerencias, $empresaId);
+        $codigosInvalidos = $this->detectarCodigosInvalidos($lectura['filas'], $sugerencias);
 
         return view('productos.importar.confirmar', [
             'token' => $token,
@@ -127,7 +126,7 @@ class ProductoImportController extends Controller
             'preview' => $lectura['preview'],
             'sugerencias' => $sugerencias,
             'campos' => MapeoColumnasService::CAMPOS,
-            'filasTotales' => $filasTotales,
+            'filasTotales' => count($lectura['filas']),
             'proveedorNombre' => $proveedorNombre,
             'duplicados' => $duplicados,
             'codigosInvalidos' => $codigosInvalidos,
@@ -237,9 +236,10 @@ class ProductoImportController extends Controller
      * intentar buscarles una coincidencia por ese valor.
      *
      * @param  array<int, string|null>  $mapeo
+     * @param  list<list<mixed>>  $filas
      * @return array<string, int>
      */
-    private function detectarCodigosInvalidos(string $rutaAbsoluta, array $mapeo): array
+    private function detectarCodigosInvalidos(array $filas, array $mapeo): array
     {
         $indiceCodigo = array_search('codigo', $mapeo, true);
 
@@ -249,7 +249,7 @@ class ProductoImportController extends Controller
 
         $conteo = [];
 
-        foreach ($this->importador->leerFilas($rutaAbsoluta) as $fila) {
+        foreach ($filas as $fila) {
             $codigo = trim((string) ($fila[$indiceCodigo] ?? ''));
 
             if ($codigo !== '' && $this->esCodigoInvalido($codigo)) {
@@ -270,10 +270,11 @@ class ProductoImportController extends Controller
      * filas reales del Excel tienen ese código — así el aviso no subestima
      * el impacto real de la importación.
      *
+     * @param  list<list<mixed>>  $filas
      * @param  array<int, string|null>  $mapeo
      * @return \Illuminate\Support\Collection<int, array{codigo: string, nombre_excel: string, nombre_actual: string, veces: int}>
      */
-    private function detectarDuplicados(string $rutaAbsoluta, array $mapeo, int $empresaId): \Illuminate\Support\Collection
+    private function detectarDuplicados(array $filas, array $mapeo, int $empresaId): \Illuminate\Support\Collection
     {
         $indiceCodigo = array_search('codigo', $mapeo, true);
         $indiceNombre = array_search('nombre', $mapeo, true);
@@ -282,7 +283,6 @@ class ProductoImportController extends Controller
             return collect();
         }
 
-        $filas = $this->importador->leerFilas($rutaAbsoluta);
         $vecesPorCodigo = [];
         $nombreExcelPorCodigo = [];
 
@@ -331,7 +331,7 @@ class ProductoImportController extends Controller
         $modoDuplicados = $request->validated('modo_duplicados') ?? 'actualizar';
         $rutaAbsoluta = Storage::disk('local')->path($datosImportacion['ruta']);
 
-        $filas = $this->importador->leerFilas($rutaAbsoluta);
+        $filas = $this->importador->leer($rutaAbsoluta)['filas'];
 
         $creados = 0;
         $actualizados = 0;

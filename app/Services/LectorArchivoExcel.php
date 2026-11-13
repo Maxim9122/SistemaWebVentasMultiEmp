@@ -15,27 +15,30 @@ class LectorArchivoExcel
     private const FILAS_PREVIEW = 5;
 
     /**
-     * @return array{encabezados: list<string>, preview: list<list<mixed>>}
+     * Lee el archivo una sola vez y devuelve todo lo que hace falta de él:
+     * encabezados, una vista previa chica, y todas las filas de datos
+     * (sin el encabezado). A propósito un solo método que parsea una sola
+     * vez — antes había un método separado para encabezados/preview y otro
+     * para todas las filas, y cada controller de importación terminaba
+     * llamando a uno u otro varias veces por separado (preview, contar
+     * filas, detectar duplicados, detectar códigos inválidos), cada
+     * llamada volviendo a parsear el Excel entero desde cero. Para un
+     * archivo de ~7000 filas eso eran 4-5 parseos completos (~1.5-2s cada
+     * uno, medido) en una sola importación — se sentía como que la pantalla
+     * se quedaba trabada.
+     *
+     * @return array{encabezados: list<string>, preview: list<list<mixed>>, filas: list<list<mixed>>}
      */
-    public function leerEncabezadosYPreview(string $rutaAbsoluta): array
+    public function leer(string $rutaAbsoluta): array
     {
-        $filas = $this->leerTodasLasFilas($rutaAbsoluta);
-        $encabezados = array_map(fn ($valor) => trim((string) $valor), $filas[0] ?? []);
+        $todas = $this->leerTodasLasFilas($rutaAbsoluta);
+        $encabezados = array_map(fn ($valor) => trim((string) $valor), $todas[0] ?? []);
 
         return [
             'encabezados' => array_values($encabezados),
-            'preview' => array_slice($filas, 1, self::FILAS_PREVIEW),
+            'preview' => array_slice($todas, 1, self::FILAS_PREVIEW),
+            'filas' => array_slice($todas, 1),
         ];
-    }
-
-    /**
-     * Todas las filas de datos del archivo, sin el encabezado.
-     *
-     * @return list<list<mixed>>
-     */
-    public function leerFilas(string $rutaAbsoluta): array
-    {
-        return array_slice($this->leerTodasLasFilas($rutaAbsoluta), 1);
     }
 
     /**
