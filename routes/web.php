@@ -143,6 +143,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/importar', [ProductoImportController::class, 'subir'])->name('importar.subir');
             Route::post('/importar', [ProductoImportController::class, 'previsualizar'])->name('importar.previsualizar');
             Route::post('/importar/confirmar', [ProductoImportController::class, 'confirmar'])->name('importar.confirmar');
+            Route::post('/importar/procesar-lote', [ProductoImportController::class, 'procesarLote'])->name('importar.procesarLote');
 
             Route::prefix('importar-foto')->name('importarFoto.')->group(function () {
                 Route::get('/', [ProductoImportController::class, 'subirFoto'])->name('subir');

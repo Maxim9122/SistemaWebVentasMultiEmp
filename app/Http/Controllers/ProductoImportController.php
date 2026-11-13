@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ConfirmarExtraccionFotoProductosRequest;
 use App\Http\Requests\ConfirmarImportacionProductosRequest;
+use App\Http\Requests\ProcesarLoteImportacionProductosRequest;
 use App\Http\Requests\SubirExcelProductosRequest;
 use App\Http\Requests\SubirFotoProductosRequest;
 use App\Http\Requests\SubirPdfProductosRequest;
@@ -19,6 +20,7 @@ use App\Services\LectorArchivoExcel;
 use App\Services\MapeoColumnasService;
 use App\Services\NormalizadorNumeroService;
 use App\Services\PdfAImagenesService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -41,6 +43,17 @@ class ProductoImportController extends Controller
     private const CODIGOS_INVALIDOS = [
         'nan', '#n/a', 'n/a', 'na', '#value!', '#ref!', '#div/0!', '#null!', '#name?', '#num!',
     ];
+
+    /**
+     * Cuántas filas procesa cada request de "importar/procesar-lote". Un
+     * Excel de miles de filas, procesado entero en un solo request HTTP,
+     * puede superar el timeout del gateway del servidor (504) — dividirlo
+     * en pedidos más chicos, uno atrás del otro desde el navegador, evita
+     * ese límite sin importar cuán grande sea el archivo, y como cada lote
+     * corre en su propia transacción (corta), tampoco mantiene bloqueos de
+     * base de datos por mucho tiempo mientras se importa.
+     */
+    private const TAMANO_LOTE_IMPORTACION = 300;
 
     public function __construct(
         private readonly LectorArchivoExcel $importador,
@@ -394,6 +407,13 @@ class ProductoImportController extends Controller
             ->values();
     }
 
+    /**
+     * Camino de respaldo sin JavaScript (o para archivos chicos, como los
+     * que vienen de foto/PDF): procesa TODO de una sola vez, en un único
+     * request. Para archivos grandes, el camino normal es procesarLote()
+     * (ver más abajo), que divide el mismo trabajo en pedidos chicos desde
+     * el navegador para no toparse con el timeout del servidor.
+     */
     public function confirmar(ConfirmarImportacionProductosRequest $request): View|RedirectResponse
     {
         $datosImportacion = $request->datosImportacion();
@@ -411,13 +431,6 @@ class ProductoImportController extends Controller
 
         $filas = $this->importador->leer($rutaAbsoluta, $this->mapeoColumnas->detectarFilaEncabezado(...))['filas'];
 
-        $creados = 0;
-        $actualizados = 0;
-        $ignorados = 0;
-        $copiados = 0;
-        $codigosInvalidos = 0;
-        $errores = [];
-
         $importacion = ImportacionProductos::create([
             'empresa_id' => $empresaId,
             'user_id' => $request->user()->id,
@@ -425,121 +438,17 @@ class ProductoImportController extends Controller
             'nombre_archivo' => $datosImportacion['nombre_archivo'] ?? 'archivo.xlsx',
         ]);
 
-        DB::transaction(function () use ($filas, $mapeoPorIndice, $empresaId, $proveedorId, $modoDuplicados, $importacion, &$creados, &$actualizados, &$ignorados, &$copiados, &$codigosInvalidos, &$errores) {
-            foreach ($filas as $indiceFila => $fila) {
-                if (collect($fila)->every(fn ($valor) => trim((string) $valor) === '')) {
-                    continue;
-                }
-
-                $numeroFilaExcel = $indiceFila + 2;
-                $datos = $this->extraerDatosFila($fila, $mapeoPorIndice);
-
-                foreach (['precio', 'costo', 'stock'] as $campoNumerico) {
-                    if (array_key_exists($campoNumerico, $datos)) {
-                        $datos[$campoNumerico] = $this->normalizador->normalizar($datos[$campoNumerico]);
-                    }
-                }
-
-                if (blank($datos['nombre'] ?? null)) {
-                    $errores[] = "Fila {$numeroFilaExcel}: falta el nombre.";
-
-                    continue;
-                }
-
-                if (! is_numeric($datos['precio'] ?? null)) {
-                    $errores[] = "Fila {$numeroFilaExcel}: el precio no es un número válido.";
-
-                    continue;
-                }
-
-                $atributos = [
-                    'nombre' => trim((string) $datos['nombre']),
-                    'precio' => (float) $datos['precio'],
-                    'costo' => is_numeric($datos['costo'] ?? null) ? (float) $datos['costo'] : null,
-                    'stock' => is_numeric($datos['stock'] ?? null) ? (int) $datos['stock'] : 0,
-                    'categoria' => blank($datos['categoria'] ?? null) ? null : trim((string) $datos['categoria']),
-                    'marca' => blank($datos['marca'] ?? null) ? null : trim((string) $datos['marca']),
-                    'unidad' => blank($datos['unidad'] ?? null) ? null : trim((string) $datos['unidad']),
-                    'proveedor_id' => $proveedorId,
-                ];
-
-                $codigo = blank($datos['codigo'] ?? null) ? null : trim((string) $datos['codigo']);
-
-                if ($codigo !== null && $this->esCodigoInvalido($codigo)) {
-                    // "NaN", "#N/A", etc. no son códigos reales — se tratan
-                    // como si la celda estuviera vacía, para que nunca
-                    // encuentren (ni generen) una coincidencia falsa con otra
-                    // fila que tenga el mismo valor basura.
-                    $codigo = null;
-                    $codigosInvalidos++;
-                }
-
-                $producto = $codigo !== null
-                    ? Producto::where('empresa_id', $empresaId)->where('codigo', $codigo)->first()
-                    : null;
-
-                if ($producto) {
-                    if ($modoDuplicados === 'ignorar') {
-                        $ignorados++;
-
-                        continue;
-                    }
-
-                    if ($modoDuplicados === 'copiar') {
-                        // Copia como producto nuevo, sin código: si le dejáramos
-                        // el mismo código del Excel, chocaría con la restricción
-                        // única (empresa_id, codigo) de la tabla. No se inventa
-                        // un código al azar — directamente queda sin código,
-                        // igual que cualquier producto cargado sin uno.
-                        $copia = Producto::create([...$atributos, 'empresa_id' => $empresaId, 'codigo' => null]);
-                        $copiados++;
-
-                        ImportacionProductoCambio::create([
-                            'importacion_id' => $importacion->id,
-                            'producto_id' => $copia->id,
-                            'fue_creado' => true,
-                            'datos_anteriores' => null,
-                        ]);
-
-                        continue;
-                    }
-
-                    $datosAnteriores = $producto->only([
-                        'nombre', 'codigo', 'precio', 'costo', 'stock', 'categoria', 'marca', 'unidad', 'proveedor_id',
-                    ]);
-
-                    $producto->update($atributos);
-                    $actualizados++;
-
-                    ImportacionProductoCambio::create([
-                        'importacion_id' => $importacion->id,
-                        'producto_id' => $producto->id,
-                        'fue_creado' => false,
-                        'datos_anteriores' => $datosAnteriores,
-                    ]);
-
-                    continue;
-                }
-
-                $nuevoProducto = Producto::create([...$atributos, 'empresa_id' => $empresaId, 'codigo' => $codigo]);
-                $creados++;
-
-                ImportacionProductoCambio::create([
-                    'importacion_id' => $importacion->id,
-                    'producto_id' => $nuevoProducto->id,
-                    'fue_creado' => true,
-                    'datos_anteriores' => null,
-                ]);
-            }
-        });
+        $resultado = DB::transaction(fn () => $this->procesarLoteFilas(
+            $filas, 0, $mapeoPorIndice, $empresaId, $proveedorId, $modoDuplicados, $importacion,
+        ));
 
         $importacion->update([
-            'creados_count' => $creados,
-            'actualizados_count' => $actualizados,
-            'ignorados_count' => $ignorados,
-            'copiados_count' => $copiados,
-            'codigos_invalidos_count' => $codigosInvalidos,
-            'errores_count' => count($errores),
+            'creados_count' => $resultado['creados'],
+            'actualizados_count' => $resultado['actualizados'],
+            'ignorados_count' => $resultado['ignorados'],
+            'copiados_count' => $resultado['copiados'],
+            'codigos_invalidos_count' => $resultado['codigosInvalidos'],
+            'errores_count' => count($resultado['errores']),
         ]);
 
         MapeoImportacionProductos::updateOrCreate(
@@ -551,13 +460,288 @@ class ProductoImportController extends Controller
         Cache::forget('import-productos:'.$request->input('token'));
 
         return view('productos.importar.resultado', [
-            'creados' => $creados,
-            'actualizados' => $actualizados,
-            'ignorados' => $ignorados,
-            'copiados' => $copiados,
-            'codigosInvalidos' => $codigosInvalidos,
-            'errores' => $errores,
+            'creados' => $resultado['creados'],
+            'actualizados' => $resultado['actualizados'],
+            'ignorados' => $resultado['ignorados'],
+            'copiados' => $resultado['copiados'],
+            'codigosInvalidos' => $resultado['codigosInvalidos'],
+            'errores' => $resultado['errores'],
         ]);
+    }
+
+    /**
+     * Camino principal (vía JavaScript, ver confirmar.blade.php): procesa
+     * TAMANO_LOTE_IMPORTACION filas por pedido, acumulando en la misma
+     * ImportacionProductos entre pedidos (se manda su id en $importacion_id
+     * a partir del segundo lote). Nunca se topa con el timeout del gateway
+     * sin importar cuán grande sea el archivo, porque cada pedido hace una
+     * fracción chica y acotada del trabajo total.
+     */
+    public function procesarLote(ProcesarLoteImportacionProductosRequest $request): JsonResponse
+    {
+        $datosImportacion = $request->datosImportacion();
+
+        if (! $datosImportacion) {
+            return response()->json(['mensaje' => 'La importación expiró. Volvé a subir el archivo.'], 422);
+        }
+
+        $empresaId = $datosImportacion['empresa_id'];
+        $proveedorId = $datosImportacion['proveedor_id'] ?? null;
+        $mapeoPorIndice = $request->validated('mapeo');
+        $modoDuplicados = $request->validated('modo_duplicados') ?? 'actualizar';
+        $offset = (int) $request->validated('offset');
+        $rutaAbsoluta = Storage::disk('local')->path($datosImportacion['ruta']);
+
+        $filas = $this->importador->leer($rutaAbsoluta, $this->mapeoColumnas->detectarFilaEncabezado(...))['filas'];
+        $total = count($filas);
+
+        $importacionId = $request->validated('importacion_id');
+
+        $importacion = $importacionId
+            ? ImportacionProductos::where('empresa_id', $empresaId)->findOrFail($importacionId)
+            : ImportacionProductos::create([
+                'empresa_id' => $empresaId,
+                'user_id' => $request->user()->id,
+                'proveedor_id' => $proveedorId,
+                'nombre_archivo' => $datosImportacion['nombre_archivo'] ?? 'archivo.xlsx',
+                'creados_count' => 0,
+                'actualizados_count' => 0,
+                'ignorados_count' => 0,
+                'copiados_count' => 0,
+                'codigos_invalidos_count' => 0,
+                'errores_count' => 0,
+            ]);
+
+        $filasLote = array_slice($filas, $offset, self::TAMANO_LOTE_IMPORTACION);
+
+        $resultado = DB::transaction(fn () => $this->procesarLoteFilas(
+            $filasLote, $offset, $mapeoPorIndice, $empresaId, $proveedorId, $modoDuplicados, $importacion,
+        ));
+
+        $importacion->update([
+            'creados_count' => $importacion->creados_count + $resultado['creados'],
+            'actualizados_count' => $importacion->actualizados_count + $resultado['actualizados'],
+            'ignorados_count' => $importacion->ignorados_count + $resultado['ignorados'],
+            'copiados_count' => $importacion->copiados_count + $resultado['copiados'],
+            'codigos_invalidos_count' => $importacion->codigos_invalidos_count + $resultado['codigosInvalidos'],
+            'errores_count' => $importacion->errores_count + count($resultado['errores']),
+        ]);
+
+        $terminado = ($offset + count($filasLote)) >= $total;
+
+        if ($terminado) {
+            Storage::disk('local')->delete($datosImportacion['ruta']);
+            Cache::forget('import-productos:'.$request->validated('token'));
+
+            MapeoImportacionProductos::updateOrCreate(
+                ['empresa_id' => $empresaId],
+                ['mapeo' => $this->construirMapeoParaGuardar($datosImportacion['encabezados'], $mapeoPorIndice)]
+            );
+        }
+
+        return response()->json([
+            'importacion_id' => $importacion->id,
+            'offset_siguiente' => $offset + count($filasLote),
+            'total' => $total,
+            'terminado' => $terminado,
+            'creados' => $resultado['creados'],
+            'actualizados' => $resultado['actualizados'],
+            'ignorados' => $resultado['ignorados'],
+            'copiados' => $resultado['copiados'],
+            'codigosInvalidos' => $resultado['codigosInvalidos'],
+            'errores' => $resultado['errores'],
+        ]);
+    }
+
+    /**
+     * Núcleo compartido por confirmar() y procesarLote(): procesa un tramo
+     * de filas (puede ser el archivo entero o un lote) contra el catálogo.
+     *
+     * Antes se hacía una consulta a la base por cada fila para ver si el
+     * código ya existía — con miles de filas eso eran miles de consultas
+     * individuales, el principal motivo de que un Excel grande se fuera a
+     * timeout (504). Ahora se buscan TODOS los códigos de este tramo en una
+     * sola consulta, y el resultado se guarda en memoria (array mutable,
+     * no una colección inmutable) porque un código puede repetirse dentro
+     * del mismo tramo: si la fila 5 crea el producto y la fila 50 repite el
+     * mismo código, la fila 50 tiene que encontrar el que acaba de crear la
+     * fila 5, no volver a crearlo (chocaría con la restricción única de
+     * (empresa_id, codigo)).
+     *
+     * Los registros de ImportacionProductoCambio tampoco se insertan uno
+     * por uno — se acumulan y se insertan todos juntos al final del tramo.
+     *
+     * @param  list<list<mixed>>  $filas
+     * @param  int  $offsetGlobal  para que el número de fila en los mensajes
+     *                              de error seaconsistente entre lotes (es
+     *                              aproximado de todos modos: ver
+     *                              LectorArchivoExcel sobre encabezados
+     *                              repetidos descartados).
+     * @param  array<int|string, string|null>  $mapeoPorIndice
+     * @return array{creados: int, actualizados: int, ignorados: int, copiados: int, codigosInvalidos: int, errores: list<string>}
+     */
+    private function procesarLoteFilas(
+        array $filas,
+        int $offsetGlobal,
+        array $mapeoPorIndice,
+        int $empresaId,
+        ?int $proveedorId,
+        string $modoDuplicados,
+        ImportacionProductos $importacion,
+    ): array {
+        $creados = 0;
+        $actualizados = 0;
+        $ignorados = 0;
+        $copiados = 0;
+        $codigosInvalidos = 0;
+        $errores = [];
+        $cambiosParaInsertar = [];
+
+        $datosPorFila = [];
+        $codigosDelTramo = [];
+
+        foreach ($filas as $indiceLocal => $fila) {
+            $datos = $this->extraerDatosFila($fila, $mapeoPorIndice);
+
+            foreach (['precio', 'costo', 'stock'] as $campoNumerico) {
+                if (array_key_exists($campoNumerico, $datos)) {
+                    $datos[$campoNumerico] = $this->normalizador->normalizar($datos[$campoNumerico]);
+                }
+            }
+
+            $datosPorFila[$indiceLocal] = $datos;
+
+            $codigo = blank($datos['codigo'] ?? null) ? null : trim((string) $datos['codigo']);
+
+            if ($codigo !== null && ! $this->esCodigoInvalido($codigo)) {
+                $codigosDelTramo[] = $codigo;
+            }
+        }
+
+        $productosExistentes = [];
+
+        if ($codigosDelTramo !== []) {
+            foreach (Producto::where('empresa_id', $empresaId)->whereIn('codigo', array_unique($codigosDelTramo))->get() as $productoExistente) {
+                $productosExistentes[$productoExistente->codigo] = $productoExistente;
+            }
+        }
+
+        foreach ($filas as $indiceLocal => $fila) {
+            if (collect($fila)->every(fn ($valor) => trim((string) $valor) === '')) {
+                continue;
+            }
+
+            $numeroFilaExcel = $offsetGlobal + $indiceLocal + 2;
+            $datos = $datosPorFila[$indiceLocal];
+
+            if (blank($datos['nombre'] ?? null)) {
+                $errores[] = "Fila {$numeroFilaExcel}: falta el nombre.";
+
+                continue;
+            }
+
+            if (! is_numeric($datos['precio'] ?? null)) {
+                $errores[] = "Fila {$numeroFilaExcel}: el precio no es un número válido.";
+
+                continue;
+            }
+
+            $atributos = [
+                'nombre' => trim((string) $datos['nombre']),
+                'precio' => (float) $datos['precio'],
+                'costo' => is_numeric($datos['costo'] ?? null) ? (float) $datos['costo'] : null,
+                'stock' => is_numeric($datos['stock'] ?? null) ? (int) $datos['stock'] : 0,
+                'categoria' => blank($datos['categoria'] ?? null) ? null : trim((string) $datos['categoria']),
+                'marca' => blank($datos['marca'] ?? null) ? null : trim((string) $datos['marca']),
+                'unidad' => blank($datos['unidad'] ?? null) ? null : trim((string) $datos['unidad']),
+                'proveedor_id' => $proveedorId,
+            ];
+
+            $codigo = blank($datos['codigo'] ?? null) ? null : trim((string) $datos['codigo']);
+
+            if ($codigo !== null && $this->esCodigoInvalido($codigo)) {
+                // "NaN", "#N/A", etc. no son códigos reales — se tratan
+                // como si la celda estuviera vacía, para que nunca
+                // encuentren (ni generen) una coincidencia falsa con otra
+                // fila que tenga el mismo valor basura.
+                $codigo = null;
+                $codigosInvalidos++;
+            }
+
+            $producto = $codigo !== null ? ($productosExistentes[$codigo] ?? null) : null;
+
+            if ($producto) {
+                if ($modoDuplicados === 'ignorar') {
+                    $ignorados++;
+
+                    continue;
+                }
+
+                if ($modoDuplicados === 'copiar') {
+                    // Copia como producto nuevo, sin código: si le dejáramos
+                    // el mismo código del Excel, chocaría con la restricción
+                    // única (empresa_id, codigo) de la tabla. No se inventa
+                    // un código al azar — directamente queda sin código,
+                    // igual que cualquier producto cargado sin uno.
+                    $copia = Producto::create([...$atributos, 'empresa_id' => $empresaId, 'codigo' => null]);
+                    $copiados++;
+
+                    $cambiosParaInsertar[] = [
+                        'importacion_id' => $importacion->id,
+                        'producto_id' => $copia->id,
+                        'fue_creado' => true,
+                        'datos_anteriores' => null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+
+                    continue;
+                }
+
+                $datosAnteriores = $producto->only([
+                    'nombre', 'codigo', 'precio', 'costo', 'stock', 'categoria', 'marca', 'unidad', 'proveedor_id',
+                ]);
+
+                $producto->update($atributos);
+                $actualizados++;
+
+                $cambiosParaInsertar[] = [
+                    'importacion_id' => $importacion->id,
+                    'producto_id' => $producto->id,
+                    'fue_creado' => false,
+                    'datos_anteriores' => json_encode($datosAnteriores),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+
+                continue;
+            }
+
+            $nuevoProducto = Producto::create([...$atributos, 'empresa_id' => $empresaId, 'codigo' => $codigo]);
+            $creados++;
+
+            if ($codigo !== null) {
+                // Para que una fila repetida más adelante en el mismo tramo
+                // (mismo código) encuentre este producto recién creado en
+                // vez de intentar crearlo de nuevo.
+                $productosExistentes[$codigo] = $nuevoProducto;
+            }
+
+            $cambiosParaInsertar[] = [
+                'importacion_id' => $importacion->id,
+                'producto_id' => $nuevoProducto->id,
+                'fue_creado' => true,
+                'datos_anteriores' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        if ($cambiosParaInsertar !== []) {
+            ImportacionProductoCambio::insert($cambiosParaInsertar);
+        }
+
+        return compact('creados', 'actualizados', 'ignorados', 'copiados', 'codigosInvalidos', 'errores');
     }
 
     /**
