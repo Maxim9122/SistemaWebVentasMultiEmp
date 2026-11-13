@@ -72,8 +72,8 @@
                 <button type="submit" id="btn_continuar" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
                     Continuar
                 </button>
-                <a href="{{ route('productos.importarFoto.subir') }}" class="rounded px-4 py-2 text-sm font-medium text-slate-600 hover:underline">
-                    Volver a sacar la foto
+                <a href="{{ $rutaVolver ?? route('productos.importarFoto.subir') }}" class="rounded px-4 py-2 text-sm font-medium text-slate-600 hover:underline">
+                    {{ $textoVolver ?? 'Volver a sacar la foto' }}
                 </a>
             </div>
         </form>

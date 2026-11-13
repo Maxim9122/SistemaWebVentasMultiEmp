@@ -279,6 +279,8 @@ class ProductoImportController extends Controller
             'productos' => $productos,
             'campos' => MapeoColumnasService::CAMPOS,
             'proveedorId' => $request->validated('proveedor_id'),
+            'rutaVolver' => route('productos.importarPdf.subir'),
+            'textoVolver' => 'Volver a subir el PDF',
         ]);
     }
 
