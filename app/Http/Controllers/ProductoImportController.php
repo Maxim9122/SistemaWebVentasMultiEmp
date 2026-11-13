@@ -183,6 +183,7 @@ class ProductoImportController extends Controller
             'productos' => $productos,
             'campos' => MapeoColumnasService::CAMPOS,
             'proveedorId' => $request->validated('proveedor_id'),
+            'nombreArchivoOriginal' => $foto->getClientOriginalName(),
         ]);
     }
 
@@ -341,6 +342,7 @@ class ProductoImportController extends Controller
         $validado = $request->validate([
             'productos_json' => ['required', 'string'],
             'proveedor_id' => ['nullable', 'integer'],
+            'nombre_archivo_original' => ['nullable', 'string', 'max:255'],
         ]);
 
         $productos = json_decode($validado['productos_json'], true);
@@ -356,6 +358,7 @@ class ProductoImportController extends Controller
             'proveedorId' => $validado['proveedor_id'] ?? null,
             'rutaVolver' => route('productos.importarPdf.subir'),
             'textoVolver' => 'Volver a subir el PDF',
+            'nombreArchivoOriginal' => $validado['nombre_archivo_original'] ?? null,
         ]);
     }
 
@@ -376,7 +379,7 @@ class ProductoImportController extends Controller
             $token,
             $rutaRelativa,
             $rutaAbsoluta,
-            'Foto de lista de precios.xlsx',
+            $request->validated('nombre_archivo_original') ?: 'Foto de lista de precios.xlsx',
             $request->user()->empresa_id,
             $request->validated('proveedor_id'),
         );

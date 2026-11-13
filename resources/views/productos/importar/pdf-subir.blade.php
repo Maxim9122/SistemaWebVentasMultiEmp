@@ -82,6 +82,7 @@
         @csrf
         <input type="hidden" name="productos_json" id="productos_json_pdf">
         <input type="hidden" name="proveedor_id" id="proveedor_id_pdf">
+        <input type="hidden" name="nombre_archivo_original" id="nombre_archivo_original_pdf">
     </form>
 
     <script>
@@ -116,6 +117,7 @@
                 window.addEventListener('beforeunload', avisarAntesDeSalir);
 
                 const proveedorId = document.getElementById('proveedor_id').value;
+                const nombreArchivoOriginal = document.getElementById('pdf').files[0]?.name ?? '';
 
                 try {
                     // Paso 1: convertir el PDF a imágenes (rápido, Imagick) —
@@ -177,6 +179,7 @@
                     window.removeEventListener('beforeunload', avisarAntesDeSalir);
                     document.getElementById('productos_json_pdf').value = JSON.stringify(productosAcumulados);
                     document.getElementById('proveedor_id_pdf').value = proveedorId;
+                    document.getElementById('nombre_archivo_original_pdf').value = nombreArchivoOriginal;
                     document.getElementById('form_revisar_pdf').submit();
                 } catch (error) {
                     window.removeEventListener('beforeunload', avisarAntesDeSalir);

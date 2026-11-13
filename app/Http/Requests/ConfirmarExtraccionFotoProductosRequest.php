@@ -40,6 +40,11 @@ class ConfirmarExtraccionFotoProductosRequest extends FormRequest
                 'nullable',
                 Rule::exists('proveedores', 'id')->where('empresa_id', $this->user()->empresa_id),
             ],
+            // Nombre real del archivo subido (foto o PDF) — para que el
+            // historial de importaciones muestre algo más útil que un
+            // nombre genérico igual para todas las importaciones por IA,
+            // que no deja distinguir una de otra.
+            'nombre_archivo_original' => ['nullable', 'string', 'max:255'],
             'productos' => ['required', 'array', 'min:1'],
             // Reglas livianas a propósito: la limpieza real de precio/costo/
             // stock (separadores de miles/decimales, símbolo de moneda) la

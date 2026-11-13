@@ -63,6 +63,7 @@
             @csrf
             <input type="hidden" name="productos_json" id="productos_json">
             <input type="hidden" name="proveedor_id" value="{{ $proveedorId }}">
+            <input type="hidden" name="nombre_archivo_original" value="{{ $nombreArchivoOriginal ?? '' }}">
 
             @error('productos')
                 <p class="text-sm text-red-600">{{ $message }}</p>
