@@ -71,28 +71,51 @@ class MapeoColumnasService
      * categorías) antes de la fila de títulos de columna real; si esa fila
      * suelta se toma como si fuera el encabezado, todo lo que sigue
      * (incluida la fila de títulos real) se mete como si fueran filas de
-     * datos. Se queda con la fila que junta más campos reconocidos por
-     * sugerir(); si ninguna junta al menos 2, asume que no hay nada raro
-     * arriba y devuelve la primera fila (comportamiento de siempre).
+     * datos.
+     *
+     * Se queda con la fila que junta más campos reconocidos por sugerir()
+     * — pero exigir 2 o más campos reconocidos se queda corto con una
+     * nomenclatura propia del negocio (ej: "CODIGO_PROPIO"/"P_MAYORISTA",
+     * que no están en ningún sinónimo): si solo 1 de 4 columnas tiene un
+     * nombre reconocible, esa fila nunca ganaba y el título suelto de una
+     * sola celda ("Lista de Precios") terminaba eligiéndose como
+     * encabezado por descarte. Por eso alcanza con 1 campo reconocido,
+     * siempre que la fila tenga además varias celdas no vacías — esa
+     * segunda condición es la que de verdad distingue una fila de títulos
+     * de columna (varias celdas pobladas) de un título o membrete suelto
+     * (una sola celda con texto, el resto vacío). Si ninguna fila cumple
+     * ambas condiciones, asume que no hay nada raro arriba y devuelve la
+     * primera fila (comportamiento de siempre).
      *
      * @param  list<list<mixed>>  $filasCrudas
      */
     public function detectarFilaEncabezado(array $filasCrudas, int $maxFilas = 20): int
     {
-        $mejorIndice = 0;
-        $mejorCantidad = 0;
+        $mejorIndice = null;
+        $mejorPuntaje = -1;
 
         foreach (array_slice($filasCrudas, 0, $maxFilas) as $indice => $fila) {
             $encabezados = array_map(fn ($valor) => trim((string) $valor), $fila);
-            $cantidad = count(array_filter($this->sugerir($encabezados)));
+            $cantidadReconocidos = count(array_filter($this->sugerir($encabezados)));
+            $cantidadNoVacias = count(array_filter($encabezados, fn ($valor) => $valor !== ''));
 
-            if ($cantidad > $mejorCantidad) {
-                $mejorCantidad = $cantidad;
+            // Solo se compara el puntaje (reconocidos primero, no vacías
+            // como desempate) entre filas que ya cumplen el mínimo — una
+            // fila que no lo cumple nunca puede "ganarle" a una que sí,
+            // sin importar qué puntaje tenga.
+            if ($cantidadReconocidos < 1 || $cantidadNoVacias < 2) {
+                continue;
+            }
+
+            $puntaje = $cantidadReconocidos * 1000 + $cantidadNoVacias;
+
+            if ($puntaje > $mejorPuntaje) {
+                $mejorPuntaje = $puntaje;
                 $mejorIndice = $indice;
             }
         }
 
-        return $mejorCantidad >= 2 ? $mejorIndice : 0;
+        return $mejorIndice ?? 0;
     }
 
     /**
