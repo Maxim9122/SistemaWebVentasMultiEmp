@@ -75,7 +75,7 @@ class ClienteImportController extends Controller
         string $nombreArchivoOriginal,
         int $empresaId,
     ): View {
-        $lectura = $this->lector->leer($rutaAbsoluta);
+        $lectura = $this->lector->leer($rutaAbsoluta, $this->mapeoColumnas->detectarFilaEncabezado(...));
 
         $mapeoRecordado = MapeoImportacionClientes::where('empresa_id', $empresaId)->first()?->mapeo;
 
@@ -196,7 +196,7 @@ class ClienteImportController extends Controller
         $mapeoPorIndice = $request->validated('mapeo');
         $rutaAbsoluta = Storage::disk('local')->path($datosImportacion['ruta']);
 
-        $filas = $this->lector->leer($rutaAbsoluta)['filas'];
+        $filas = $this->lector->leer($rutaAbsoluta, $this->mapeoColumnas->detectarFilaEncabezado(...))['filas'];
 
         $creados = 0;
         $actualizados = 0;

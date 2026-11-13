@@ -55,6 +55,12 @@ class ClaudeVisionApiClient
                 Dejá los valores de precio/costo/stock tal como aparecen escritos (con
                 separadores de miles o decimales, símbolo de moneda, etc.) — no los
                 conviertas ni los redondees.
+
+                Ignorá cualquier texto que no sea un producto en sí: nombre/dirección/teléfono/
+                email del comercio o distribuidor, título o número de la lista, encabezados de
+                sección o categoría (por ejemplo "ALIMENTOS" o "OFERTAS" como un renglón
+                aparte, no como dato de un producto puntual), totales, y los títulos de las
+                columnas de la tabla (Código/Descripción/Precio/etc.) — esos no son productos.
                 TEXTO,
             mensajeSinResultados: 'No se detectó ningún producto en la foto. Probá con otra foto más clara, o cargalos manualmente.',
         );

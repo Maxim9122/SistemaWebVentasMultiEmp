@@ -27,17 +27,26 @@ class LectorArchivoExcel
      * uno, medido) en una sola importación — se sentía como que la pantalla
      * se quedaba trabada.
      *
+     * $detectarFilaEncabezado (ver MapeoColumnasService::detectarFilaEncabezado)
+     * recibe todas las filas crudas y devuelve el índice de la fila que es
+     * el encabezado real — por defecto (sin pasar nada) se asume que es la
+     * primera fila, como siempre. Queda afuera de esta clase a propósito:
+     * decidir qué fila "parece" un encabezado de columnas necesita saber los
+     * nombres de campos del dominio (nombre/código/precio, etc.), y este
+     * lector es genérico y no sabe nada de eso.
+     *
      * @return array{encabezados: list<string>, preview: list<list<mixed>>, filas: list<list<mixed>>}
      */
-    public function leer(string $rutaAbsoluta): array
+    public function leer(string $rutaAbsoluta, ?callable $detectarFilaEncabezado = null): array
     {
         $todas = $this->leerTodasLasFilas($rutaAbsoluta);
-        $encabezados = array_map(fn ($valor) => trim((string) $valor), $todas[0] ?? []);
+        $indiceEncabezado = $detectarFilaEncabezado !== null ? $detectarFilaEncabezado($todas) : 0;
+        $encabezados = array_map(fn ($valor) => trim((string) $valor), $todas[$indiceEncabezado] ?? []);
 
         return [
             'encabezados' => array_values($encabezados),
-            'preview' => array_slice($todas, 1, self::FILAS_PREVIEW),
-            'filas' => array_slice($todas, 1),
+            'preview' => array_slice($todas, $indiceEncabezado + 1, self::FILAS_PREVIEW),
+            'filas' => array_slice($todas, $indiceEncabezado + 1),
         ];
     }
 

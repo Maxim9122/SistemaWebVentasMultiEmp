@@ -64,6 +64,38 @@ class MapeoColumnasService
     }
 
     /**
+     * Busca, entre las primeras $maxFilas filas crudas de un archivo, cuál
+     * es la fila que más probablemente sea el encabezado real de la tabla —
+     * hace falta porque muchos excels de proveedores traen información
+     * suelta arriba (nombre del comercio, teléfono, título de la lista,
+     * categorías) antes de la fila de títulos de columna real; si esa fila
+     * suelta se toma como si fuera el encabezado, todo lo que sigue
+     * (incluida la fila de títulos real) se mete como si fueran filas de
+     * datos. Se queda con la fila que junta más campos reconocidos por
+     * sugerir(); si ninguna junta al menos 2, asume que no hay nada raro
+     * arriba y devuelve la primera fila (comportamiento de siempre).
+     *
+     * @param  list<list<mixed>>  $filasCrudas
+     */
+    public function detectarFilaEncabezado(array $filasCrudas, int $maxFilas = 20): int
+    {
+        $mejorIndice = 0;
+        $mejorCantidad = 0;
+
+        foreach (array_slice($filasCrudas, 0, $maxFilas) as $indice => $fila) {
+            $encabezados = array_map(fn ($valor) => trim((string) $valor), $fila);
+            $cantidad = count(array_filter($this->sugerir($encabezados)));
+
+            if ($cantidad > $mejorCantidad) {
+                $mejorCantidad = $cantidad;
+                $mejorIndice = $indice;
+            }
+        }
+
+        return $mejorCantidad >= 2 ? $mejorIndice : 0;
+    }
+
+    /**
      * Expone el diccionario de sinónimos tal cual (solo lectura) para
      * mostrarlo como referencia en pantalla (ver "Guía rápida" en
      * productos/importar/subir.blade.php) — evita mantener una copia

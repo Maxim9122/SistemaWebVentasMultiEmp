@@ -99,7 +99,7 @@ class ProductoImportController extends Controller
         int $empresaId,
         ?int $proveedorId,
     ): View {
-        $lectura = $this->importador->leer($rutaAbsoluta);
+        $lectura = $this->importador->leer($rutaAbsoluta, $this->mapeoColumnas->detectarFilaEncabezado(...));
 
         $mapeoRecordado = MapeoImportacionProductos::where('empresa_id', $empresaId)->first()?->mapeo;
 
@@ -409,7 +409,7 @@ class ProductoImportController extends Controller
         $modoDuplicados = $request->validated('modo_duplicados') ?? 'actualizar';
         $rutaAbsoluta = Storage::disk('local')->path($datosImportacion['ruta']);
 
-        $filas = $this->importador->leer($rutaAbsoluta)['filas'];
+        $filas = $this->importador->leer($rutaAbsoluta, $this->mapeoColumnas->detectarFilaEncabezado(...))['filas'];
 
         $creados = 0;
         $actualizados = 0;
