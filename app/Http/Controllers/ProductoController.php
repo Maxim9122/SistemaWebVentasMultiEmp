@@ -463,7 +463,13 @@ class ProductoController extends Controller
 
         $producto->update($request->validated());
 
-        return redirect()->route('productos.index')->with('status', 'Producto actualizado.');
+        // back() en vez de redirect a productos.index a secas: la edición se
+        // hace desde un modal en la misma lista (ver el botón "Editar" en
+        // index.blade.php), así que volver a la URL anterior (con back())
+        // mantiene la búsqueda/marca/categoría/proveedor que el usuario tenía
+        // filtrados — con redirect() a la ruta "pelada" se perdían todos esos
+        // filtros apenas se guardaba una edición.
+        return back()->with('status', 'Producto actualizado.');
     }
 
     public function activar(Request $request, Producto $producto): RedirectResponse
