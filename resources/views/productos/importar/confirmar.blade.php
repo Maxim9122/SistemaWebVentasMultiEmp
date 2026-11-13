@@ -292,7 +292,18 @@
                 procesarImportacionPorTandas();
             });
 
+            // Avisa con el cartel nativo del navegador si el usuario intenta
+            // cerrar la pestaña, recargar o navegar a otra página mientras
+            // la importación está corriendo (por error o a propósito) — se
+            // activa solo durante el proceso, no en el resto de la pantalla.
+            function avisarAntesDeSalir(evento) {
+                evento.preventDefault();
+                evento.returnValue = '';
+            }
+
             async function procesarImportacionPorTandas() {
+                window.addEventListener('beforeunload', avisarAntesDeSalir);
+
                 const csrfToken = form.querySelector('input[name="_token"]').value;
                 const token = form.querySelector('input[name="token"]').value;
                 const modoDuplicadosElegido = document.querySelector('input[name="modo_duplicados"]:checked');
@@ -359,6 +370,8 @@
                     document.getElementById('modal-importar-progreso').classList.add('hidden');
                     document.getElementById('modal-importar-error').classList.remove('hidden');
                     document.getElementById('texto-error-importar').textContent = error.message;
+                } finally {
+                    window.removeEventListener('beforeunload', avisarAntesDeSalir);
                 }
             }
 

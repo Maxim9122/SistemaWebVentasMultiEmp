@@ -105,6 +105,16 @@
                 panelSubir.classList.add('hidden');
                 panelProgreso.classList.remove('hidden');
 
+                // Avisa con el cartel nativo del navegador si el usuario
+                // intenta cerrar la pestaña, recargar o navegar a otra
+                // página mientras se está leyendo el PDF (por error o a
+                // propósito) — se saca apenas termina, ya sea bien o mal.
+                function avisarAntesDeSalir(evento) {
+                    evento.preventDefault();
+                    evento.returnValue = '';
+                }
+                window.addEventListener('beforeunload', avisarAntesDeSalir);
+
                 const proveedorId = document.getElementById('proveedor_id').value;
 
                 try {
@@ -162,11 +172,14 @@
                     }
 
                     // Paso 3: con todo ya junto, un submit normal de página
-                    // completa a la pantalla de revisión.
+                    // completa a la pantalla de revisión — se saca el aviso
+                    // antes, porque esta navegación es la salida esperada.
+                    window.removeEventListener('beforeunload', avisarAntesDeSalir);
                     document.getElementById('productos_json_pdf').value = JSON.stringify(productosAcumulados);
                     document.getElementById('proveedor_id_pdf').value = proveedorId;
                     document.getElementById('form_revisar_pdf').submit();
                 } catch (error) {
+                    window.removeEventListener('beforeunload', avisarAntesDeSalir);
                     panelProgreso.classList.add('hidden');
                     panelError.classList.remove('hidden');
                     document.getElementById('texto-error-pdf').textContent = error.message;
