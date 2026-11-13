@@ -42,8 +42,14 @@ class LectorArchivoExcel
      * resto quedaría mezclado entre los datos como si fuera un producto más
      * (con "precio" literal "EFECTIVO" o como se llame esa columna) —
      * rompiendo esa fila en la importación. Por eso cualquier fila que
-     * repita exactamente los mismos valores que el encabezado detectado se
-     * descarta también, no solo la primera.
+     * repita el mismo contenido que el encabezado detectado se descarta
+     * también, no solo la primera — comparando el texto de toda la fila ya
+     * normalizado (sin importar en qué columna cae cada palabra), no celda
+     * por celda: una misma lista puede repetir el título de las columnas
+     * una vez prolijamente separado en columnas y otra vez como un solo
+     * texto largo con espacios de relleno en una sola celda (típico de
+     * archivos convertidos desde PDF o de otro formato) — ambas formas
+     * tienen que reconocerse como la misma repetición.
      *
      * @return array{encabezados: list<string>, preview: list<list<mixed>>, filas: list<list<mixed>>}
      */
@@ -71,13 +77,27 @@ class LectorArchivoExcel
      */
     private function esRepeticionDeEncabezado(array $fila, array $encabezados): bool
     {
-        if ($encabezados === []) {
+        if ($encabezados === [] || implode('', $encabezados) === '') {
             return false;
         }
 
-        $filaNormalizada = array_map(fn ($valor) => trim((string) $valor), array_slice($fila, 0, count($encabezados)));
+        return $this->normalizarTextoFila($fila) === $this->normalizarTextoFila($encabezados);
+    }
 
-        return $filaNormalizada === $encabezados;
+    /**
+     * Junta todas las celdas de la fila en un solo texto, colapsando
+     * cualquier cantidad de espacios (o la ausencia total de columna, si el
+     * texto vino todo pegado en una sola celda) en uno solo — así una fila
+     * repetida se reconoce sin importar si el texto está prolijamente
+     * separado en columnas o todo junto en una con espacios de relleno.
+     *
+     * @param  list<mixed>  $valores
+     */
+    private function normalizarTextoFila(array $valores): string
+    {
+        $texto = implode(' ', array_map(fn ($valor) => trim((string) $valor), $valores));
+
+        return trim(preg_replace('/\s+/', ' ', $texto) ?? '');
     }
 
     /**
