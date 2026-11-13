@@ -35,6 +35,16 @@ class LectorArchivoExcel
      * nombres de campos del dominio (nombre/código/precio, etc.), y este
      * lector es genérico y no sabe nada de eso.
      *
+     * Algunas listas de precios repiten la fila de encabezado varias veces a
+     * lo largo del archivo (una por cada categoría/sección: "ALIMENTOS",
+     * fila de títulos, productos, "BAJA DE PRECIOS", fila de títulos nuevo,
+     * más productos, etc.). Si solo se descartara la primera aparición, el
+     * resto quedaría mezclado entre los datos como si fuera un producto más
+     * (con "precio" literal "EFECTIVO" o como se llame esa columna) —
+     * rompiendo esa fila en la importación. Por eso cualquier fila que
+     * repita exactamente los mismos valores que el encabezado detectado se
+     * descarta también, no solo la primera.
+     *
      * @return array{encabezados: list<string>, preview: list<list<mixed>>, filas: list<list<mixed>>}
      */
     public function leer(string $rutaAbsoluta, ?callable $detectarFilaEncabezado = null): array
@@ -43,11 +53,31 @@ class LectorArchivoExcel
         $indiceEncabezado = $detectarFilaEncabezado !== null ? $detectarFilaEncabezado($todas) : 0;
         $encabezados = array_map(fn ($valor) => trim((string) $valor), $todas[$indiceEncabezado] ?? []);
 
+        $filas = array_values(array_filter(
+            array_slice($todas, $indiceEncabezado + 1),
+            fn (array $fila) => ! $this->esRepeticionDeEncabezado($fila, $encabezados),
+        ));
+
         return [
             'encabezados' => array_values($encabezados),
-            'preview' => array_slice($todas, $indiceEncabezado + 1, self::FILAS_PREVIEW),
-            'filas' => array_slice($todas, $indiceEncabezado + 1),
+            'preview' => array_slice($filas, 0, self::FILAS_PREVIEW),
+            'filas' => $filas,
         ];
+    }
+
+    /**
+     * @param  list<mixed>  $fila
+     * @param  list<string>  $encabezados
+     */
+    private function esRepeticionDeEncabezado(array $fila, array $encabezados): bool
+    {
+        if ($encabezados === []) {
+            return false;
+        }
+
+        $filaNormalizada = array_map(fn ($valor) => trim((string) $valor), array_slice($fila, 0, count($encabezados)));
+
+        return $filaNormalizada === $encabezados;
     }
 
     /**
