@@ -235,22 +235,21 @@ class ProductoImportController extends Controller
     }
 
     /**
-     * Convierte cada página del PDF en una imagen (ver PdfAImagenesService)
-     * y manda cada una, por separado, por el mismo extractor que ya usa
-     * "Importar desde una foto" — se junta todo lo que haya salido de
-     * cualquier página en una sola lista de productos para revisar.
-     *
-     * Si una página puntual no tiene ningún producto legible (una portada,
-     * una hoja de condiciones, una página que no cargó bien), se la salta
-     * en vez de cortar toda la importación por esa sola página — recién si
-     * NINGUNA página dio productos se avisa el error.
+     * Primer paso (vía JavaScript, ver pdf-subir.blade.php): convierte cada
+     * página del PDF en una imagen (ver PdfAImagenesService) y las deja
+     * guardadas en un directorio temporal — nada más. Manda a Claude Vision
+     * una por una, en pedidos separados, era lo que tardaba (90s de timeout
+     * por página, todo dentro de UN SOLO pedido HTTP) y hacía que un PDF de
+     * varias páginas se fuera al timeout del gateway (504) sin avisar nada.
+     * La conversión en sí con Imagick es rápida y no tiene ese problema.
      */
-    public function extraerPdf(SubirPdfProductosRequest $request, PdfAImagenesService $pdfAImagenes): View
+    public function convertirPdf(SubirPdfProductosRequest $request, PdfAImagenesService $pdfAImagenes): JsonResponse
     {
         abort_if(! $this->claudeVision->configurada(), 404);
 
         $pdf = $request->file('pdf');
-        $directorioTemporal = sys_get_temp_dir().'/pdf-import-'.Str::uuid();
+        $token = (string) Str::uuid();
+        $directorioTemporal = sys_get_temp_dir().'/pdf-import-'.$token;
         mkdir($directorioTemporal, 0700, true);
 
         try {
@@ -258,40 +257,103 @@ class ProductoImportController extends Controller
         } catch (\RuntimeException $e) {
             @rmdir($directorioTemporal);
 
-            return back()->withErrors(['pdf' => $e->getMessage()])->withInput();
+            return response()->json(['mensaje' => $e->getMessage()], 422);
         }
 
+        Cache::put("import-pdf:{$token}", [
+            'empresa_id' => $request->user()->empresa_id,
+            'proveedor_id' => $request->validated('proveedor_id'),
+            'directorio' => $directorioTemporal,
+            'total_paginas' => count($rutasImagenes),
+        ], now()->addMinutes(30));
+
+        return response()->json([
+            'token' => $token,
+            'totalPaginas' => count($rutasImagenes),
+        ]);
+    }
+
+    /**
+     * Segundo paso: lee UNA sola página (ya convertida a imagen por
+     * convertirPdf()) y la manda al mismo extractor que ya usa "Importar
+     * desde una foto". Si esa página puntual no tiene ningún producto
+     * legible (una portada, una hoja de condiciones, una página que no
+     * cargó bien), se devuelve vacía en vez de cortar todo el PDF por esa
+     * sola página — el frontend junta lo que vaya saliendo de cada página.
+     */
+    public function extraerPaginaPdf(Request $request): JsonResponse
+    {
+        abort_if(! $this->claudeVision->configurada(), 404);
+
+        $validado = $request->validate([
+            'token' => ['required', 'string'],
+            'pagina' => ['required', 'integer', 'min:0'],
+        ]);
+
+        $datos = Cache::get("import-pdf:{$validado['token']}");
+
+        if (! $datos || $datos['empresa_id'] !== $request->user()->empresa_id) {
+            return response()->json(['mensaje' => 'La conversión expiró. Volvé a subir el PDF.'], 422);
+        }
+
+        $rutaImagen = rtrim($datos['directorio'], '/')."/pagina-{$validado['pagina']}.jpg";
         $productos = [];
 
-        try {
-            foreach ($rutasImagenes as $rutaImagen) {
-                $this->redimensionarSiHaceFalta($rutaImagen);
+        if (is_file($rutaImagen)) {
+            $this->redimensionarSiHaceFalta($rutaImagen);
 
-                try {
-                    $productosPagina = $this->claudeVision->extraerProductosDeFoto(
-                        file_get_contents($rutaImagen),
-                        'image/jpeg',
-                    );
-                    array_push($productos, ...$productosPagina);
-                } catch (ExtraccionFotoException) {
-                    continue;
-                }
+            try {
+                $productos = $this->claudeVision->extraerProductosDeFoto(
+                    file_get_contents($rutaImagen),
+                    'image/jpeg',
+                );
+            } catch (ExtraccionFotoException) {
+                $productos = [];
             }
-        } finally {
-            foreach ($rutasImagenes as $rutaImagen) {
-                @unlink($rutaImagen);
-            }
-            @rmdir($directorioTemporal);
         }
 
-        if ($productos === []) {
-            return back()->withErrors(['pdf' => 'No se detectó ningún producto en el PDF. Probá con otro archivo más claro.'])->withInput();
+        $terminado = ($validado['pagina'] + 1) >= $datos['total_paginas'];
+
+        if ($terminado) {
+            for ($i = 0; $i < $datos['total_paginas']; $i++) {
+                @unlink(rtrim($datos['directorio'], '/')."/pagina-{$i}.jpg");
+            }
+            @rmdir($datos['directorio']);
+            Cache::forget("import-pdf:{$validado['token']}");
+        }
+
+        return response()->json([
+            'productos' => $productos,
+            'terminado' => $terminado,
+        ]);
+    }
+
+    /**
+     * Tercer paso: una vez que el navegador ya juntó los productos de todas
+     * las páginas (ver extraerPaginaPdf()), este simplemente arma la misma
+     * pantalla de revisión que ya usa "Importar desde una foto" — no llama
+     * a ningún servicio externo, así que no hay riesgo de timeout acá.
+     */
+    public function mostrarRevisionPdf(Request $request): View|RedirectResponse
+    {
+        abort_if(! $this->claudeVision->configurada(), 404);
+
+        $validado = $request->validate([
+            'productos_json' => ['required', 'string'],
+            'proveedor_id' => ['nullable', 'integer'],
+        ]);
+
+        $productos = json_decode($validado['productos_json'], true);
+
+        if (! is_array($productos) || $productos === []) {
+            return redirect()->route('productos.importarPdf.subir')
+                ->withErrors(['pdf' => 'No se detectó ningún producto en el PDF. Probá con otro archivo más claro.']);
         }
 
         return view('productos.importar.foto-revisar', [
             'productos' => $productos,
             'campos' => MapeoColumnasService::CAMPOS,
-            'proveedorId' => $request->validated('proveedor_id'),
+            'proveedorId' => $validado['proveedor_id'] ?? null,
             'rutaVolver' => route('productos.importarPdf.subir'),
             'textoVolver' => 'Volver a subir el PDF',
         ]);
