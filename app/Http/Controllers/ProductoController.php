@@ -88,6 +88,7 @@ class ProductoController extends Controller
             'reposicionParaEditar' => $this->reposicionParaEditar($request, $empresaId),
             'descripcionFiltro' => $this->descripcionFiltroProductos($buscar, $marca, $categoria, $proveedorId),
             'claudeVisionConfigurado' => $this->claudeVision->configurada(),
+            'puedeCambiarPrecio' => $request->user()->puedeCambiarPrecioVenta(),
         ]);
     }
 

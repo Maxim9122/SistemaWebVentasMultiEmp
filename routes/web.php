@@ -23,6 +23,7 @@ use App\Http\Controllers\MercadoPagoConfiguracionController;
 use App\Http\Controllers\MotivoEgresoController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\PresupuestoController;
+use App\Http\Controllers\ProductoCargaRapidaController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ProductoImportController;
 use App\Http\Controllers\PromocionController;
@@ -129,6 +130,9 @@ Route::middleware('auth')->group(function () {
             Route::get('/ids-filtrados', [ProductoController::class, 'idsFiltrados'])
                 ->middleware('throttle:60,1')
                 ->name('idsFiltrados');
+            Route::post('/carga-rapida', [ProductoCargaRapidaController::class, 'agregar'])
+                ->middleware('throttle:60,1')
+                ->name('cargaRapida');
             Route::get('/{producto}/editar', [ProductoController::class, 'edit'])->name('edit');
             Route::put('/{producto}', [ProductoController::class, 'update'])->name('update');
             Route::post('/ajustar-precio-busqueda', [ProductoController::class, 'ajustarPrecioBusqueda'])->name('ajustarPrecioBusqueda');

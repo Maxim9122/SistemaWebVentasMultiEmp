@@ -251,6 +251,65 @@
         </div>
     </div>
 
+    {{-- Modal: agregar al carrito/presupuesto rápido (botón por fila) --}}
+    <div id="modal_carga_rapida" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm">
+            <div class="flex items-center justify-between px-6 py-4 border-b">
+                <h2 class="text-lg font-semibold" id="carga_rapida_titulo">Agregar producto</h2>
+                <button type="button" id="btn_cerrar_carga_rapida" class="text-slate-400 hover:text-slate-600 p-1" aria-label="Cerrar">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                        <path d="M6 6l12 12M18 6L6 18"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="px-6 py-4 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="carga_rapida_cantidad" class="block text-sm font-medium mb-1">Cantidad</label>
+                        <input id="carga_rapida_cantidad" type="number" min="1" step="1" value="1"
+                            class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                    </div>
+                    @if ($puedeCambiarPrecio)
+                        <div>
+                            <label for="carga_rapida_precio" class="block text-sm font-medium mb-1">Precio</label>
+                            <input id="carga_rapida_precio" type="number" min="0" step="0.01"
+                                class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
+                        </div>
+                    @endif
+                </div>
+
+                <div>
+                    <p class="block text-sm font-medium mb-1">¿A dónde va?</p>
+                    <div class="flex gap-4">
+                        <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+                            <input type="radio" name="carga_rapida_tipo" value="venta" checked>
+                            Venta (carrito)
+                        </label>
+                        <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+                            <input type="radio" name="carga_rapida_tipo" value="presupuesto">
+                            Presupuesto
+                        </label>
+                    </div>
+                </div>
+
+                <p id="carga_rapida_error" class="hidden text-sm text-red-600"></p>
+            </div>
+
+            <div class="px-6 py-4 border-t flex justify-end gap-2">
+                <button type="button" id="btn_cancelar_carga_rapida" class="rounded px-4 py-2 text-sm font-medium text-slate-600 hover:underline">
+                    Cancelar
+                </button>
+                <button type="button" id="btn_confirmar_carga_rapida" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
+                    Agregar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Aviso flotante para confirmar la carga rápida sin recargar la página --}}
+    <div id="aviso_carga_rapida" class="hidden fixed bottom-4 right-4 z-50 rounded bg-slate-900 text-white px-4 py-2 text-sm shadow-lg"></div>
+
     {{-- Modal: reponer stock --}}
     <div id="modal_reponer_stock" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40 p-4">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
@@ -528,6 +587,18 @@
                         </td>
                         <td class="px-4 py-2 text-right">
                             <div class="flex items-center justify-end gap-3">
+                                @unless ($producto->es_promocion)
+                                    <button type="button" class="btn-carga-rapida text-slate-500 hover:text-slate-900" title="Agregar al carrito o a un presupuesto"
+                                        data-id="{{ $producto->id }}"
+                                        data-nombre="{{ $producto->nombre }}"
+                                        data-precio="{{ $producto->precio }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                                            <circle cx="9" cy="21" r="1"/>
+                                            <circle cx="20" cy="21" r="1"/>
+                                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                                        </svg>
+                                    </button>
+                                @endunless
                                 @if ($producto->es_promocion)
                                     <a href="{{ route('productos.promociones.edit', $producto) }}" class="text-sm text-slate-600 hover:underline">Editar</a>
                                 @else
@@ -666,6 +737,120 @@
 
             document.getElementById('btn_cerrar_editar_producto').addEventListener('click', cerrarModal);
             document.getElementById('btn_cancelar_editar_producto').addEventListener('click', cerrarModal);
+        })();
+
+        (function () {
+            const modal = document.getElementById('modal_carga_rapida');
+            const titulo = document.getElementById('carga_rapida_titulo');
+            const campoCantidad = document.getElementById('carga_rapida_cantidad');
+            const campoPrecio = document.getElementById('carga_rapida_precio');
+            const campoError = document.getElementById('carga_rapida_error');
+            const btnConfirmar = document.getElementById('btn_confirmar_carga_rapida');
+            const aviso = document.getElementById('aviso_carga_rapida');
+            // Qué tipo eligió la última vez (Venta o Presupuesto) — se
+            // recuerda entre productos distintos, como pidió el usuario,
+            // para no tener que volver a tildarlo en cada uno.
+            const storageKeyTipo = 'svm_carga_rapida_tipo_{{ auth()->user()->empresa_id }}';
+
+            let productoId = null;
+            let avisoTimeout = null;
+
+            function tipoElegido() {
+                return document.querySelector('input[name="carga_rapida_tipo"]:checked').value;
+            }
+
+            function cerrarModal() {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+
+            function mostrarAviso(texto) {
+                clearTimeout(avisoTimeout);
+                aviso.textContent = texto;
+                aviso.classList.remove('hidden');
+                avisoTimeout = setTimeout(function () {
+                    aviso.classList.add('hidden');
+                }, 3000);
+            }
+
+            try {
+                const tipoGuardado = localStorage.getItem(storageKeyTipo);
+                if (tipoGuardado) {
+                    const radio = document.querySelector('input[name="carga_rapida_tipo"][value="' + tipoGuardado + '"]');
+                    if (radio) radio.checked = true;
+                }
+            } catch (e) {}
+
+            document.querySelectorAll('.btn-carga-rapida').forEach(function (boton) {
+                boton.addEventListener('click', function () {
+                    productoId = boton.dataset.id;
+                    titulo.textContent = boton.dataset.nombre;
+                    campoCantidad.value = 1;
+                    if (campoPrecio) campoPrecio.value = boton.dataset.precio;
+                    campoError.classList.add('hidden');
+
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    campoCantidad.focus();
+                    campoCantidad.select();
+                });
+            });
+
+            document.getElementById('btn_cerrar_carga_rapida').addEventListener('click', cerrarModal);
+            document.getElementById('btn_cancelar_carga_rapida').addEventListener('click', cerrarModal);
+
+            document.querySelectorAll('input[name="carga_rapida_tipo"]').forEach(function (radio) {
+                radio.addEventListener('change', function () {
+                    try { localStorage.setItem(storageKeyTipo, radio.value); } catch (e) {}
+                });
+            });
+
+            btnConfirmar.addEventListener('click', async function () {
+                if (btnConfirmar.disabled) return;
+
+                const cantidad = parseInt(campoCantidad.value, 10);
+                if (! cantidad || cantidad < 1) {
+                    campoError.textContent = 'Ingresá una cantidad válida.';
+                    campoError.classList.remove('hidden');
+                    return;
+                }
+
+                btnConfirmar.disabled = true;
+                btnConfirmar.textContent = 'Agregando...';
+                campoError.classList.add('hidden');
+
+                const cuerpo = new FormData();
+                cuerpo.append('_token', '{{ csrf_token() }}');
+                cuerpo.append('producto_id', productoId);
+                cuerpo.append('cantidad', cantidad);
+                cuerpo.append('tipo', tipoElegido());
+                if (campoPrecio && campoPrecio.value !== '') {
+                    cuerpo.append('precio_unitario', campoPrecio.value);
+                }
+
+                try {
+                    const respuesta = await fetch('{{ route('productos.cargaRapida') }}', {
+                        method: 'POST',
+                        headers: { 'Accept': 'application/json' },
+                        body: cuerpo,
+                    });
+                    const datos = await respuesta.json().catch(() => null);
+
+                    if (! respuesta.ok || ! datos) {
+                        const mensajes = datos?.errors ? Object.values(datos.errors).flat() : null;
+                        throw new Error(mensajes?.[0] || datos?.message || 'No se pudo agregar el producto.');
+                    }
+
+                    cerrarModal();
+                    mostrarAviso(datos.mensaje);
+                } catch (error) {
+                    campoError.textContent = error.message;
+                    campoError.classList.remove('hidden');
+                } finally {
+                    btnConfirmar.disabled = false;
+                    btnConfirmar.textContent = 'Agregar';
+                }
+            });
         })();
 
         (function () {
