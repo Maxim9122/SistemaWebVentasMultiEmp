@@ -6,6 +6,7 @@ use App\Http\Requests\ConfirmarExtraccionFotoProductosRequest;
 use App\Http\Requests\ConfirmarImportacionProductosRequest;
 use App\Http\Requests\SubirExcelProductosRequest;
 use App\Http\Requests\SubirFotoProductosRequest;
+use App\Http\Requests\SubirPdfProductosRequest;
 use App\Models\ImportacionProductoCambio;
 use App\Models\ImportacionProductos;
 use App\Models\MapeoImportacionProductos;
@@ -17,6 +18,7 @@ use App\Services\GeneradorExcelProductosDesdeExtraccionService;
 use App\Services\LectorArchivoExcel;
 use App\Services\MapeoColumnasService;
 use App\Services\NormalizadorNumeroService;
+use App\Services\PdfAImagenesService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -204,6 +206,80 @@ class ProductoImportController extends Controller
 
         imagejpeg($redimensionada, $rutaAbsoluta, 85);
         imagedestroy($redimensionada);
+    }
+
+    public function subirPdf(Request $request): View
+    {
+        abort_if(! $this->claudeVision->configurada(), 404);
+
+        $proveedores = Proveedor::query()
+            ->where('empresa_id', $request->user()->empresa_id)
+            ->where('activo', true)
+            ->orderBy('nombre')
+            ->get();
+
+        return view('productos.importar.pdf-subir', ['proveedores' => $proveedores]);
+    }
+
+    /**
+     * Convierte cada página del PDF en una imagen (ver PdfAImagenesService)
+     * y manda cada una, por separado, por el mismo extractor que ya usa
+     * "Importar desde una foto" — se junta todo lo que haya salido de
+     * cualquier página en una sola lista de productos para revisar.
+     *
+     * Si una página puntual no tiene ningún producto legible (una portada,
+     * una hoja de condiciones, una página que no cargó bien), se la salta
+     * en vez de cortar toda la importación por esa sola página — recién si
+     * NINGUNA página dio productos se avisa el error.
+     */
+    public function extraerPdf(SubirPdfProductosRequest $request, PdfAImagenesService $pdfAImagenes): View
+    {
+        abort_if(! $this->claudeVision->configurada(), 404);
+
+        $pdf = $request->file('pdf');
+        $directorioTemporal = sys_get_temp_dir().'/pdf-import-'.Str::uuid();
+        mkdir($directorioTemporal, 0700, true);
+
+        try {
+            $rutasImagenes = $pdfAImagenes->convertir($pdf->getRealPath(), $directorioTemporal);
+        } catch (\RuntimeException $e) {
+            @rmdir($directorioTemporal);
+
+            return back()->withErrors(['pdf' => $e->getMessage()])->withInput();
+        }
+
+        $productos = [];
+
+        try {
+            foreach ($rutasImagenes as $rutaImagen) {
+                $this->redimensionarSiHaceFalta($rutaImagen);
+
+                try {
+                    $productosPagina = $this->claudeVision->extraerProductosDeFoto(
+                        file_get_contents($rutaImagen),
+                        'image/jpeg',
+                    );
+                    array_push($productos, ...$productosPagina);
+                } catch (ExtraccionFotoException) {
+                    continue;
+                }
+            }
+        } finally {
+            foreach ($rutasImagenes as $rutaImagen) {
+                @unlink($rutaImagen);
+            }
+            @rmdir($directorioTemporal);
+        }
+
+        if ($productos === []) {
+            return back()->withErrors(['pdf' => 'No se detectó ningún producto en el PDF. Probá con otro archivo más claro.'])->withInput();
+        }
+
+        return view('productos.importar.foto-revisar', [
+            'productos' => $productos,
+            'campos' => MapeoColumnasService::CAMPOS,
+            'proveedorId' => $request->validated('proveedor_id'),
+        ]);
     }
 
     public function confirmarExtraccion(ConfirmarExtraccionFotoProductosRequest $request): View

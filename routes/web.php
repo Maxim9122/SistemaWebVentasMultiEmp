@@ -152,6 +152,13 @@ Route::middleware('auth')->group(function () {
                 Route::post('/confirmar', [ProductoImportController::class, 'confirmarExtraccion'])->name('confirmar');
             });
 
+            Route::prefix('importar-pdf')->name('importarPdf.')->group(function () {
+                Route::get('/', [ProductoImportController::class, 'subirPdf'])->name('subir');
+                Route::post('/extraer', [ProductoImportController::class, 'extraerPdf'])
+                    ->middleware('throttle:5,1') // única ruta que llama a la API paga (una vez por página)
+                    ->name('extraer');
+            });
+
             Route::prefix('grupos')->name('grupos.')->group(function () {
                 Route::get('/', [GrupoProductoController::class, 'index'])->name('index');
                 Route::post('/', [GrupoProductoController::class, 'store'])->name('store');

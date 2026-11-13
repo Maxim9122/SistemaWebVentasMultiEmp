@@ -17,7 +17,9 @@
                sacó el margen entre botón y menú (quedan pegados) para que
                no quede un hueco muerto en el medio al mover el mouse. */
             #contenedor_menu_historial:hover #menu_historial,
-            #menu_historial:hover {
+            #menu_historial:hover,
+            #contenedor_menu_importar:hover #menu_importar,
+            #menu_importar:hover {
                 display: block !important;
             }
         }
@@ -74,22 +76,25 @@
                 Reponer stock desde una foto
             </a>
         @endif
-        <a href="{{ route('productos.importar.subir') }}" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
-                <rect x="3" y="4" width="18" height="16" rx="1"/>
-                <path d="M3 9h18M3 14h18M9 4v16M15 4v16"/>
-            </svg>
-            Importar desde Excel
-        </a>
-        @if ($claudeVisionConfigurado)
-            <a href="{{ route('productos.importarFoto.subir') }}" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
+        <div class="relative" id="contenedor_menu_importar">
+            <button type="button" id="btn_menu_importar" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
-                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                    <circle cx="12" cy="13" r="4"/>
+                    <rect x="3" y="4" width="18" height="16" rx="1"/>
+                    <path d="M3 9h18M3 14h18M9 4v16M15 4v16"/>
                 </svg>
-                Importar desde una foto
-            </a>
-        @endif
+                Importar productos
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 shrink-0">
+                    <path d="M6 9l6 6 6-6"/>
+                </svg>
+            </button>
+            <div id="menu_importar" class="hidden absolute left-0 top-full z-50 w-56 rounded-lg border border-slate-200 bg-white shadow-lg py-1">
+                <a href="{{ route('productos.importar.subir') }}" class="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Desde un Excel</a>
+                @if ($claudeVisionConfigurado)
+                    <a href="{{ route('productos.importarFoto.subir') }}" class="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Desde una foto</a>
+                    <a href="{{ route('productos.importarPdf.subir') }}" class="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Desde un PDF</a>
+                @endif
+            </div>
+        </div>
         <button type="button" id="btn_exportar_productos" class="inline-flex items-center gap-1.5 rounded px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 hover:border-slate-400">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0">
                 <path d="M12 4v10m0 0-3.5-3.5M12 14l3.5-3.5"/>
@@ -592,6 +597,22 @@
         (function () {
             const boton = document.getElementById('btn_menu_historial');
             const menu = document.getElementById('menu_historial');
+
+            boton.addEventListener('click', function (evento) {
+                evento.stopPropagation();
+                menu.classList.toggle('hidden');
+            });
+
+            document.addEventListener('click', function (evento) {
+                if (!menu.classList.contains('hidden') && !menu.contains(evento.target)) {
+                    menu.classList.add('hidden');
+                }
+            });
+        })();
+
+        (function () {
+            const boton = document.getElementById('btn_menu_importar');
+            const menu = document.getElementById('menu_importar');
 
             boton.addEventListener('click', function (evento) {
                 evento.stopPropagation();
