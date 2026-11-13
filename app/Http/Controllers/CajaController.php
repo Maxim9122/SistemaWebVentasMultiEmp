@@ -45,15 +45,24 @@ class CajaController extends Controller
             return response()->json([]);
         }
 
+        $palabras = array_filter(preg_split('/\s+/', $texto) ?: []);
+
         $productos = Producto::where('empresa_id', $request->user()->empresa_id)
             ->where('activo', true)
-            ->where(function ($query) use ($texto) {
-                $query->where('nombre', 'like', "%{$texto}%")
-                    ->orWhere('codigo', 'like', "%{$texto}%");
+            ->where(function ($query) use ($palabras) {
+                // Cada palabra escrita tiene que aparecer en el nombre o el
+                // código, en cualquier orden — ver mismo criterio y motivo
+                // en CarritoController::buscarProducto().
+                foreach ($palabras as $palabra) {
+                    $query->where(function ($sub) use ($palabra) {
+                        $sub->where('nombre', 'like', "%{$palabra}%")
+                            ->orWhere('codigo', 'like', "%{$palabra}%");
+                    });
+                }
             })
             ->orderByRaw('codigo = ? desc', [$texto])
             ->orderBy('nombre')
-            ->limit(8)
+            ->limit(20)
             ->get(['id', 'nombre', 'codigo', 'precio']);
 
         return response()->json($productos->map(fn (Producto $producto) => [

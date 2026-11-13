@@ -57,7 +57,7 @@ class CarritoController extends Controller
      * armado en la página — con empresas de varios miles de productos eso
      * eran varios cientos de KB de JSON en cada carga de la pantalla, y en
      * cada "Agregar" (que recarga la página). Ahora se busca en el momento,
-     * nunca se devuelven más de 8 resultados.
+     * nunca se devuelven más de 20 resultados.
      */
     public function buscarProducto(Request $request): JsonResponse
     {
@@ -67,17 +67,31 @@ class CarritoController extends Controller
             return response()->json([]);
         }
 
+        $palabras = array_filter(preg_split('/\s+/', $texto) ?: []);
+
         $productos = Producto::where('empresa_id', $request->user()->empresa_id)
             ->where('activo', true)
-            ->where(function ($query) use ($texto) {
-                $query->where('nombre', 'like', "%{$texto}%")
-                    ->orWhere('codigo', 'like', "%{$texto}%");
+            ->where(function ($query) use ($palabras) {
+                // Cada palabra escrita tiene que aparecer en el nombre o el
+                // código, en cualquier orden — no la frase completa tal
+                // cual se escribió. Con un catálogo de miles de productos
+                // con nombres parecidos (ej. cientos de variantes de
+                // "sintético" por marca/color/tamaño), esto deja que
+                // escribir una palabra más ("sintetico blanco") angoste la
+                // lista de verdad, en vez de depender de que el límite de
+                // resultados alcance a incluir justo la variante buscada.
+                foreach ($palabras as $palabra) {
+                    $query->where(function ($sub) use ($palabra) {
+                        $sub->where('nombre', 'like', "%{$palabra}%")
+                            ->orWhere('codigo', 'like', "%{$palabra}%");
+                    });
+                }
             })
             // Si el texto es justo un código exacto (lector de código de
             // barras), que aparezca primero sin importar el orden alfabético.
             ->orderByRaw('codigo = ? desc', [$texto])
             ->orderBy('nombre')
-            ->limit(8)
+            ->limit(20)
             ->get(['id', 'nombre', 'codigo', 'precio', 'unidad']);
 
         return response()->json($productos->map(fn (Producto $producto) => [
