@@ -34,79 +34,102 @@ class ProductoCargaRapidaController extends Controller
     public function agregar(AgregarItemCargaRapidaRequest $request): JsonResponse
     {
         $usuario = $request->user();
-        $producto = Producto::where('empresa_id', $usuario->empresa_id)->findOrFail($request->validated('producto_id'));
         $tipo = $request->validated('tipo');
+        $puedeCambiarPrecio = $usuario->puedeCambiarPrecioVenta();
 
         $pedido = $tipo === 'presupuesto'
             ? ($this->presupuestoEnCurso($usuario) ?? $this->crearPresupuesto($usuario))
             : ($this->carritoAbierto($usuario) ?? $this->crearCarrito($usuario));
 
-        $cantidad = $producto->esPorPeso() ? 1 : (int) $request->validated('cantidad');
+        $agregados = 0;
 
-        // Mismo motivo que en CarritoController::agregarItem(): un producto
-        // por peso nunca se fusiona con una línea ya cargada.
-        $itemExistente = $producto->esPorPeso() ? null : $pedido->items()->where('producto_id', $producto->id)->first();
+        // Todos los productos pedidos van al MISMO $pedido (ver arriba) —
+        // acá adentro solo se repite, por cada uno, la misma lógica de
+        // fusionar con una línea ya cargada o crear una nueva.
+        foreach ($request->validated('productos') as $itemSolicitado) {
+            $producto = Producto::where('empresa_id', $usuario->empresa_id)->find($itemSolicitado['producto_id']);
 
-        if ($itemExistente) {
-            $nuevaCantidad = $itemExistente->cantidad + $cantidad;
-            $resolucion = $this->resolverPrecio(
-                $request,
-                $producto,
-                $nuevaCantidad,
-                (bool) $itemExistente->precio_manual,
-                (float) $itemExistente->precio_unitario,
-                conservarManualSiNoSeEnviaPrecio: true,
-            );
+            if (! $producto) {
+                continue;
+            }
 
-            $itemExistente->update([
-                'cantidad' => $nuevaCantidad,
-                'precio_unitario' => $resolucion['precio'],
-                'precio_manual' => $resolucion['manual'],
-                'subtotal' => round($nuevaCantidad * $resolucion['precio'], 2),
-            ]);
-        } else {
-            $resolucion = $this->resolverPrecio($request, $producto, $cantidad, false, (float) $producto->precio, conservarManualSiNoSeEnviaPrecio: false);
+            $cantidad = $producto->esPorPeso() ? 1 : (int) $itemSolicitado['cantidad'];
+            $precioSolicitado = $itemSolicitado['precio_unitario'] ?? null;
 
-            PedidoItem::create([
-                'pedido_id' => $pedido->id,
-                'producto_id' => $producto->id,
-                'nombre_producto' => $producto->nombre,
-                'cantidad' => $cantidad,
-                'precio_original' => $producto->precio,
-                'precio_unitario' => $resolucion['precio'],
-                'precio_manual' => $resolucion['manual'],
-                'subtotal' => round($cantidad * $resolucion['precio'], 2),
-            ]);
+            // Mismo motivo que en CarritoController::agregarItem(): un
+            // producto por peso nunca se fusiona con una línea ya cargada.
+            $itemExistente = $producto->esPorPeso() ? null : $pedido->items()->where('producto_id', $producto->id)->first();
+
+            if ($itemExistente) {
+                $nuevaCantidad = $itemExistente->cantidad + $cantidad;
+                $resolucion = $this->resolverPrecio(
+                    $producto,
+                    $nuevaCantidad,
+                    $precioSolicitado,
+                    $puedeCambiarPrecio,
+                    (bool) $itemExistente->precio_manual,
+                    (float) $itemExistente->precio_unitario,
+                    conservarManualSiNoSeEnviaPrecio: true,
+                );
+
+                $itemExistente->update([
+                    'cantidad' => $nuevaCantidad,
+                    'precio_unitario' => $resolucion['precio'],
+                    'precio_manual' => $resolucion['manual'],
+                    'subtotal' => round($nuevaCantidad * $resolucion['precio'], 2),
+                ]);
+            } else {
+                $resolucion = $this->resolverPrecio($producto, $cantidad, $precioSolicitado, $puedeCambiarPrecio, false, (float) $producto->precio, conservarManualSiNoSeEnviaPrecio: false);
+
+                PedidoItem::create([
+                    'pedido_id' => $pedido->id,
+                    'producto_id' => $producto->id,
+                    'nombre_producto' => $producto->nombre,
+                    'cantidad' => $cantidad,
+                    'precio_original' => $producto->precio,
+                    'precio_unitario' => $resolucion['precio'],
+                    'precio_manual' => $resolucion['manual'],
+                    'subtotal' => round($cantidad * $resolucion['precio'], 2),
+                ]);
+            }
+
+            $agregados++;
         }
 
         $pedido->recalcularTotal();
 
         return response()->json([
-            'mensaje' => $tipo === 'presupuesto'
-                ? 'Producto agregado al presupuesto.'
-                : 'Producto agregado al carrito.',
+            'mensaje' => $this->mensajeResultado($tipo, $agregados),
             'tipo' => $tipo,
             'pedido_id' => $pedido->id,
+            'agregados' => $agregados,
         ]);
+    }
+
+    private function mensajeResultado(string $tipo, int $agregados): string
+    {
+        $destino = $tipo === 'presupuesto' ? 'al presupuesto' : 'al carrito';
+
+        return $agregados === 1
+            ? "Producto agregado {$destino}."
+            : "{$agregados} productos agregados {$destino}.";
     }
 
     /**
      * @return array{precio: float, manual: bool}
      */
     private function resolverPrecio(
-        AgregarItemCargaRapidaRequest $request,
         Producto $producto,
         int $cantidad,
+        ?string $precioSolicitado,
+        bool $puedeCambiar,
         bool $eraManual,
         float $precioManualPrevio,
         bool $conservarManualSiNoSeEnviaPrecio,
     ): array {
         if ($producto->esPorPeso()) {
-            return ['precio' => (float) $request->validated('precio_unitario'), 'manual' => true];
+            return ['precio' => (float) $precioSolicitado, 'manual' => true];
         }
-
-        $precioSolicitado = $request->validated('precio_unitario');
-        $puedeCambiar = $request->user()->puedeCambiarPrecioVenta();
 
         if ($puedeCambiar && filled($precioSolicitado)) {
             return ['precio' => (float) $precioSolicitado, 'manual' => true];

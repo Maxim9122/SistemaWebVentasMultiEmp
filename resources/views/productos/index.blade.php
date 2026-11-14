@@ -251,9 +251,11 @@
         </div>
     </div>
 
-    {{-- Modal: agregar al carrito/presupuesto rápido (botón por fila) --}}
+    {{-- Modal: agregar al carrito/presupuesto rápido — un producto (botón de
+    una fila sin tildar) o varios de una (botón de una fila ya tildada junto
+    con otras, ver btn-carga-rapida más abajo) --}}
     <div id="modal_carga_rapida" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40 p-4">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
             <div class="flex items-center justify-between px-6 py-4 border-b">
                 <h2 class="text-lg font-semibold" id="carga_rapida_titulo">Agregar producto</h2>
                 <button type="button" id="btn_cerrar_carga_rapida" class="text-slate-400 hover:text-slate-600 p-1" aria-label="Cerrar">
@@ -263,20 +265,23 @@
                 </button>
             </div>
 
-            <div class="px-6 py-4 space-y-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label for="carga_rapida_cantidad" class="block text-sm font-medium mb-1">Cantidad</label>
-                        <input id="carga_rapida_cantidad" type="number" min="1" step="1" value="1"
-                            class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
-                    </div>
-                    @if ($puedeCambiarPrecio)
-                        <div>
-                            <label for="carga_rapida_precio" class="block text-sm font-medium mb-1">Precio</label>
-                            <input id="carga_rapida_precio" type="number" min="0" step="0.01"
-                                class="w-full rounded border border-slate-300 focus:border-slate-500 focus:ring-slate-500">
-                        </div>
-                    @endif
+            <div class="px-6 py-4 overflow-y-auto flex-1 space-y-4">
+                <p id="carga_rapida_cargando" class="text-sm text-slate-500">Cargando...</p>
+
+                <div class="overflow-x-auto">
+                    <table id="carga_rapida_tabla" class="hidden w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-xs text-slate-500 border-b">
+                                <th class="px-2 py-2 font-medium">Producto</th>
+                                <th class="px-2 py-2 font-medium w-24">Cantidad</th>
+                                @if ($puedeCambiarPrecio)
+                                    <th class="px-2 py-2 font-medium w-28">Precio</th>
+                                @endif
+                                <th class="px-2 py-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="carga_rapida_filas" class="divide-y"></tbody>
+                    </table>
                 </div>
 
                 <div>
@@ -742,18 +747,30 @@
         (function () {
             const modal = document.getElementById('modal_carga_rapida');
             const titulo = document.getElementById('carga_rapida_titulo');
-            const campoCantidad = document.getElementById('carga_rapida_cantidad');
-            const campoPrecio = document.getElementById('carga_rapida_precio');
+            const cargando = document.getElementById('carga_rapida_cargando');
+            const tabla = document.getElementById('carga_rapida_tabla');
+            const filas = document.getElementById('carga_rapida_filas');
             const campoError = document.getElementById('carga_rapida_error');
             const btnConfirmar = document.getElementById('btn_confirmar_carga_rapida');
             const aviso = document.getElementById('aviso_carga_rapida');
+            const puedeCambiarPrecio = {{ $puedeCambiarPrecio ? 'true' : 'false' }};
+            const MAXIMO_PRODUCTOS = 30;
+
             // Qué tipo eligió la última vez (Venta o Presupuesto) — se
             // recuerda entre productos distintos, como pidió el usuario,
             // para no tener que volver a tildarlo en cada uno.
             const storageKeyTipo = 'svm_carga_rapida_tipo_{{ auth()->user()->empresa_id }}';
+            const storageKeySeleccion = 'svm_seleccion_productos_{{ auth()->user()->empresa_id }}';
 
-            let productoId = null;
             let avisoTimeout = null;
+
+            function leerSeleccionGuardada() {
+                try {
+                    return new Set(JSON.parse(localStorage.getItem(storageKeySeleccion) || '[]'));
+                } catch (e) {
+                    return new Set();
+                }
+            }
 
             function tipoElegido() {
                 return document.querySelector('input[name="carga_rapida_tipo"]:checked').value;
@@ -770,7 +787,100 @@
                 aviso.classList.remove('hidden');
                 avisoTimeout = setTimeout(function () {
                     aviso.classList.add('hidden');
-                }, 3000);
+                }, 4000);
+            }
+
+            function agregarFila(producto) {
+                const fila = document.createElement('tr');
+                fila.dataset.productoId = producto.id;
+
+                const celdaNombre = document.createElement('td');
+                celdaNombre.className = 'px-2 py-1.5';
+                celdaNombre.textContent = producto.nombre;
+                fila.appendChild(celdaNombre);
+
+                const celdaCantidad = document.createElement('td');
+                celdaCantidad.className = 'px-2 py-1.5';
+                const inputCantidad = document.createElement('input');
+                inputCantidad.type = 'number';
+                inputCantidad.min = '1';
+                inputCantidad.step = '1';
+                inputCantidad.value = '1';
+                inputCantidad.className = 'carga-rapida-cantidad w-20 rounded border border-slate-300 text-sm px-2 py-1 focus:border-slate-500 focus:ring-slate-500';
+                celdaCantidad.appendChild(inputCantidad);
+                fila.appendChild(celdaCantidad);
+
+                if (puedeCambiarPrecio) {
+                    const celdaPrecio = document.createElement('td');
+                    celdaPrecio.className = 'px-2 py-1.5';
+                    const inputPrecio = document.createElement('input');
+                    inputPrecio.type = 'number';
+                    inputPrecio.min = '0';
+                    inputPrecio.step = '0.01';
+                    inputPrecio.value = producto.precio;
+                    inputPrecio.className = 'carga-rapida-precio w-24 rounded border border-slate-300 text-sm px-2 py-1 focus:border-slate-500 focus:ring-slate-500';
+                    celdaPrecio.appendChild(inputPrecio);
+                    fila.appendChild(celdaPrecio);
+                }
+
+                const celdaQuitar = document.createElement('td');
+                celdaQuitar.className = 'px-2 py-1.5';
+                const btnQuitar = document.createElement('button');
+                btnQuitar.type = 'button';
+                btnQuitar.className = 'text-xs text-red-600 hover:underline whitespace-nowrap';
+                btnQuitar.textContent = 'Quitar';
+                celdaQuitar.appendChild(btnQuitar);
+                fila.appendChild(celdaQuitar);
+
+                filas.appendChild(fila);
+                inputCantidad.focus();
+                inputCantidad.select();
+            }
+
+            // Delegado: cubre cualquier fila agregada, sin importar cuándo.
+            filas.addEventListener('click', function (evento) {
+                if (evento.target.tagName === 'BUTTON') {
+                    evento.target.closest('tr').remove();
+                }
+            });
+
+            async function abrirModalConProductos(idsAUsar, productoClickeado) {
+                campoError.classList.add('hidden');
+                filas.innerHTML = '';
+                tabla.classList.add('hidden');
+                cargando.classList.remove('hidden');
+                titulo.textContent = idsAUsar.length === 1 ? productoClickeado.nombre : (idsAUsar.length + ' productos seleccionados');
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+
+                let productos;
+
+                if (idsAUsar.length === 1) {
+                    // El único caso donde no hace falta pedirle nada al
+                    // servidor: ya se tienen nombre/precio en el data-* del
+                    // botón que se clickeó.
+                    productos = [{ id: productoClickeado.id, nombre: productoClickeado.nombre, precio: productoClickeado.precio }];
+                } else {
+                    try {
+                        const cuerpo = new FormData();
+                        cuerpo.append('_token', '{{ csrf_token() }}');
+                        idsAUsar.forEach(function (id) { cuerpo.append('ids[]', id); });
+
+                        const respuesta = await fetch('{{ route('productos.porIds') }}', {
+                            method: 'POST',
+                            headers: { 'Accept': 'application/json' },
+                            body: cuerpo,
+                        });
+                        productos = await respuesta.json();
+                    } catch (e) {
+                        productos = [];
+                    }
+                }
+
+                cargando.classList.add('hidden');
+                tabla.classList.remove('hidden');
+                productos.forEach(agregarFila);
             }
 
             try {
@@ -783,16 +893,22 @@
 
             document.querySelectorAll('.btn-carga-rapida').forEach(function (boton) {
                 boton.addEventListener('click', function () {
-                    productoId = boton.dataset.id;
-                    titulo.textContent = boton.dataset.nombre;
-                    campoCantidad.value = 1;
-                    if (campoPrecio) campoPrecio.value = boton.dataset.precio;
-                    campoError.classList.add('hidden');
+                    const productoClickeado = { id: boton.dataset.id, nombre: boton.dataset.nombre, precio: boton.dataset.precio };
+                    const seleccionGuardada = leerSeleccionGuardada();
 
-                    modal.classList.remove('hidden');
-                    modal.classList.add('flex');
-                    campoCantidad.focus();
-                    campoCantidad.select();
+                    // Si el producto en el que se clickeó el carrito está
+                    // tildado junto con otros, se trae toda la selección —
+                    // si no, solo ese producto (comportamiento de siempre).
+                    const idsAUsar = seleccionGuardada.size > 1 && seleccionGuardada.has(String(productoClickeado.id))
+                        ? Array.from(seleccionGuardada)
+                        : [productoClickeado.id];
+
+                    if (idsAUsar.length > MAXIMO_PRODUCTOS) {
+                        alert('Elegiste ' + idsAUsar.length + ' productos — como máximo se pueden cargar ' + MAXIMO_PRODUCTOS + ' de una vez por acá.');
+                        return;
+                    }
+
+                    abrirModalConProductos(idsAUsar, productoClickeado);
                 });
             });
 
@@ -808,11 +924,30 @@
             btnConfirmar.addEventListener('click', async function () {
                 if (btnConfirmar.disabled) return;
 
-                const cantidad = parseInt(campoCantidad.value, 10);
-                if (! cantidad || cantidad < 1) {
-                    campoError.textContent = 'Ingresá una cantidad válida.';
+                const filasCargadas = Array.from(filas.querySelectorAll('tr'));
+
+                if (filasCargadas.length === 0) {
+                    campoError.textContent = 'No queda ningún producto para agregar.';
                     campoError.classList.remove('hidden');
                     return;
+                }
+
+                const productos = [];
+                for (const fila of filasCargadas) {
+                    const cantidad = parseInt(fila.querySelector('.carga-rapida-cantidad').value, 10);
+
+                    if (! cantidad || cantidad < 1) {
+                        campoError.textContent = 'Revisá la cantidad de "' + fila.children[0].textContent + '".';
+                        campoError.classList.remove('hidden');
+                        return;
+                    }
+
+                    const item = { producto_id: fila.dataset.productoId, cantidad: cantidad };
+                    const campoPrecioFila = fila.querySelector('.carga-rapida-precio');
+                    if (campoPrecioFila && campoPrecioFila.value !== '') {
+                        item.precio_unitario = campoPrecioFila.value;
+                    }
+                    productos.push(item);
                 }
 
                 btnConfirmar.disabled = true;
@@ -821,12 +956,14 @@
 
                 const cuerpo = new FormData();
                 cuerpo.append('_token', '{{ csrf_token() }}');
-                cuerpo.append('producto_id', productoId);
-                cuerpo.append('cantidad', cantidad);
                 cuerpo.append('tipo', tipoElegido());
-                if (campoPrecio && campoPrecio.value !== '') {
-                    cuerpo.append('precio_unitario', campoPrecio.value);
-                }
+                productos.forEach(function (item, indice) {
+                    cuerpo.append('productos[' + indice + '][producto_id]', item.producto_id);
+                    cuerpo.append('productos[' + indice + '][cantidad]', item.cantidad);
+                    if (item.precio_unitario !== undefined) {
+                        cuerpo.append('productos[' + indice + '][precio_unitario]', item.precio_unitario);
+                    }
+                });
 
                 try {
                     const respuesta = await fetch('{{ route('productos.cargaRapida') }}', {
@@ -843,6 +980,8 @@
 
                     cerrarModal();
                     mostrarAviso(datos.mensaje);
+                    // Se cargaron: no tiene sentido dejarlos tildados.
+                    window.dispatchEvent(new CustomEvent('svm:carga-rapida-completada'));
                 } catch (error) {
                     campoError.textContent = error.message;
                     campoError.classList.remove('hidden');
@@ -968,8 +1107,7 @@
                 });
             }
 
-            document.getElementById('vaciar_seleccion').addEventListener('click', function (evento) {
-                evento.preventDefault();
+            function vaciarSeleccion() {
                 seleccion = new Set();
                 guardarSeleccion(seleccion);
                 document.querySelectorAll('.seleccion-producto').forEach(function (cb) {
@@ -977,7 +1115,17 @@
                 });
                 if (checkTodosPagina) checkTodosPagina.checked = false;
                 actualizarBloque();
+            }
+
+            document.getElementById('vaciar_seleccion').addEventListener('click', function (evento) {
+                evento.preventDefault();
+                vaciarSeleccion();
             });
+
+            // Disparado por el modal de "agregar al carrito/presupuesto"
+            // (ver btn-carga-rapida) al terminar: ya se cargaron, no tiene
+            // sentido dejarlos tildados.
+            window.addEventListener('svm:carga-rapida-completada', vaciarSeleccion);
 
             const formCrearGrupo = document.getElementById('form_crear_grupo');
             formCrearGrupo.addEventListener('submit', function () {

@@ -226,6 +226,34 @@ class ProductoController extends Controller
         return response()->json(['ids' => $ids]);
     }
 
+    /**
+     * Datos (nombre/precio/si es por peso) de un lote de productos por id —
+     * usado por el modal de "agregar varios al carrito/presupuesto" (ver
+     * btn-carga-rapida en la vista): la selección puede incluir productos
+     * de otras páginas del listado (el check "todo el resultado" los trae
+     * de cualquier página), así que no alcanza con los data-* del DOM
+     * actual. Tope de 30 a propósito: este modal pide cantidad/precio fila
+     * por fila a mano, no tiene sentido (ni es usable) para una selección
+     * de cientos o miles de productos — para eso ya existen "Ajustar precio"
+     * y "Crear grupo", que sí operan en bloque sin pedir nada por producto.
+     */
+    public function porIds(Request $request): JsonResponse
+    {
+        $ids = array_slice(array_filter((array) $request->input('ids', []), fn ($id) => is_numeric($id)), 0, 30);
+
+        $productos = Producto::where('empresa_id', $request->user()->empresa_id)
+            ->where('activo', true)
+            ->whereIn('id', $ids)
+            ->get(['id', 'nombre', 'precio']);
+
+        return response()->json($productos->map(fn (Producto $producto) => [
+            'id' => $producto->id,
+            'nombre' => $producto->nombre,
+            'precio' => (float) $producto->precio,
+            'esPorPeso' => $producto->esPorPeso(),
+        ]));
+    }
+
     public function exportar(Request $request): StreamedResponse
     {
         $buscar = trim((string) $request->input('buscar', ''));
