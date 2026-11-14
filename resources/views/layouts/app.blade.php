@@ -56,7 +56,7 @@
                 @else
                     <a href="{{ route('ayuda.index') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('ayuda.*') ? 'bg-slate-800 text-white' : '' }}">Ayuda</a>
                     @if (in_array(auth()->user()->role, ['admin', 'vendedor', 'cajero_vendedor']))
-                        <a href="{{ route('carritos.index') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('carritos.*') ? 'bg-slate-800 text-white' : '' }}">Carritos</a>
+                        <a href="{{ route('carritos.index') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('carritos.*') ? 'bg-slate-800 text-white' : '' }}">Carritos <span class="text-xs text-slate-400">(Vender)</span></a>
                     @endif
                     @if (in_array(auth()->user()->role, ['admin', 'cajero', 'cajero_vendedor']))
                         <a href="{{ route('caja.index') }}" class="block rounded px-3 py-2 hover:bg-slate-800 {{ request()->routeIs('caja.*') ? 'bg-slate-800 text-white' : '' }}">Caja <span class="text-xs text-slate-400">(Cobrar)</span></a>
