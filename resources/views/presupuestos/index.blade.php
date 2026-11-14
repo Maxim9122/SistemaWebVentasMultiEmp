@@ -77,8 +77,13 @@
                         <td class="px-4 py-2">{{ $presupuesto->cliente?->nombre ?? $presupuesto->cliente_nombre }}</td>
                         <td class="px-4 py-2 text-slate-500">{{ $presupuesto->vendedor->name }}</td>
                         <td class="px-4 py-2 text-right">${{ number_format($presupuesto->total, 2, ',', '.') }}</td>
-                        <td class="px-4 py-2 text-right">
+                        <td class="px-4 py-2 text-right whitespace-nowrap">
                             <a href="{{ route('presupuestos.show', $presupuesto) }}" class="text-sm text-slate-600 hover:underline">Ver</a>
+                            <form method="POST" action="{{ route('presupuestos.cancelar', $presupuesto) }}" class="inline"
+                                onsubmit="return confirm('¿Cancelar este presupuesto? No se puede deshacer.');">
+                                @csrf
+                                <button type="submit" class="ml-3 text-sm text-red-600 hover:underline">Cancelar</button>
+                            </form>
                         </td>
                     </tr>
                 @empty
