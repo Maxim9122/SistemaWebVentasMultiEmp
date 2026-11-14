@@ -299,6 +299,12 @@
                         </div>
                     </div>
 
+                    <div>
+                        <label for="carga_rapida_cliente" class="block text-sm font-medium mb-1">Cliente (opcional)</label>
+                        <input type="text" id="carga_rapida_cliente" autocomplete="off" placeholder="Consumidor Final"
+                            class="w-full rounded border border-slate-300 text-sm px-2 py-1.5 focus:border-slate-500 focus:ring-slate-500">
+                    </div>
+
                     <p id="carga_rapida_error" class="hidden text-sm text-red-600"></p>
                 </div>
 
@@ -776,6 +782,7 @@
             const preguntaTexto = document.getElementById('carga_rapida_pregunta_texto');
             const btnUsarExistente = document.getElementById('btn_carga_rapida_usar_existente');
             const btnCrearNuevo = document.getElementById('btn_carga_rapida_crear_nuevo');
+            const campoCliente = document.getElementById('carga_rapida_cliente');
             const puedeCambiarPrecio = {{ $puedeCambiarPrecio ? 'true' : 'false' }};
             const MAXIMO_PRODUCTOS = 30;
 
@@ -883,6 +890,7 @@
             async function abrirModalConProductos(idsAUsar, productoClickeado) {
                 mostrarFormularioNormal();
                 campoError.classList.add('hidden');
+                campoCliente.value = '';
                 filas.innerHTML = '';
                 tabla.classList.add('hidden');
                 cargando.classList.remove('hidden');
@@ -1000,6 +1008,9 @@
                 cuerpo.append('tipo', tipoElegido());
                 if (accionPedido) {
                     cuerpo.append('accion_pedido', accionPedido);
+                }
+                if (campoCliente.value.trim() !== '') {
+                    cuerpo.append('cliente_nombre', campoCliente.value.trim());
                 }
                 productos.forEach(function (item, indice) {
                     cuerpo.append('productos[' + indice + '][producto_id]', item.producto_id);

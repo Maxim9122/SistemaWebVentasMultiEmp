@@ -39,6 +39,10 @@ class AgregarItemCargaRapidaRequest extends FormRequest
             // misma petición con esto puesto, según lo que haya elegido el
             // usuario (ver ProductoCargaRapidaController::agregar()).
             'accion_pedido' => ['nullable', 'string', 'in:usar_existente,crear_nuevo'],
+            // Opcional — si no se manda, el pedido queda con el cliente que
+            // ya tenía (uno reutilizado) o con Pedido::CLIENTE_POR_DEFECTO
+            // (uno nuevo), igual que ya hacen Carritos/Presupuestos.
+            'cliente_nombre' => ['nullable', 'string', 'max:255'],
             'productos' => ['required', 'array', 'min:1', 'max:30'],
             'productos.*.producto_id' => [
                 'required',

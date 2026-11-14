@@ -36,6 +36,7 @@ class ProductoCargaRapidaController extends Controller
         $usuario = $request->user();
         $tipo = $request->validated('tipo');
         $accionPedido = $request->validated('accion_pedido');
+        $clienteNombre = trim((string) ($request->validated('cliente_nombre') ?? ''));
         $puedeCambiarPrecio = $usuario->puedeCambiarPrecioVenta();
 
         $pedidoEnCurso = $tipo === 'presupuesto' ? $this->presupuestoEnCurso($usuario) : $this->carritoAbierto($usuario);
@@ -54,8 +55,16 @@ class ProductoCargaRapidaController extends Controller
         }
 
         $pedido = $accionPedido === 'crear_nuevo'
-            ? ($tipo === 'presupuesto' ? $this->crearPresupuesto($usuario) : $this->crearCarrito($usuario))
-            : ($pedidoEnCurso ?? ($tipo === 'presupuesto' ? $this->crearPresupuesto($usuario) : $this->crearCarrito($usuario)));
+            ? ($tipo === 'presupuesto' ? $this->crearPresupuesto($usuario, $clienteNombre) : $this->crearCarrito($usuario, $clienteNombre))
+            : ($pedidoEnCurso ?? ($tipo === 'presupuesto' ? $this->crearPresupuesto($usuario, $clienteNombre) : $this->crearCarrito($usuario, $clienteNombre)));
+
+        // Si se reutiliza un pedido que ya existía, el nombre recién llega
+        // ahora (crearCarrito()/crearPresupuesto() ya no corren en este
+        // caso) — se pisa el cliente_id también: un nombre a mano no
+        // corresponde necesariamente al cliente que tenía vinculado antes.
+        if ($clienteNombre !== '' && $pedido->cliente_nombre !== $clienteNombre) {
+            $pedido->update(['cliente_nombre' => $clienteNombre, 'cliente_id' => null]);
+        }
 
         $agregados = 0;
 
@@ -167,12 +176,12 @@ class ProductoCargaRapidaController extends Controller
             ->first();
     }
 
-    private function crearCarrito(User $usuario): Pedido
+    private function crearCarrito(User $usuario, string $clienteNombre = ''): Pedido
     {
         return Pedido::create([
             'empresa_id' => $usuario->empresa_id,
             'vendedor_id' => $usuario->id,
-            'cliente_nombre' => Pedido::CLIENTE_POR_DEFECTO,
+            'cliente_nombre' => $clienteNombre !== '' ? $clienteNombre : Pedido::CLIENTE_POR_DEFECTO,
             'estado' => Pedido::ESTADO_CARRITO,
         ]);
     }
@@ -196,9 +205,9 @@ class ProductoCargaRapidaController extends Controller
             ->first();
     }
 
-    private function crearPresupuesto(User $usuario): Pedido
+    private function crearPresupuesto(User $usuario, string $clienteNombre = ''): Pedido
     {
-        return DB::transaction(function () use ($usuario) {
+        return DB::transaction(function () use ($usuario, $clienteNombre) {
             $empresa = Empresa::where('id', $usuario->empresa_id)->lockForUpdate()->first();
             $numero = $empresa->ultimo_numero_presupuesto + 1;
             $empresa->update(['ultimo_numero_presupuesto' => $numero]);
@@ -206,7 +215,7 @@ class ProductoCargaRapidaController extends Controller
             return Pedido::create([
                 'empresa_id' => $usuario->empresa_id,
                 'vendedor_id' => $usuario->id,
-                'cliente_nombre' => Pedido::CLIENTE_POR_DEFECTO,
+                'cliente_nombre' => $clienteNombre !== '' ? $clienteNombre : Pedido::CLIENTE_POR_DEFECTO,
                 'estado' => Pedido::ESTADO_PRESUPUESTO,
                 'numero_presupuesto' => $numero,
             ]);
