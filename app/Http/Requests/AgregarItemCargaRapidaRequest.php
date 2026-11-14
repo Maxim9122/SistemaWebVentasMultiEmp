@@ -33,6 +33,12 @@ class AgregarItemCargaRapidaRequest extends FormRequest
     {
         return [
             'tipo' => ['required', 'string', 'in:venta,presupuesto'],
+            // Null en el primer intento (todavía no se sabe si hace falta
+            // preguntar nada) — si el servidor contesta que ya hay un
+            // carrito/presupuesto en curso, el frontend vuelve a mandar la
+            // misma petición con esto puesto, según lo que haya elegido el
+            // usuario (ver ProductoCargaRapidaController::agregar()).
+            'accion_pedido' => ['nullable', 'string', 'in:usar_existente,crear_nuevo'],
             'productos' => ['required', 'array', 'min:1', 'max:30'],
             'productos.*.producto_id' => [
                 'required',

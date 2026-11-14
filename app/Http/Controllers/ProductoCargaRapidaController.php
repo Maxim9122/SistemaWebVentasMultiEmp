@@ -35,11 +35,27 @@ class ProductoCargaRapidaController extends Controller
     {
         $usuario = $request->user();
         $tipo = $request->validated('tipo');
+        $accionPedido = $request->validated('accion_pedido');
         $puedeCambiarPrecio = $usuario->puedeCambiarPrecioVenta();
 
-        $pedido = $tipo === 'presupuesto'
-            ? ($this->presupuestoEnCurso($usuario) ?? $this->crearPresupuesto($usuario))
-            : ($this->carritoAbierto($usuario) ?? $this->crearCarrito($usuario));
+        $pedidoEnCurso = $tipo === 'presupuesto' ? $this->presupuestoEnCurso($usuario) : $this->carritoAbierto($usuario);
+
+        // Si ya hay un carrito/presupuesto en curso y todavía no se sabe
+        // qué prefiere el usuario, se pregunta en vez de decidir solo —
+        // nada se agrega todavía en este caso, así que no importa si el
+        // usuario termina eligiendo "crear nuevo".
+        if ($pedidoEnCurso && $accionPedido === null) {
+            return response()->json([
+                'necesitaEleccion' => true,
+                'etiquetaPedidoEnCurso' => $tipo === 'presupuesto'
+                    ? "el presupuesto #{$pedidoEnCurso->numero_presupuesto} que ya tenías en curso"
+                    : 'el carrito que ya tenías abierto',
+            ]);
+        }
+
+        $pedido = $accionPedido === 'crear_nuevo'
+            ? ($tipo === 'presupuesto' ? $this->crearPresupuesto($usuario) : $this->crearCarrito($usuario))
+            : ($pedidoEnCurso ?? ($tipo === 'presupuesto' ? $this->crearPresupuesto($usuario) : $this->crearCarrito($usuario)));
 
         $agregados = 0;
 
@@ -162,16 +178,20 @@ class ProductoCargaRapidaController extends Controller
     }
 
     /**
-     * Mismo criterio que carritoAbierto(): mientras se sigan agregando
-     * productos en modo "Presupuesto" desde este botón rápido, todos entran
-     * al mismo presupuesto — recién se crea uno nuevo si no hay ninguno de
-     * este vendedor todavía en estado presupuesto.
+     * Mismo criterio que carritoAbierto(), con un límite extra: solo se
+     * reutiliza un presupuesto creado HOY. Sin ese límite, un presupuesto
+     * de ayer que nadie cerró se seguía reutilizando sin fecha de corte —
+     * y como la lista de Presupuestos solo muestra los de hoy por defecto
+     * (ver PresupuestoController::index()), los productos se iban cargando
+     * en un presupuesto que después no aparecía en ningún lado sin cambiar
+     * el filtro de fecha a mano.
      */
     private function presupuestoEnCurso(User $usuario): ?Pedido
     {
         return Pedido::query()
             ->where('vendedor_id', $usuario->id)
             ->where('estado', Pedido::ESTADO_PRESUPUESTO)
+            ->whereDate('created_at', today())
             ->latest()
             ->first();
     }

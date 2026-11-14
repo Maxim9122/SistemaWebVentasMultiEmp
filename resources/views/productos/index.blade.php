@@ -266,39 +266,57 @@
             </div>
 
             <div class="px-6 py-4 overflow-y-auto flex-1 space-y-4">
-                <p id="carga_rapida_cargando" class="text-sm text-slate-500">Cargando...</p>
+                <div id="carga_rapida_contenido" class="space-y-4">
+                    <p id="carga_rapida_cargando" class="text-sm text-slate-500">Cargando...</p>
 
-                <div class="overflow-x-auto">
-                    <table id="carga_rapida_tabla" class="hidden w-full text-sm">
-                        <thead>
-                            <tr class="text-left text-xs text-slate-500 border-b">
-                                <th class="px-2 py-2 font-medium">Producto</th>
-                                <th class="px-2 py-2 font-medium w-24">Cantidad</th>
-                                @if ($puedeCambiarPrecio)
-                                    <th class="px-2 py-2 font-medium w-28">Precio</th>
-                                @endif
-                                <th class="px-2 py-2"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="carga_rapida_filas" class="divide-y"></tbody>
-                    </table>
+                    <div class="overflow-x-auto">
+                        <table id="carga_rapida_tabla" class="hidden w-full text-sm">
+                            <thead>
+                                <tr class="text-left text-xs text-slate-500 border-b">
+                                    <th class="px-2 py-2 font-medium">Producto</th>
+                                    <th class="px-2 py-2 font-medium w-24">Cantidad</th>
+                                    @if ($puedeCambiarPrecio)
+                                        <th class="px-2 py-2 font-medium w-28">Precio</th>
+                                    @endif
+                                    <th class="px-2 py-2"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="carga_rapida_filas" class="divide-y"></tbody>
+                        </table>
+                    </div>
+
+                    <div>
+                        <p class="block text-sm font-medium mb-1">¿A dónde va?</p>
+                        <div class="flex gap-4">
+                            <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+                                <input type="radio" name="carga_rapida_tipo" value="venta" checked>
+                                Venta (carrito)
+                            </label>
+                            <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+                                <input type="radio" name="carga_rapida_tipo" value="presupuesto">
+                                Presupuesto
+                            </label>
+                        </div>
+                    </div>
+
+                    <p id="carga_rapida_error" class="hidden text-sm text-red-600"></p>
                 </div>
 
-                <div>
-                    <p class="block text-sm font-medium mb-1">¿A dónde va?</p>
-                    <div class="flex gap-4">
-                        <label class="flex items-center gap-1.5 text-sm cursor-pointer">
-                            <input type="radio" name="carga_rapida_tipo" value="venta" checked>
-                            Venta (carrito)
-                        </label>
-                        <label class="flex items-center gap-1.5 text-sm cursor-pointer">
-                            <input type="radio" name="carga_rapida_tipo" value="presupuesto">
-                            Presupuesto
-                        </label>
+                {{-- Se muestra en vez de lo de arriba cuando ya hay un
+                carrito/presupuesto en curso — nunca se decide solo, se le
+                pregunta al usuario si sigue cargando ahí o arranca uno
+                nuevo. --}}
+                <div id="carga_rapida_pregunta" class="hidden space-y-3">
+                    <p id="carga_rapida_pregunta_texto" class="text-sm text-slate-700"></p>
+                    <div class="flex gap-2">
+                        <button type="button" id="btn_carga_rapida_usar_existente" class="rounded bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
+                            Agregar ahí
+                        </button>
+                        <button type="button" id="btn_carga_rapida_crear_nuevo" class="rounded border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:border-slate-400">
+                            Crear nuevo
+                        </button>
                     </div>
                 </div>
-
-                <p id="carga_rapida_error" class="hidden text-sm text-red-600"></p>
             </div>
 
             <div class="px-6 py-4 border-t flex justify-end gap-2">
@@ -753,6 +771,11 @@
             const campoError = document.getElementById('carga_rapida_error');
             const btnConfirmar = document.getElementById('btn_confirmar_carga_rapida');
             const aviso = document.getElementById('aviso_carga_rapida');
+            const contenido = document.getElementById('carga_rapida_contenido');
+            const pregunta = document.getElementById('carga_rapida_pregunta');
+            const preguntaTexto = document.getElementById('carga_rapida_pregunta_texto');
+            const btnUsarExistente = document.getElementById('btn_carga_rapida_usar_existente');
+            const btnCrearNuevo = document.getElementById('btn_carga_rapida_crear_nuevo');
             const puedeCambiarPrecio = {{ $puedeCambiarPrecio ? 'true' : 'false' }};
             const MAXIMO_PRODUCTOS = 30;
 
@@ -779,6 +802,19 @@
             function cerrarModal() {
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
+            }
+
+            function mostrarFormularioNormal() {
+                contenido.classList.remove('hidden');
+                pregunta.classList.add('hidden');
+                btnConfirmar.classList.remove('hidden');
+            }
+
+            function mostrarPregunta(texto) {
+                contenido.classList.add('hidden');
+                preguntaTexto.textContent = texto;
+                pregunta.classList.remove('hidden');
+                btnConfirmar.classList.add('hidden');
             }
 
             function mostrarAviso(texto) {
@@ -845,6 +881,7 @@
             });
 
             async function abrirModalConProductos(idsAUsar, productoClickeado) {
+                mostrarFormularioNormal();
                 campoError.classList.add('hidden');
                 filas.innerHTML = '';
                 tabla.classList.add('hidden');
@@ -921,12 +958,16 @@
                 });
             });
 
-            btnConfirmar.addEventListener('click', async function () {
-                if (btnConfirmar.disabled) return;
-
+            // accionPedido es null en el primer intento — si el servidor
+            // contesta que ya hay un carrito/presupuesto en curso, se le
+            // pregunta al usuario (mostrarPregunta) en vez de decidir solo;
+            // los botones de esa pregunta vuelven a llamar acá con la
+            // elección puesta, reenviando los mismos productos.
+            async function enviarCarga(accionPedido) {
                 const filasCargadas = Array.from(filas.querySelectorAll('tr'));
 
                 if (filasCargadas.length === 0) {
+                    mostrarFormularioNormal();
                     campoError.textContent = 'No queda ningún producto para agregar.';
                     campoError.classList.remove('hidden');
                     return;
@@ -937,6 +978,7 @@
                     const cantidad = parseInt(fila.querySelector('.carga-rapida-cantidad').value, 10);
 
                     if (! cantidad || cantidad < 1) {
+                        mostrarFormularioNormal();
                         campoError.textContent = 'Revisá la cantidad de "' + fila.children[0].textContent + '".';
                         campoError.classList.remove('hidden');
                         return;
@@ -950,13 +992,15 @@
                     productos.push(item);
                 }
 
-                btnConfirmar.disabled = true;
-                btnConfirmar.textContent = 'Agregando...';
+                [btnConfirmar, btnUsarExistente, btnCrearNuevo].forEach(function (b) { b.disabled = true; });
                 campoError.classList.add('hidden');
 
                 const cuerpo = new FormData();
                 cuerpo.append('_token', '{{ csrf_token() }}');
                 cuerpo.append('tipo', tipoElegido());
+                if (accionPedido) {
+                    cuerpo.append('accion_pedido', accionPedido);
+                }
                 productos.forEach(function (item, indice) {
                     cuerpo.append('productos[' + indice + '][producto_id]', item.producto_id);
                     cuerpo.append('productos[' + indice + '][cantidad]', item.cantidad);
@@ -978,18 +1022,33 @@
                         throw new Error(mensajes?.[0] || datos?.message || 'No se pudo agregar el producto.');
                     }
 
+                    if (datos.necesitaEleccion) {
+                        mostrarPregunta('Ya tenés ' + datos.etiquetaPedidoEnCurso + '. ¿Seguís cargando ahí o arrancás uno nuevo?');
+                        return;
+                    }
+
                     cerrarModal();
                     mostrarAviso(datos.mensaje);
                     // Se cargaron: no tiene sentido dejarlos tildados.
                     window.dispatchEvent(new CustomEvent('svm:carga-rapida-completada'));
                 } catch (error) {
+                    mostrarFormularioNormal();
                     campoError.textContent = error.message;
                     campoError.classList.remove('hidden');
                 } finally {
-                    btnConfirmar.disabled = false;
+                    [btnConfirmar, btnUsarExistente, btnCrearNuevo].forEach(function (b) { b.disabled = false; });
                     btnConfirmar.textContent = 'Agregar';
                 }
+            }
+
+            btnConfirmar.addEventListener('click', function () {
+                if (btnConfirmar.disabled) return;
+                btnConfirmar.textContent = 'Agregando...';
+                enviarCarga(null);
             });
+
+            btnUsarExistente.addEventListener('click', function () { enviarCarga('usar_existente'); });
+            btnCrearNuevo.addEventListener('click', function () { enviarCarga('crear_nuevo'); });
         })();
 
         (function () {
